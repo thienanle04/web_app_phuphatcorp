@@ -3,7 +3,10 @@
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:migrate": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-from-remote.ps1 -UpdateEnv"
+    "docker:migrate": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-from-remote.ps1 -UpdateEnv",
+    "seed:clf-f": "npx tsx scripts/seed-clf-f.ts",
+    "seed:adjustment-periods": "npx tsx scripts/seed-adjustment-periods.ts",
+    "cascade:route-pricing": "npx tsx scripts/cascade-route-pricing-versions.ts"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
