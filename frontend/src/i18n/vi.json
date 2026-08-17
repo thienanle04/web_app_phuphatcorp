@@ -194,7 +194,7 @@
     "title": "Danh sách khách nhận hàng",
     "addCustomer": "Thêm mới",
     "importExcel": "Import Excel",
-    "search": "Tìm kiếm theo tên...",
+    "search": "Tìm kiếm theo tên, điểm trả hàng, điểm GHTP…",
     "filterTuyen": "Lọc theo tuyến",
     "allTuyen": "Tất cả tuyến",
     "columns": {
@@ -202,6 +202,7 @@
       "diemTraHang": "Điểm trả hàng",
       "tenKhachHang": "Tên khách hàng",
       "tuyenPhuong": "Tuyến-phường",
+      "diemGiaoHangTinhPhi": "Điểm giao hàng tính phí",
       "tuyenCu": "Tuyến-cũ",
       "diaChiGiaoHang": "Địa chỉ giao hàng",
       "bocXep": "Bốc xếp",
@@ -234,7 +235,8 @@
     },
     "upload": {
       "title": "Import khách hàng từ Excel",
-      "success": "Đã import {{count}} khách hàng thành công"
+      "success": "Đã import {{count}} khách hàng thành công",
+      "colDiemGhtp": "Điểm giao hàng tính phí (không bắt buộc)"
     },
     "fields": {
       "diemTraHang": "Điểm trả hàng",
@@ -242,6 +244,8 @@
       "tuyenPhuong": "Tuyến-phường",
       "tuyenCu": "Tuyến-cũ",
       "diaChiGiaoHang": "Địa chỉ giao hàng",
+      "diemGiaoHangTinhPhi": "Điểm giao hàng tính phí",
+      "diemGiaoHangTinhPhiPlaceholder": "VD: HCM - Tây Thạnh…",
       "bocXep": "Có bốc xếp",
       "supplierCode": "Mã nhà cung cấp"
     },
@@ -249,6 +253,7 @@
       "diemTraHangRequired": "Điểm trả hàng không được rỗng",
       "tenKhachHangRequired": "Tên khách hàng không được rỗng",
       "diemTraHangDuplicate": "Điểm trả hàng đã tồn tại",
+      "diemGhtpMax": "Điểm giao hàng tính phí tối đa 255 ký tự",
       "notFound": "Không tìm thấy khách hàng"
     }
   },

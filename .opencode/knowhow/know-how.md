@@ -206,6 +206,7 @@ VITE_API_URL=http://localhost:3021/api
 | tuyen_phuong | VARCHAR(255) | NULL |
 | tuyen_cu | VARCHAR(255) | NULL |
 | dia_chi_giao_hang | TEXT | NULL |
+| diem_giao_hang_tinh_phi | VARCHAR(255) | NULL |
 | boc_xep | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | status | VARCHAR(20) | NOT NULL, DEFAULT 'active' |
 | created_by | INTEGER | FK → users(id), NULL |
@@ -215,7 +216,7 @@ VITE_API_URL=http://localhost:3021/api
 
 **Indexes:** `idx_customers_diem_tra_hang`, `idx_customers_status`
 **Soft delete:** `status = 'deactive'` (không xóa cứng)
-**Migration:** `012_create_customers.sql`
+**Migration:** `012_create_customers.sql`, `043_add_diem_giao_hang_tinh_phi_to_customers.sql`
 
 ### customer_suppliers (junction N-N: customers ↔ suppliers)
 | Column | Type | Constraints |
@@ -314,7 +315,7 @@ Frontend route: `/route-pricing` (sidebar top-level **Giá theo tuyến**)
 | Method | Path | Auth | Body/Query | Response |
 |--------|------|------|------------|----------|
 | GET | /customers | JWT + accounting_data.view | — | `{ success, data: Customer[] }` (only active records) |
-| POST | /customers | JWT + accounting_data.manage | `{ diem_tra_hang, ten_khach_hang, tuyen_phuong?, tuyen_cu?, dia_chi_giao_hang?, boc_xep? }` | `{ success, data: Customer }` |
+| POST | /customers | JWT + accounting_data.manage | `{ diem_tra_hang, ten_khach_hang, tuyen_phuong?, tuyen_cu?, dia_chi_giao_hang?, diem_giao_hang_tinh_phi?, boc_xep? }` | `{ success, data: Customer }` |
 | PUT | /customers/:id | JWT + accounting_data.manage | same as POST | `{ success, data: Customer }` |
 | DELETE | /customers/:id | JWT + accounting_data.manage | — | `{ success, message }` (soft delete: status→'deactive') |
 | POST | /customers/upload | JWT + accounting_data.manage | `{ rows: UploadCustomerRow[] }` | `{ success, data: { inserted: number } }` or `{ success: false, errors: [] }` (HTTP 422) |

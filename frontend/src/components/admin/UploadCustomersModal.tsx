@@ -15,8 +15,8 @@ interface Props {
 function generateTemplate(): void {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Điểm trả hàng', 'Tuyến-phường', 'Tuyến-cũ', 'Tên khách hàng', 'Địa chỉ giao hàng', 'Bốc xếp', 'Nhà cung cấp'],
-    ['Acecook Việt Nam', 'TP, HCM - Tây Thạnh', 'TP, HCM', 'CÔNG TY CỔ PHẦN ACECOOK VIỆT NAM', 'Lô II-3, KCN Tân Bình', 'Không', ''],
+    ['Điểm trả hàng', 'Tuyến-phường', 'Tuyến-cũ', 'Tên khách hàng', 'Địa chỉ giao hàng', 'Điểm giao hàng tính phí', 'Bốc xếp', 'Nhà cung cấp'],
+    ['Acecook Việt Nam', 'TP, HCM - Tây Thạnh', 'TP, HCM', 'CÔNG TY CỔ PHẦN ACECOOK VIỆT NAM', 'Lô II-3, KCN Tân Bình', 'HCM - Tây Thạnh', 'Không', ''],
   ]);
   XLSX.utils.book_append_sheet(wb, ws, 'DanhSachKhachHang');
   XLSX.writeFile(wb, 'template_danh_sach_khach_hang.xlsx');
@@ -74,6 +74,13 @@ export function UploadCustomersModal({ isOpen, onClose, onSuccess }: Props) {
           const colTuyen = findCol('Tuyến-phường', 'Tuyến phường', 'tuyen phuong', 'tuyenphuong');
           const colTuyenCu = findCol('Tuyến-cũ', 'Tuyến cũ', 'tuyen cu', 'tuyencu');
           const colDiaChi = findCol('Địa chỉ giao hàng', 'dia chi giao hang', 'diachigiaohang', 'Địa chỉ');
+          const colDiemGhtp = findCol(
+            'Điểm giao hàng tính phí',
+            'diem giao hang tinh phi',
+            'diemgiaohangtinhphi',
+            'GHTP',
+            'ghtp',
+          );
           const colBocXep = findCol('Bốc xếp', 'boc xep', 'bocxep');
           const colSupplier = findCol('Nhà cung cấp', 'nha cung cap', 'nhacungcap', 'Mã NCC', 'ma ncc', 'mancc');
 
@@ -97,6 +104,7 @@ export function UploadCustomersModal({ isOpen, onClose, onSuccess }: Props) {
                 tuyen_cu: colTuyenCu !== -1 && row[colTuyenCu] != null && String(row[colTuyenCu]).trim() !== '' ? String(row[colTuyenCu]).trim() : null,
                 ten_khach_hang: String(row[colTen] ?? '').trim(),
                 dia_chi_giao_hang: colDiaChi !== -1 && row[colDiaChi] != null && String(row[colDiaChi]).trim() !== '' ? String(row[colDiaChi]).trim() : null,
+                diem_giao_hang_tinh_phi: colDiemGhtp !== -1 && row[colDiemGhtp] != null && String(row[colDiemGhtp]).trim() !== '' && String(row[colDiemGhtp]).trim().toLowerCase() !== 'null' ? String(row[colDiemGhtp]).trim() : null,
                 boc_xep: bocXepRaw !== 'không' && bocXepRaw !== 'khong',
                 supplier_code: colSupplier !== -1 && row[colSupplier] != null && String(row[colSupplier]).trim() !== '' ? String(row[colSupplier]).trim() : null,
               };
@@ -181,6 +189,7 @@ export function UploadCustomersModal({ isOpen, onClose, onSuccess }: Props) {
             <li>Tuyến-cũ</li>
             <li><span className="font-medium">Tên khách hàng</span> <span className="text-red-500">*</span></li>
             <li>Địa chỉ giao hàng</li>
+            <li>Điểm giao hàng tính phí (không bắt buộc; thiếu cột = để trống)</li>
             <li>Bốc xếp (ghi "Không" để tắt, để trống = có)</li>
             <li>Nhà cung cấp (tự động liên kết từ dữ liệu giao hàng, không cần nhập)</li>
           </ul>

@@ -12,6 +12,7 @@ export interface Customer {
   tuyen_phuong: string | null;
   tuyen_cu: string | null;
   dia_chi_giao_hang: string | null;
+  diem_giao_hang_tinh_phi: string | null;
   boc_xep: boolean;
   supplier_code: string | null;
   supplier: SupplierBrief | null;
@@ -26,13 +27,21 @@ export interface CustomerData {
   tuyen_phuong?: string | null;
   tuyen_cu?: string | null;
   dia_chi_giao_hang?: string | null;
+  diem_giao_hang_tinh_phi?: string | null;
   boc_xep: boolean;
   supplier_code?: string | null;
 }
 
+function normalizeOptionalText(value?: string | null): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
 const SELECT_COLS = `
   c.id, c.diem_tra_hang, c.ten_khach_hang, c.tuyen_phuong, c.tuyen_cu,
-  c.dia_chi_giao_hang, c.boc_xep, c.supplier_code, c.status, c.created_at, c.updated_at
+  c.dia_chi_giao_hang, c.diem_giao_hang_tinh_phi, c.boc_xep, c.supplier_code,
+  c.status, c.created_at, c.updated_at
 `;
 
 export const customerService = {
@@ -67,9 +76,10 @@ export const customerService = {
 
   async create(data: CustomerData): Promise<Customer> {
     const result = await pool.query(
-      `INSERT INTO customers
-         (diem_tra_hang, ten_khach_hang, tuyen_phuong, tuyen_cu, dia_chi_giao_hang, boc_xep, supplier_code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO customers c
+         (diem_tra_hang, ten_khach_hang, tuyen_phuong, tuyen_cu, dia_chi_giao_hang,
+          diem_giao_hang_tinh_phi, boc_xep, supplier_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING ${SELECT_COLS}`,
       [
         data.diem_tra_hang,
@@ -77,6 +87,7 @@ export const customerService = {
         data.tuyen_phuong ?? null,
         data.tuyen_cu ?? null,
         data.dia_chi_giao_hang ?? null,
+        normalizeOptionalText(data.diem_giao_hang_tinh_phi),
         data.boc_xep,
         data.supplier_code ?? null,
       ],
@@ -91,10 +102,11 @@ export const customerService = {
     }
 
     const result = await pool.query(
-      `UPDATE customers
+      `UPDATE customers c
        SET diem_tra_hang = $1, ten_khach_hang = $2, tuyen_phuong = $3,
-           tuyen_cu = $4, dia_chi_giao_hang = $5, boc_xep = $6, supplier_code = $7
-       WHERE id = $8
+           tuyen_cu = $4, dia_chi_giao_hang = $5, diem_giao_hang_tinh_phi = $6,
+           boc_xep = $7, supplier_code = $8
+       WHERE id = $9
        RETURNING ${SELECT_COLS}`,
       [
         data.diem_tra_hang,
@@ -102,6 +114,7 @@ export const customerService = {
         data.tuyen_phuong ?? null,
         data.tuyen_cu ?? null,
         data.dia_chi_giao_hang ?? null,
+        normalizeOptionalText(data.diem_giao_hang_tinh_phi),
         data.boc_xep,
         data.supplier_code ?? null,
         id,
@@ -117,7 +130,7 @@ export const customerService = {
     }
 
     await pool.query(
-      `UPDATE customers SET status = 'deactive' WHERE id = $1`,
+      `UPDATE customers c SET status = 'deactive' WHERE id = $1`,
       [id],
     );
   },
@@ -128,15 +141,17 @@ export const customerService = {
       await client.query('BEGIN');
       for (const row of rows) {
         await client.query(
-          `INSERT INTO customers
-             (diem_tra_hang, ten_khach_hang, tuyen_phuong, tuyen_cu, dia_chi_giao_hang, boc_xep, supplier_code)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          `INSERT INTO customers c
+             (diem_tra_hang, ten_khach_hang, tuyen_phuong, tuyen_cu, dia_chi_giao_hang,
+              diem_giao_hang_tinh_phi, boc_xep, supplier_code)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             row.diem_tra_hang,
             row.ten_khach_hang,
             row.tuyen_phuong ?? null,
             row.tuyen_cu ?? null,
             row.dia_chi_giao_hang ?? null,
+            normalizeOptionalText(row.diem_giao_hang_tinh_phi),
             row.boc_xep,
             row.supplier_code ?? null,
           ],

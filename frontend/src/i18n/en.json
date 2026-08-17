@@ -194,7 +194,7 @@
     "title": "Customer Delivery List",
     "addCustomer": "Add New",
     "importExcel": "Import Excel",
-    "search": "Search by name...",
+    "search": "Search by name, drop-off, or chargeable point…",
     "filterTuyen": "Filter by route",
     "allTuyen": "All routes",
     "columns": {
@@ -202,6 +202,7 @@
       "diemTraHang": "Delivery Point",
       "tenKhachHang": "Customer Name",
       "tuyenPhuong": "Route (New)",
+      "diemGiaoHangTinhPhi": "Chargeable delivery point",
       "tuyenCu": "Route (Old)",
       "diaChiGiaoHang": "Delivery Address",
       "bocXep": "Loading",
@@ -233,7 +234,8 @@
     },
     "upload": {
       "title": "Import Customers from Excel",
-      "success": "Imported {{count}} customers successfully"
+      "success": "Imported {{count}} customers successfully",
+      "colDiemGhtp": "Chargeable delivery point (optional)"
     },
     "fields": {
       "diemTraHang": "Delivery Point",
@@ -241,12 +243,15 @@
       "tuyenPhuong": "Route (New)",
       "tuyenCu": "Route (Old)",
       "diaChiGiaoHang": "Delivery Address",
+      "diemGiaoHangTinhPhi": "Chargeable delivery point",
+      "diemGiaoHangTinhPhiPlaceholder": "e.g. HCM - Tay Thanh…",
       "bocXep": "Has Loading Service"
     },
     "errors": {
       "diemTraHangRequired": "Delivery point is required",
       "tenKhachHangRequired": "Customer name is required",
       "diemTraHangDuplicate": "Delivery point already exists",
+      "diemGhtpMax": "Chargeable delivery point must be at most 255 characters",
       "notFound": "Customer not found"
     }
   },

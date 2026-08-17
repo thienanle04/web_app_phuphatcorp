@@ -605,6 +605,7 @@ customers (
   tuyen_phuong VARCHAR(255),                  -- Tuyến-phường (nullable)
   tuyen_cu VARCHAR(255),                      -- Tuyến cũ (nullable)
   dia_chi_giao_hang TEXT,                     -- Địa chỉ giao hàng (nullable)
+  diem_giao_hang_tinh_phi VARCHAR(255),       -- Điểm giao hàng tính phí (nullable, optional text)
   boc_xep BOOLEAN NOT NULL DEFAULT TRUE,      -- Có bốc xếp không
   status VARCHAR(20) NOT NULL DEFAULT 'active', -- 'active' | 'deactive'
   created_by INTEGER FK→users.id,
@@ -624,6 +625,7 @@ customers (
 - BR-008: fetchAll → chỉ trả active records
 - BR-009: Liên kết N-N với `suppliers` qua junction table `customer_suppliers`, tự động populate khi import `delivery_data` (match `ten_kh` → `ten_khach_hang`, `ma_ncc` → `supplier_code`)
 - BR-010: Response `list()` include `suppliers: [{ supplier_code, name }]` dạng JSON array
+- BR-011: `diem_giao_hang_tinh_phi` optional text (VARCHAR 255). Rỗng / whitespace → `null`. Không unique, không FK. Excel: map nếu có header “Điểm giao hàng tính phí” (alias GHTP); thiếu cột → `null`, không fail.
 
 **Junction table — `customer_suppliers`:**
 ```sql
@@ -663,7 +665,8 @@ User chọn/kéo thả .xlsx
 **Files:**
 ```
 backend/src/migrations/012_create_customers.sql
-backend/src/migrations/019_create_customer_suppliers.sql
+backend/src/migrations/020_add_supplier_code_to_customers.sql
+backend/src/migrations/043_add_diem_giao_hang_tinh_phi_to_customers.sql
 backend/src/services/customerService.ts
 backend/src/services/deliveryDataService.ts  (gọi populateCustomerSuppliers sau import)
 backend/src/controllers/customerController.ts
