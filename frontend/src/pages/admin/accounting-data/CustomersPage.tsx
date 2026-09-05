@@ -63,7 +63,8 @@ export function CustomersPage() {
       const matchSearch =
         !q ||
         row.diem_tra_hang.toLowerCase().includes(q) ||
-        row.ten_khach_hang.toLowerCase().includes(q);
+        row.ten_khach_hang.toLowerCase().includes(q) ||
+        (row.diem_giao_hang_tinh_phi ?? '').toLowerCase().includes(q);
       const matchTuyen = !filterTuyen || row.tuyen_phuong === filterTuyen;
       return matchSearch && matchTuyen;
     });
@@ -175,9 +176,9 @@ export function CustomersPage() {
                   <TableRow>
                     <TableHead className="w-14">{t('customers.columns.stt')}</TableHead>
                     <TableHead className="w-48">{t('customers.columns.diemTraHang')}</TableHead>
-                    <TableHead className="min-w-64">{t('customers.columns.tenKhachHang')}</TableHead>
                     <TableHead className="w-48 hidden md:table-cell">{t('customers.columns.tuyenPhuong')}</TableHead>
-                    <TableHead className="w-36 hidden lg:table-cell">{t('customers.columns.tuyenCu')}</TableHead>
+                    <TableHead className="min-w-48 hidden md:table-cell">{t('customers.columns.diemGiaoHangTinhPhi')}</TableHead>
+                    <TableHead className="min-w-64">{t('customers.columns.tenKhachHang')}</TableHead>
                     <TableHead className="w-20 text-center">{t('customers.columns.bocXep')}</TableHead>
                     <TableHead className="hidden lg:table-cell">{t('customers.columns.nhaCungCap')}</TableHead>
                     {canManage && <TableHead className="w-20">{t('customers.columns.actions')}</TableHead>}
@@ -195,17 +196,22 @@ export function CustomersPage() {
                       >
                         {row.diem_tra_hang}
                       </TableCell>
+                      <TableCell className="text-neutral-600 dark:text-neutral-400 hidden md:table-cell max-w-48 truncate">
+                        {row.tuyen_phuong || '—'}
+                      </TableCell>
+                      <TableCell
+                        className="text-neutral-600 dark:text-neutral-400 hidden md:table-cell min-w-0 max-w-48 truncate"
+                        title={row.diem_giao_hang_tinh_phi ?? undefined}
+                      >
+                        {row.diem_giao_hang_tinh_phi || (
+                          <span className="text-neutral-400 dark:text-neutral-600">—</span>
+                        )}
+                      </TableCell>
                       <TableCell
                         className="text-neutral-700 dark:text-neutral-300 max-w-64 truncate"
                         title={row.ten_khach_hang}
                       >
                         {row.ten_khach_hang}
-                      </TableCell>
-                      <TableCell className="text-neutral-600 dark:text-neutral-400 hidden md:table-cell max-w-48 truncate">
-                        {row.tuyen_phuong || '—'}
-                      </TableCell>
-                      <TableCell className="text-neutral-600 dark:text-neutral-400 hidden lg:table-cell">
-                        {row.tuyen_cu || '—'}
                       </TableCell>
                       <TableCell className="text-center">
                         {row.boc_xep ? (
@@ -237,6 +243,7 @@ export function CustomersPage() {
                               onClick={() => setModal({ type: 'edit', row })}
                               className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors"
                               title="Sửa"
+                              aria-label="Sửa"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -244,6 +251,7 @@ export function CustomersPage() {
                               onClick={() => setModal({ type: 'delete', row })}
                               className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                               title="Xóa"
+                              aria-label="Xóa"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

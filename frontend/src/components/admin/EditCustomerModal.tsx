@@ -23,6 +23,7 @@ const schema = yup.object({
   tuyen_phuong: yup.string().nullable().optional(),
   tuyen_cu: yup.string().nullable().optional(),
   dia_chi_giao_hang: yup.string().nullable().optional(),
+  diem_giao_hang_tinh_phi: yup.string().nullable().optional().max(255, 'customers.errors.diemGhtpMax'),
   boc_xep: yup.boolean().required(),
   supplier_code: yup.string().nullable().optional(),
 });
@@ -33,6 +34,7 @@ type FormValues = {
   tuyen_phuong?: string | null;
   tuyen_cu?: string | null;
   dia_chi_giao_hang?: string | null;
+  diem_giao_hang_tinh_phi?: string | null;
   boc_xep: boolean;
   supplier_code?: string | null;
 };
@@ -59,6 +61,7 @@ export function EditCustomerModal({ isOpen, onClose, onSuccess, onError, custome
         tuyen_phuong: customer.tuyen_phuong ?? '',
         tuyen_cu: customer.tuyen_cu ?? '',
         dia_chi_giao_hang: customer.dia_chi_giao_hang ?? '',
+        diem_giao_hang_tinh_phi: customer.diem_giao_hang_tinh_phi ?? '',
         boc_xep: customer.boc_xep,
         supplier_code: customer.supplier_code ?? '',
       });
@@ -78,6 +81,7 @@ export function EditCustomerModal({ isOpen, onClose, onSuccess, onError, custome
       tuyen_phuong: values.tuyen_phuong || null,
       tuyen_cu: values.tuyen_cu || null,
       dia_chi_giao_hang: values.dia_chi_giao_hang || null,
+      diem_giao_hang_tinh_phi: values.diem_giao_hang_tinh_phi?.trim() || null,
       boc_xep: values.boc_xep,
       supplier_code: values.supplier_code || null,
     };
@@ -130,6 +134,21 @@ export function EditCustomerModal({ isOpen, onClose, onSuccess, onError, custome
             {t('customers.fields.tuyenPhuong')}
           </label>
           <Input {...register('tuyen_phuong')} placeholder={t('customers.fields.tuyenPhuong')} />
+        </div>
+
+        <div>
+          <label htmlFor="diem_giao_hang_tinh_phi_edit" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+            {t('customers.fields.diemGiaoHangTinhPhi')}
+          </label>
+          <Input
+            id="diem_giao_hang_tinh_phi_edit"
+            autoComplete="off"
+            {...register('diem_giao_hang_tinh_phi')}
+            placeholder={t('customers.fields.diemGiaoHangTinhPhiPlaceholder')}
+          />
+          {errors.diem_giao_hang_tinh_phi && (
+            <p className="mt-1 text-xs text-red-500">{t(errors.diem_giao_hang_tinh_phi.message || '')}</p>
+          )}
         </div>
 
         <div>

@@ -20,6 +20,7 @@ import { InvoiceMatchingPage } from './pages/admin/accounting-data/InvoiceMatchi
 import { VehicleCatalogPage } from './pages/admin/catalog/VehicleCatalogPage';
 import { VehicleDetailPage } from './pages/admin/catalog/VehicleDetailPage';
 import { InnerCityCustomerPage } from './pages/admin/catalog/InnerCityCustomerPage';
+import { PromoItemCatalogPage } from './pages/admin/catalog/PromoItemCatalogPage';
 import { SupplierCatalogPage } from './pages/admin/catalog/SupplierCatalogPage';
 import { ReconcileJobPage } from './pages/admin/jobs/ReconcileJobPage';
 import { AuditLogPage } from './pages/admin/AuditLogPage';
@@ -89,6 +90,7 @@ export function Router() {
             <Route path="/catalog/vehicles/:id" element={<VehicleDetailPage />} />
             <Route path="/catalog/inner-city-customers" element={<InnerCityCustomerPage />} />
             <Route path="/catalog/suppliers" element={<SupplierCatalogPage />} />
+            <Route path="/catalog/promo-items" element={<PromoItemCatalogPage />} />
             <Route path="/route-pricing" element={<RoutePricingPage />} />
           </Route>
         </Route>

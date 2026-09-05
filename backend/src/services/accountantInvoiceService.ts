@@ -83,34 +83,34 @@ export const accountantInvoiceService = {
     let paramIndex = 1;
 
     if (filters.batch_id) {
-      conditions.push(`batch_id = $${paramIndex++}`);
+      conditions.push(`ai.batch_id = $${paramIndex++}`);
       params.push(filters.batch_id);
     }
     if (filters.ngay_from) {
-      conditions.push(`ngay >= $${paramIndex++}`);
+      conditions.push(`ai.ngay >= $${paramIndex++}`);
       params.push(filters.ngay_from);
     }
     if (filters.ngay_to) {
-      conditions.push(`ngay <= $${paramIndex++}`);
+      conditions.push(`ai.ngay <= $${paramIndex++}`);
       params.push(filters.ngay_to);
     }
     if (filters.so_xe) {
-      conditions.push(`so_xe ILIKE $${paramIndex++}`);
+      conditions.push(`ai.so_xe ILIKE $${paramIndex++}`);
       params.push(`%${filters.so_xe}%`);
     }
     if (filters.so_hoa_don) {
-      conditions.push(`so_hoa_don ILIKE $${paramIndex++}`);
+      conditions.push(`ai.so_hoa_don ILIKE $${paramIndex++}`);
       params.push(`%${filters.so_hoa_don}%`);
     }
     if (filters.trang_thai) {
-      conditions.push(`trang_thai = $${paramIndex++}`);
+      conditions.push(`ai.trang_thai = $${paramIndex++}`);
       params.push(filters.trang_thai);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const countResult = await pool.query<{ count: string }>(
-      `SELECT COUNT(*) as count FROM accountant_invoices ${whereClause}`,
+      `SELECT COUNT(*) as count FROM accountant_invoices ai ${whereClause}`,
       params,
     );
     const total = parseInt(countResult.rows[0].count, 10);

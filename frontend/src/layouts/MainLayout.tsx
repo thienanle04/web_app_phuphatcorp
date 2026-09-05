@@ -25,13 +25,15 @@ import {
   Building2,
   FileText,
   RefreshCw,
-  Droplets,
-  BarChart3,
+  Gift,
   ClipboardCheck,
   Beaker,
   MapPinned,
+  Droplets,
   ShieldCheck,
   Wrench,
+  Building,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../hooks/useAuth';
@@ -167,6 +169,7 @@ export function MainLayout() {
     { to: '/catalog/vehicles', icon: Car, label: t('catalog.vehicles') },
     { to: '/catalog/inner-city-customers', icon: Building2, label: t('catalog.innerCityCustomers') },
     { to: '/catalog/suppliers', icon: Truck, label: t('catalog.suppliers') },
+    { to: '/catalog/promo-items', icon: Gift, label: t('catalog.promoItems') },
   ];
 
   const jobsSubItems = [

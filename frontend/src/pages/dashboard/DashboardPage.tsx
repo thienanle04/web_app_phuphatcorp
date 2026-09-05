@@ -1,70 +1,74 @@
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, CardContent } from '../../components/ui/Card';
-import { LayoutDashboard, BookOpen, BarChart3, TrendingUp } from 'lucide-react';
+import { useI18n } from '../../i18n/useI18n';
+import { OverviewTab } from './tabs/OverviewTab';
+import { VehicleMaintenanceTab } from './tabs/VehicleMaintenanceTab';
+import { AccountingTab } from './tabs/AccountingTab';
+import { OperationsTab } from './tabs/OperationsTab';
+import { FuelTab } from './tabs/FuelTab';
+
+type TabKey = 'overview' | 'vehicles' | 'accounting' | 'operations' | 'fuel';
+
+const TAB_KEYS: TabKey[] = ['overview', 'vehicles', 'accounting', 'operations', 'fuel'];
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, hasPermission, hasAnyPermission } = useAuth();
+  const { t } = useI18n();
+  const [params, setParams] = useSearchParams();
+
+  const tabPermissions: Record<TabKey, boolean> = {
+    overview: hasPermission('dashboard.view') || user?.role === 'ADMIN',
+    vehicles: hasPermission('vehicle_data.view') || user?.role === 'ADMIN',
+    accounting: hasPermission('accounting_data.view') || user?.role === 'ADMIN',
+    operations:
+      hasAnyPermission(['transport.view', 'dispatch.view']) || user?.role === 'ADMIN',
+    fuel: hasPermission('fuel.view') || user?.role === 'ADMIN',
+  };
+
+  const visibleTabs = TAB_KEYS.filter((k) => tabPermissions[k]);
+
+  const tabParam = params.get('tab') as TabKey | null;
+  const tab: TabKey = tabParam && visibleTabs.includes(tabParam) ? tabParam : visibleTabs[0] ?? 'overview';
+
+  const setTab = (nextTab: TabKey) => {
+    const next = new URLSearchParams(params);
+    next.set('tab', nextTab);
+    setParams(next);
+  };
 
   return (
     <div className="p-8">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-          Xin chào, {user?.full_name || 'User'}
+          {t('dashboard.title')}
         </h1>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-1">Chào mừng bạn đến với PhuPhatCorp Accounting</p>
+        <p className="text-neutral-500 dark:text-neutral-400 mt-1">
+          {t('dashboard.subtitle', { name: user?.full_name || 'User' })}
+        </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardContent className="flex items-center gap-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <LayoutDashboard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">0</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Tổng số phiếu</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center gap-4">
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <BookOpen className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">0</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Sổ kế toán</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center gap-4">
-            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">0</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Báo cáo</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex gap-1 border-b border-neutral-200 dark:border-neutral-700 mb-6 overflow-x-auto">
+        {visibleTabs.map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setTab(k)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
+              tab === k
+                ? 'border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
+                : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+            }`}
+          >
+            {t(`dashboard.tabs.${k}`)}
+          </button>
+        ))}
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardContent>
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-            <h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">Thống kê nhanh</h2>
-          </div>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm">
-            Hệ thống đã sẵn sàng. Bắt đầu tạo phiếu kế toán đầu tiên của bạn.
-          </p>
-        </CardContent>
-      </Card>
+      {tab === 'overview' && <OverviewTab />}
+      {tab === 'vehicles' && <VehicleMaintenanceTab />}
+      {tab === 'accounting' && <AccountingTab />}
+      {tab === 'operations' && <OperationsTab />}
+      {tab === 'fuel' && <FuelTab />}
     </div>
   );
 }

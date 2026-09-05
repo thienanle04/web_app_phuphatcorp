@@ -27,7 +27,7 @@
     },
     "roles": {
       "ADMIN": "Admin",
-      "ACCOUNTANT": "Accountant",
+      "ACCOUNTANT": "Accountant Supervisor",
       "VIEWER": "Viewer"
     },
     "status": {
@@ -191,78 +191,68 @@
     "customers": "Customers"
   },
   "customers": {
-    "title": "Customers",
-    "searchPlaceholder": "Search by Delivery Point or Customer Name...",
-    "loadError": "Unable to load data.",
-    "empty": "No data yet. Click \"Create\" to get started.",
-    "noResults": "No matching results.",
+    "title": "Customer Delivery List",
+    "addCustomer": "Add New",
+    "importExcel": "Import Excel",
+    "search": "Search by name, drop-off, or chargeable point…",
+    "filterTuyen": "Filter by route",
+    "allTuyen": "All routes",
     "columns": {
-      "diem_tra_hang": "Delivery point",
-      "ten_khach_hang": "Customer name",
-      "tuyen_moi": "Route-ward",
-      "tuyen_cu": "Old route",
-      "dia_chi_giao_hang": "Delivery address (vn)",
-      "boc_xep": "Loading",
+      "stt": "No.",
+      "diemTraHang": "Delivery Point",
+      "tenKhachHang": "Customer Name",
+      "tuyenPhuong": "Route (New)",
+      "diemGiaoHangTinhPhi": "Chargeable delivery point",
+      "tuyenCu": "Route (Old)",
+      "diaChiGiaoHang": "Delivery Address",
+      "bocXep": "Loading",
       "actions": "Actions"
     },
-    "fields": {
-      "diem_tra_hang": "Delivery point",
-      "ten_khach_hang": "Customer name",
-      "tuyen_moi": "Route-ward",
-      "tuyen_cu": "Old route",
-      "dia_chi_giao_hang": "Delivery address (vn)",
-      "boc_xep": {
-        "label": "Loading",
-        "placeholder": "Select...",
-        "co": "Yes",
-        "khong": "No"
-      }
+    "bocXep": {
+      "true": "Yes",
+      "false": "No"
     },
-    "actions": {
-      "create": "Create",
-      "save": "Save",
-      "cancel": "Cancel",
-      "delete": "Delete",
-      "edit": "Edit",
-      "import": "Import",
-      "retry": "Retry",
-      "uploadExcel": "Upload Excel"
-    },
-    "toast": {
-      "created": "Customer created.",
-      "updated": "Customer updated.",
-      "deleted": "Customer deleted."
-    },
+    "empty": "No customers yet",
+    "noResults": "No customers found",
+    "errorLoad": "Unable to load customer list",
+    "retry": "Retry",
     "create": {
-      "title": "Add customer"
+      "title": "Add New Customer",
+      "submit": "Add",
+      "success": "Customer added successfully"
     },
     "edit": {
-      "title": "Edit customer"
+      "title": "Edit Customer",
+      "submit": "Save Changes",
+      "success": "Customer updated successfully"
     },
     "delete": {
-      "title": "Confirm delete",
-      "confirm": "Are you sure you want to delete customer",
-      "note": "This action will deactivate the record."
+      "title": "Delete Customer",
+      "warning": "This action cannot be undone.",
+      "submit": "Delete",
+      "success": "Customer deleted successfully"
     },
     "upload": {
-      "title": "Upload Excel — Customers",
-      "dropHere": "Drag and drop .xlsx file here",
-      "orClick": "or click to select file",
-      "downloadTemplate": "Download template",
-      "onlyXlsx": "Only .xlsx files are accepted",
-      "emptyOrInvalid": "No valid data found. Please check column \"Điểm trả hàng\".",
-      "parseError": "Cannot read Excel file. Please check the file format.",
-      "readError": "Cannot read file.",
-      "uploadError": "Upload error. Please try again.",
-      "networkError": "Network error. Please try again.",
-      "success": "Imported {count} records.",
-      "rowCount": "{count} records",
-      "hasErrors": "There are {count} errors — no rows were saved:",
-      "columns": {
-        "row": "Row",
-        "diem_tra_hang": "Delivery point",
-        "reason": "Reason"
-      }
+      "title": "Import Customers from Excel",
+      "success": "Imported {{count}} customers successfully",
+      "colDiemGhtp": "Chargeable delivery point (optional)"
+    },
+    "fields": {
+      "diemTraHang": "Delivery Point",
+      "tenKhachHang": "Customer Name",
+      "tuyenPhuong": "Route (New)",
+      "tuyenCu": "Route (Old)",
+      "diaChiGiaoHang": "Delivery Address",
+      "diemGiaoHangTinhPhi": "Chargeable delivery point",
+      "diemGiaoHangTinhPhiPlaceholder": "e.g. HCM - Tay Thanh…",
+      "bocXep": "Has Loading Service"
+    },
+    "errors": {
+      "diemTraHangRequired": "Delivery point is required",
+      "tenKhachHangRequired": "Customer name is required",
+      "diemTraHangDuplicate": "Delivery point already exists",
+      "diemGhtpMax": "Chargeable delivery point must be at most 255 characters",
+      "notFound": "Customer not found"
     }
   },
   "weightAdjustment": {
@@ -476,73 +466,141 @@
       "gioNhanRequired": "Pickup time is required"
     }
   },
-  "customers": {
-    "title": "Customer Delivery List",
-    "addCustomer": "Add New",
-    "importExcel": "Import Excel",
-    "search": "Search by name...",
-    "filterTuyen": "Filter by route",
-    "allTuyen": "All routes",
-    "columns": {
-      "stt": "No.",
-      "diemTraHang": "Delivery Point",
-      "tenKhachHang": "Customer Name",
-      "tuyenPhuong": "Route (New)",
-      "tuyenCu": "Route (Old)",
-      "diaChiGiaoHang": "Delivery Address",
-      "bocXep": "Loading",
-      "actions": "Actions"
-    },
-    "bocXep": {
-      "true": "Yes",
-      "false": "No"
-    },
-    "empty": "No customers yet",
-    "noResults": "No customers found",
-    "errorLoad": "Unable to load customer list",
-    "retry": "Retry",
-    "create": {
-      "title": "Add New Customer",
-      "submit": "Add",
-      "success": "Customer added successfully"
-    },
-    "edit": {
-      "title": "Edit Customer",
-      "submit": "Save Changes",
-      "success": "Customer updated successfully"
-    },
-    "delete": {
-      "title": "Delete Customer",
-      "warning": "This action cannot be undone.",
-      "submit": "Delete",
-      "success": "Customer deleted successfully"
-    },
-    "upload": {
-      "title": "Import Customers from Excel",
-      "success": "Imported {{count}} customers successfully"
-    },
-    "fields": {
-      "diemTraHang": "Delivery Point",
-      "tenKhachHang": "Customer Name",
-      "tuyenPhuong": "Route (New)",
-      "tuyenCu": "Route (Old)",
-      "diaChiGiaoHang": "Delivery Address",
-      "bocXep": "Has Loading Service"
-    },
-    "errors": {
-      "diemTraHangRequired": "Delivery point is required",
-      "tenKhachHangRequired": "Customer name is required",
-      "diemTraHangDuplicate": "Delivery point already exists",
-      "notFound": "Customer not found"
-    }
-  },
   "catalog": {
     "menuTitle": "Catalog Management",
     "vehicles": "Vehicle Catalog",
     "innerCityCustomers": "Inner City Customers",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "promoItems": "Promo Items"
   },
   "jobs": {
     "menuTitle": "Job Management"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Hello, {name} — welcome to PhuPhatCorp",
+    "error": "Failed to load data",
+    "retry": "Retry",
+    "noData": "No data yet",
+    "tabs": {
+      "overview": "Overview",
+      "vehicles": "Vehicle Maintenance",
+      "accounting": "Accounting - Reconciliation",
+      "operations": "Operations",
+      "fuel": "Fuel"
+    },
+    "period": {
+      "month": "This month",
+      "quarter": "This quarter"
+    },
+    "kpi": {
+      "deliveredTons": "Delivered volume",
+      "invoiceCount": "Invoices",
+      "tripCount": "Trips",
+      "fuelCost": "Fuel cost"
+    },
+    "overview": {
+      "kpiTitle": "Key metrics",
+      "monthlyTons": "Monthly delivered volume (MT)",
+      "tons": "Tons",
+      "dispatchToday": "Today's dispatch",
+      "smallVehicles": "Small vehicles",
+      "largeVehicles": "Large vehicles",
+      "outsideRoutes": "Outside routes",
+      "lastReconcile": "Last reconcile job",
+      "reconcileResult": "Matched {matched}/{scanned} scanned invoices"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "expiredInspections": "Expired inspections",
+      "dueInspections": "Inspections due (≤90 days)",
+      "expiredInsurances": "Expired insurance",
+      "dueInsurances": "Insurance due (≤90 days)",
+      "oilOverdue": "Oil change overdue",
+      "oilDueSoon": "Oil change due soon",
+      "unmatchedInvoices": "Unmatched invoices"
+    },
+    "vehicles": {
+      "inspections": "Inspection",
+      "insurances": "Insurance",
+      "oilChanges": "Oil change",
+      "repairs": "Repair cost",
+      "last12Months": "Last 12 months",
+      "allOk": "All vehicles are within validity",
+      "plateNumber": "Plate number",
+      "driver": "Driver",
+      "expiryDate": "Expiry date",
+      "daysLeft": "Days left",
+      "status": "Status",
+      "currentKm": "Current km",
+      "kmSinceChange": "Km since oil change",
+      "repairCount": "Repairs",
+      "repairCost": "Total cost",
+      "lastRepair": "Last repair",
+      "bucket": {
+        "expired": "Expired",
+        "d30": "≤ 30 days",
+        "d60": "≤ 60 days",
+        "d90": "≤ 90 days",
+        "ok": "Valid",
+        "none": "No data"
+      },
+      "oil": {
+        "overdue": "Overdue",
+        "due_soon": "Due soon",
+        "ok": "Valid",
+        "no_data": "No data"
+      }
+    },
+    "accounting": {
+      "matched": "Matched",
+      "unmatched": "Unmatched",
+      "total": "Total invoices",
+      "byMonth": "Reconciliation by month",
+      "recentBatches": "Recent import batches",
+      "jobLogs": "Reconcile job history",
+      "file": "File",
+      "dateRange": "Date range",
+      "rows": "Rows",
+      "uploadedBy": "Uploaded by",
+      "uploadedAt": "Uploaded at",
+      "startedAt": "Started at",
+      "trigger": "Trigger",
+      "status": "Status",
+      "scanned": "Scanned",
+      "manual": "Manual",
+      "scheduled": "Scheduled"
+    },
+    "operations": {
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "reset": "Default (30 days)",
+      "totalTrips": "Total trips",
+      "totalTons": "Total weight",
+      "vehicleCount": "Active vehicles",
+      "driverInvoices": "Records / Driver invoices",
+      "dailyTrips": "Trips by day",
+      "byVehicle": "By vehicle",
+      "plateNumber": "Plate number",
+      "trips": "Trips",
+      "tons": "Tons"
+    },
+    "fuel": {
+      "last6Months": "Last 6 months",
+      "totalLiters": "Total liters",
+      "totalCost": "Total cost",
+      "totalDistance": "Total distance",
+      "avgRate": "Avg consumption",
+      "byMonth": "Cost by month",
+      "byVehicle": "Consumption by vehicle",
+      "deviations": "Odometer vs GPS deviation",
+      "noDeviation": "No deviations",
+      "plateNumber": "Plate number",
+      "liters": "Liters",
+      "cost": "Cost",
+      "rate": "L/100km",
+      "odometer": "Odometer (km)",
+      "diff": "Deviation"
+    }
   }
 }

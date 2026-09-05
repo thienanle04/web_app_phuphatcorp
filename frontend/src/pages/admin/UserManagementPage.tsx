@@ -15,6 +15,7 @@ import { EditUserModal } from '../../components/admin/EditUserModal';
 import { UserDetailModal } from '../../components/admin/UserDetailModal';
 import { ResetPasswordModal } from '../../components/admin/ResetPasswordModal';
 import { DeleteConfirmDialog } from '../../components/admin/DeleteConfirmDialog';
+import { getUserRoleLabel } from '../../utils/userRoleLabel';
 
 type ModalState =
   | { type: 'create' }
@@ -152,9 +153,13 @@ export function UserManagementPage() {
                         {user.username}
                       </TableCell>
                       <TableCell className="text-neutral-600 dark:text-neutral-400">{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.role === 'ADMIN' ? 'warning' : user.role === 'ACCOUNTANT' ? 'info' : 'default'}>
-                          {t(`users.roles.${user.role}`)}
+                      <TableCell className="whitespace-nowrap">
+                        <Badge
+                          className="max-w-[10rem] min-w-0 overflow-hidden"
+                          variant={user.role === 'ADMIN' ? 'warning' : user.role === 'ACCOUNTANT' ? 'info' : 'default'}
+                          title={getUserRoleLabel({ role: user.role ?? '', role_name: user.role_name }, t)}
+                        >
+                          {getUserRoleLabel({ role: user.role ?? '', role_name: user.role_name }, t)}
                         </Badge>
                       </TableCell>
                       <TableCell>

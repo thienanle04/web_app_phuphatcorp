@@ -4,6 +4,7 @@ import { Badge } from '../ui/Badge';
 import { Loader2 } from 'lucide-react';
 import { useI18n } from '../../i18n/useI18n';
 import { useUserById } from '../../hooks/useUsers';
+import { getUserRoleLabel } from '../../utils/userRoleLabel';
 
 interface Props {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export function UserDetailModal({ isOpen, onClose, userId }: Props) {
             label={t('userDetail.role')}
             value={
               <Badge variant="default">
-                {t(`users.roles.${user.role}`)}
+                {getUserRoleLabel(user, t)}
               </Badge>
             }
           />

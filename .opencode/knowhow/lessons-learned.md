@@ -5,6 +5,32 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 # Lessons Learned — PhuPhatCorp
 
 ---
+## Bug: User Management hiện `users.roles.IEU_PHOI_XE` thay vì tên vai trò
+- **Ngày:** 2026-08-06
+- **Severity:** Medium
+- **Feature liên quan:** Quản lý người dùng — list + detail badge role
+- **Triệu chứng:** Role tùy chỉnh (Điều phối xe, Kế toán viên, …) hiện raw i18n key `users.roles.<CODE>` trên UI.
+- **Root cause:** FE dùng `t(\`users.roles.${user.role}\`)` trong khi `vi.json`/`en.json` chỉ có ADMIN/ACCOUNTANT/VIEWER. Key thiếu → `t()` trả về chính key. API đã trả `role_name` (`roles.name`) nhưng FE không dùng.
+- **Fix:** Helper `getUserRoleLabel` — ưu tiên `role_name`, fallback i18n nếu có, else `role` code. Dùng ở `UserManagementPage` + `UserDetailModal`.
+- **File sửa:** `frontend/src/utils/userRoleLabel.ts`, `UserManagementPage.tsx`, `UserDetailModal.tsx`
+- **Regression test:** `frontend/src/utils/userRoleLabel.test.ts` (tsx assert)
+- **Cần chú ý:** Không hardcode mọi role code vào i18n — role động lấy từ DB. Mọi chỗ hiển thị role user nên dùng `role_name` / `getUserRoleLabel`, không `t(users.roles.*)`.
+
+---
+
+## Bug: Create user luôn nhận role VIEWER dù chọn role khác
+- **Ngày:** 2026-08-06
+- **Severity:** High
+- **Feature liên quan:** User Management — Create User (admin panel)
+- **Triệu chứng:** Tạo user mới chọn bất kỳ role nào → UI luôn hiện VIEWER; phải Edit/Update lại mới đúng.
+- **Root cause:** FE `CreateUserModal` chỉ gửi `role_id`. `userService.createUser` set `users.role = data.role || VIEWER` mà không sync `roles.code` từ `role_id`. Cột legacy `role` (dùng cho badge UI + `authorizeRoles`) luôn VIEWER; `role_id` thì đúng. `updateUser` đã sync `role` từ `roles.code` nên sửa sau khi tạo thì hết lỗi.
+- **Fix:** Khi validate `role_id`, SELECT thêm `code`; gán `role = roleFromId || data.role || VIEWER` trước INSERT — mirror pattern `updateUser`.
+- **File sửa:** `backend/src/services/userService.ts` (createUser)
+- **Regression test:** `backend/src/__tests__/userService.test.ts` — create với chỉ `role_id=ACCOUNTANT` → INSERT `role='ACCOUNTANT'`; không có role_id → VIEWER.
+- **Cần chú ý:** Hệ thống còn dual-write `users.role` (VARCHAR) + `users.role_id` (FK). Mọi path create/update phải sync cả hai; FE hiện tại chỉ gửi `role_id`.
+
+---
+
 ## Bug: Delivery Data Processing — Vehicle sort wrong because sort key ≠ display key (.slice(-9))
 - **Ngày:** 2026-04-26
 - **Severity:** High

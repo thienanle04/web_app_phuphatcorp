@@ -22,6 +22,7 @@ import * as XLSX from 'xlsx';
 import { Workbook } from 'exceljs';
 import type { Customer } from '../api/customersApi';
 import type { WeightAdjustment } from '../api/weightAdjustmentApi';
+import type { PromoItem } from '../api/promoItemApi';
 
 // ─── Excel number format patterns ─────────────────────────────────────────────
 const NUM_FMT_THOUSAND = '#,##0';         // Integer với thousand separator
@@ -658,7 +659,8 @@ export async function processDeliveryDataFromRows(
   dataRows: RawRow[],
   sourceRowNums: number[],
   customers?: Customer[],
-  innerCityCustomerNames?: Set<string>
+  innerCityCustomerNames?: Set<string>,
+  promoItems?: PromoItem[]
 ): Promise<ProcessResult> {
   const warnings: string[] = [];
   const customerLookup = buildCustomerLookup(customers ?? []);
@@ -693,6 +695,22 @@ export async function processDeliveryDataFromRows(
     const raw = cell(row, COL.SO_TAU_XE);
     if (raw) {
       row[COL.SO_TAU_XE] = normalizeVehicle(raw);
+    }
+  }
+
+  // ── Promo item weight override ─────────────────────────────────────────────
+  if (promoItems && promoItems.length > 0) {
+    const promoMap = new Map<string, number>();
+    for (const p of promoItems) {
+      promoMap.set(p.code.trim(), p.unit_weight_kg);
+    }
+    for (const row of dataRows) {
+      const unitWeight = promoMap.get(cell(row, COL.MA_HANG).trim());
+      if (unitWeight !== undefined) {
+        row[COL.SP_TRONG_LUONG] = unitWeight;
+        const soLuong = Number(row[COL.SO_LUONG]) || 0;
+        row[COL.HD_TRONG_LUONG] = unitWeight * soLuong;
+      }
     }
   }
 

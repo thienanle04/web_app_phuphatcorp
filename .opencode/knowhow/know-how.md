@@ -206,6 +206,7 @@ VITE_API_URL=http://localhost:3021/api
 | tuyen_phuong | VARCHAR(255) | NULL |
 | tuyen_cu | VARCHAR(255) | NULL |
 | dia_chi_giao_hang | TEXT | NULL |
+| diem_giao_hang_tinh_phi | VARCHAR(255) | NULL |
 | boc_xep | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | status | VARCHAR(20) | NOT NULL, DEFAULT 'active' |
 | created_by | INTEGER | FK → users(id), NULL |
@@ -215,7 +216,7 @@ VITE_API_URL=http://localhost:3021/api
 
 **Indexes:** `idx_customers_diem_tra_hang`, `idx_customers_status`
 **Soft delete:** `status = 'deactive'` (không xóa cứng)
-**Migration:** `012_create_customers.sql`
+**Migration:** `012_create_customers.sql`, `043_add_diem_giao_hang_tinh_phi_to_customers.sql`
 
 ### customer_suppliers (junction N-N: customers ↔ suppliers)
 | Column | Type | Constraints |
@@ -280,6 +281,18 @@ Base URL: `/api`
 BA: `docs/ba/20260711_route-pricing-analysis.md`  
 UI: `docs/ui/20260731_route-pricing-adjustment-periods-cr-ui-spec.md`
 
+### Dashboard — /dashboard
+
+| Method | Path | Auth | Response |
+|--------|------|------|----------|
+| GET | /dashboard/overview | JWT + dashboard.view | KPI tháng/quý (`?period=month\|quarter`), tấn theo 6 tháng, cảnh báo hết hạn, dispatch hôm nay, job reconcile gần nhất |
+| GET | /dashboard/vehicle-maintenance | JWT + vehicle_data.view | Đăng kiểm/bảo hiểm theo bucket hạn, xe đến hạn thay nhớt, chi phí sửa chữa 12 tháng |
+| GET | /dashboard/accounting | JWT + accounting_data.view | Tổng matched/unmatched, theo tháng, batch gần đây, lịch sử reconcile job |
+| GET | /dashboard/operations | JWT + transport.view hoặc dispatch.view | Chuyến/tấn theo ngày & theo xe (`?date_from&date_to`, mặc định 30 ngày), hóa đơn tài xế |
+| GET | /dashboard/fuel | JWT + fuel.view | Chi phí/lít 6 tháng, tiêu thụ theo xe, chênh lệch đồng hồ vs GPS |
+
+**FE:** Trang `/` (DashboardPage) — tabs trong 1 trang, filter theo permission. Files: `frontend/src/pages/dashboard/tabs/*.tsx`, `frontend/src/api/dashboardApi.ts`, `frontend/src/hooks/useDashboard.ts`.
+
 ### System
 
 | Method | Path | Auth | Response |
@@ -302,7 +315,7 @@ Frontend route: `/route-pricing` (sidebar top-level **Giá theo tuyến**)
 | Method | Path | Auth | Body/Query | Response |
 |--------|------|------|------------|----------|
 | GET | /customers | JWT + accounting_data.view | — | `{ success, data: Customer[] }` (only active records) |
-| POST | /customers | JWT + accounting_data.manage | `{ diem_tra_hang, ten_khach_hang, tuyen_phuong?, tuyen_cu?, dia_chi_giao_hang?, boc_xep? }` | `{ success, data: Customer }` |
+| POST | /customers | JWT + accounting_data.manage | `{ diem_tra_hang, ten_khach_hang, tuyen_phuong?, tuyen_cu?, dia_chi_giao_hang?, diem_giao_hang_tinh_phi?, boc_xep? }` | `{ success, data: Customer }` |
 | PUT | /customers/:id | JWT + accounting_data.manage | same as POST | `{ success, data: Customer }` |
 | DELETE | /customers/:id | JWT + accounting_data.manage | — | `{ success, message }` (soft delete: status→'deactive') |
 | POST | /customers/upload | JWT + accounting_data.manage | `{ rows: UploadCustomerRow[] }` | `{ success, data: { inserted: number } }` or `{ success: false, errors: [] }` (HTTP 422) |

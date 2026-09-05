@@ -93,17 +93,19 @@ export const userService = {
       throw new ServiceError('USERNAME_EXISTS', 'Tên đăng nhập đã được sử dụng', 409);
     }
 
-    // Validate role_id is active if provided
+    // Validate role_id is active if provided; also load code to sync legacy `role` column
     let resolvedRoleId: number | null = data.role_id ?? null;
+    let roleFromId: string | null = null;
     if (resolvedRoleId) {
-      const roleCheck = await pool.query<{ is_active: boolean }>(
-        'SELECT is_active FROM roles WHERE id = $1',
+      const roleCheck = await pool.query<{ is_active: boolean; code: string }>(
+        'SELECT is_active, code FROM roles WHERE id = $1',
         [resolvedRoleId],
       );
       if (!roleCheck.rows[0]) throw new ServiceError('ROLE_NOT_FOUND', 'Vai trò không tồn tại', 404);
       if (!roleCheck.rows[0].is_active) {
         throw new ServiceError('ROLE_INACTIVE', 'Vai trò không hoạt động, không thể gán cho người dùng', 400);
       }
+      roleFromId = roleCheck.rows[0].code;
     }
 
     // Resolve legacy role to role_id if no role_id provided
@@ -116,7 +118,8 @@ export const userService = {
     }
 
     const passwordHash = hashPassword(data.password);
-    const role = data.role || UserRole.VIEWER;
+    // Prefer roles.code from role_id (FE create sends only role_id); else legacy role / VIEWER
+    const role = roleFromId || data.role || UserRole.VIEWER;
 
     const result = await pool.query<UserRow>(
       `INSERT INTO users (email, username, password_hash, full_name, role, role_id, created_by)

@@ -12,6 +12,7 @@ import deliveryDataRoutes from './deliveryData';
 import accountantInvoiceRoutes from './accountantInvoices';
 import vehicleRoutes from './vehicles';
 import innerCityCustomerRoutes from './innerCityCustomers';
+import promoItemRoutes from './promoItems';
 import supplierRoutes from './suppliers';
 import reconcileJobRoutes from './reconcileJobs';
 import auditLogRoutes from './auditLogs';
@@ -21,6 +22,7 @@ import vehicleOilChangeRoutes from './vehicleOilChanges';
 import vehicleInsuranceRoutes from './vehicleInsurances';
 import vehicleRepairRoutes from './vehicleRepairs';
 import routePricingRoutes from './routePricing';
+import dashboardRoutes from './dashboard';
 
 const router = Router();
 
@@ -37,6 +39,7 @@ router.use('/delivery-data', deliveryDataRoutes);
 router.use('/accountant-invoices', accountantInvoiceRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/inner-city-customers', innerCityCustomerRoutes);
+router.use('/promo-items', promoItemRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/reconcile-jobs', reconcileJobRoutes);
 router.use('/logs', auditLogRoutes);
@@ -46,5 +49,6 @@ router.use('/vehicle-oil-changes', vehicleOilChangeRoutes);
 router.use('/vehicle-insurances', vehicleInsuranceRoutes);
 router.use('/vehicle-repairs', vehicleRepairRoutes);
 router.use('/route-pricing', routePricingRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 export default router;

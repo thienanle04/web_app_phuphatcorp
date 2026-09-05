@@ -10,6 +10,7 @@ import {
   Download,
   X,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Pagination } from '../../../components/ui/Pagination';
@@ -17,6 +18,7 @@ import { useImportDeliveryData, useGetBatches, useDeleteBatch, useGetBatchRows }
 import { useAuth } from '../../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import type { ImportResult } from '../../../api/deliveryDataApi';
+import { deliveryDataApi } from '../../../api/deliveryDataApi';
 import {
   processDeliveryDataFromRows,
   buildAdjustments,
@@ -28,6 +30,8 @@ import {
 } from '../../../utils/processDeliveryData';
 import { weightAdjustmentApi } from '../../../api/weightAdjustmentApi';
 import { customersApi, type Customer } from '../../../api/customersApi';
+import { innerCityCustomerApi } from '../../../api/innerCityCustomerApi';
+import { promoItemApi, type PromoItem } from '../../../api/promoItemApi';
 import {
   WeightAdjustmentConfirmDialog,
 } from '../../../components/delivery-data/WeightAdjustmentConfirmDialog';
@@ -40,6 +44,43 @@ interface Toast {
   message: string;
   variant: 'success' | 'error';
 }
+
+const RAW_HEADERS = [
+  'Channel',
+  'Sub-channel',
+  'Diễn giải chi tiết (HĐ)',
+  'Diễn giải',
+  'Slot',
+  'Waybill No',
+  'Slot No',
+  'User tạo Hóa đơn',
+  'Usser tạo PXK',
+  'PO Number',
+  'Warehouse No',
+  'Warehouse Name',
+  'Mã PXK',
+  'Số chứng từ ghi sổ',
+  'Số Seri',
+  'Địa chỉ giao hàng (vn)',
+  'Tên hàng hóa',
+  'Mã ĐVT (Bán hàng)',
+  'SP - Trọng lượng Net',
+  'HĐ - Trọng lượng (Net)',
+  'Mã nhà cung cấp',
+  'Mã khách hàng',
+  'Tên khách hàng',
+  'Mã hàng hóa',
+  'Tên hàng hóa (En)',
+  'Loại hàng',
+  'Mã liên hệ giao hàng',
+  'Số lượng (DVT bán hàng)',
+  'Số tàu/ Số xe',
+  'Tài xế',
+  'Số Cont',
+  'Ngày hóa đơn',
+  'Số hóa đơn',
+  'Thông tin bổ sung 08',
+];
 
 export function DeliveryImportPage() {
   const { hasPermission, user } = useAuth();
@@ -71,6 +112,8 @@ export function DeliveryImportPage() {
   const parsedRowsRef = useRef<RawRow[]>([]);
   const parsedSourceRowNumsRef = useRef<number[]>([]);
   const customersRef = useRef<Customer[]>([]);
+  const innerCityNamesRef = useRef<Set<string>>(new Set());
+  const promoItemsRef = useRef<PromoItem[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,6 +185,18 @@ export function DeliveryImportPage() {
     }
   };
 
+  const handleDownloadBatch = async (batchId: string, filename: string) => {
+    try {
+      const data = await deliveryDataApi.getBatchRows([batchId]);
+      const ws = XLSX.utils.aoa_to_sheet([RAW_HEADERS, ...data.rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Data');
+      XLSX.writeFile(wb, filename);
+    } catch {
+      showToast('Không thể tải dữ liệu batch', 'error');
+    }
+  };
+
   // ── Batch selection handlers ─────────────────────────────
 
   const toggleBatchSelect = (batchId: string) => {
@@ -170,7 +225,7 @@ export function DeliveryImportPage() {
   const runProcess = useCallback(async (rows: RawRow[], nums: number[]) => {
     setProcessState('processing');
     try {
-      const result = await processDeliveryDataFromRows(rows, nums, customersRef.current);
+      const result = await processDeliveryDataFromRows(rows, nums, customersRef.current, innerCityNamesRef.current, promoItemsRef.current);
       setProcessResult(result);
       setProcessState('success');
     } catch (err) {
@@ -204,11 +259,17 @@ export function DeliveryImportPage() {
       const rawRows = batchData.rows as RawRow[];
       const sourceRowNums = rawRows.map((_, i) => i + 1);
 
-      const [masterdata, customers] = await Promise.all([
+      const [masterdata, customers, innerCityCustomers, promoItemData] = await Promise.all([
         weightAdjustmentApi.fetchAll(),
         customersApi.fetchAll(),
+        innerCityCustomerApi.fetchAll(),
+        promoItemApi.fetchAll(),
       ]);
       customersRef.current = customers;
+      innerCityNamesRef.current = new Set(
+        innerCityCustomers.customers.map((c) => c.customer_name.trim().toLowerCase())
+      );
+      promoItemsRef.current = promoItemData.items;
 
       const masterMap = new Map(masterdata.map((m) => [m.ma_hang, m]));
 
@@ -517,6 +578,13 @@ export function DeliveryImportPage() {
                             }
                           >
                             <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDownloadBatch(batch.batch_id, batch.original_filename)}
+                          >
+                            <Download className="w-4 h-4" />
                           </Button>
                           {canManage && (
                             <Button

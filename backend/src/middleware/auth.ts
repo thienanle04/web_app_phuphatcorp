@@ -93,3 +93,17 @@ export function requirePermission(permissionCode: string) {
     next();
   };
 }
+
+export function requireAnyPermission(...permissionCodes: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+    if (!permissionCodes.some((code) => req.user!.permissions.includes(code))) {
+      res.status(403).json({ success: false, message: 'Insufficient permissions' });
+      return;
+    }
+    next();
+  };
+}

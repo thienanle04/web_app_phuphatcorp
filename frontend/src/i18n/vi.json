@@ -27,7 +27,7 @@
     },
     "roles": {
       "ADMIN": "Quản trị",
-      "ACCOUNTANT": "Kế toán",
+      "ACCOUNTANT": "Kế toán trưởng",
       "VIEWER": "Xem"
     },
     "status": {
@@ -191,78 +191,70 @@
     "customers": "Danh sách khách hàng"
   },
   "customers": {
-    "title": "Danh sách khách hàng",
-    "searchPlaceholder": "Tìm theo Điểm trả hàng hoặc Tên khách hàng...",
-    "loadError": "Không thể tải dữ liệu.",
-    "empty": "Chưa có dữ liệu. Nhấn \"Tạo mới\" để bắt đầu.",
-    "noResults": "Không tìm thấy kết quả phù hợp.",
+    "title": "Danh sách khách nhận hàng",
+    "addCustomer": "Thêm mới",
+    "importExcel": "Import Excel",
+    "search": "Tìm kiếm theo tên, điểm trả hàng, điểm GHTP…",
+    "filterTuyen": "Lọc theo tuyến",
+    "allTuyen": "Tất cả tuyến",
     "columns": {
-      "diem_tra_hang": "Điểm trả hàng",
-      "ten_khach_hang": "Tên khách hàng",
-      "tuyen_moi": "Tuyến-phường",
-      "tuyen_cu": "Tuyến-cũ",
-      "dia_chi_giao_hang": "Địa chỉ giao hàng (vn)",
-      "boc_xep": "Bốc xếp",
-      "actions": "Thao tác"
+      "stt": "STT",
+      "diemTraHang": "Điểm trả hàng",
+      "tenKhachHang": "Tên khách hàng",
+      "tuyenPhuong": "Tuyến-phường",
+      "diemGiaoHangTinhPhi": "Điểm giao hàng tính phí",
+      "tuyenCu": "Tuyến-cũ",
+      "diaChiGiaoHang": "Địa chỉ giao hàng",
+      "bocXep": "Bốc xếp",
+      "nhaCungCap": "Nhà cung cấp",
+      "actions": "Hành động"
     },
-    "fields": {
-      "diem_tra_hang": "Điểm trả hàng",
-      "ten_khach_hang": "Tên khách hàng",
-      "tuyen_moi": "Tuyến-phường",
-      "tuyen_cu": "Tuyến-cũ",
-      "dia_chi_giao_hang": "Địa chỉ giao hàng (vn)",
-      "boc_xep": {
-        "label": "Bốc xếp",
-        "placeholder": "Chọn...",
-        "co": "Có",
-        "khong": "Không"
-      }
+    "bocXep": {
+      "true": "Có",
+      "false": "Không"
     },
-    "actions": {
-      "create": "Tạo mới",
-      "save": "Lưu",
-      "cancel": "Hủy",
-      "delete": "Xóa",
-      "edit": "Sửa",
-      "import": "Import",
-      "retry": "Thử lại",
-      "uploadExcel": "Upload Excel"
-    },
-    "toast": {
-      "created": "Đã tạo khách hàng.",
-      "updated": "Đã cập nhật khách hàng.",
-      "deleted": "Đã xóa khách hàng."
-    },
+    "empty": "Chưa có khách hàng nào",
+    "noResults": "Không tìm thấy khách hàng nào",
+    "errorLoad": "Không thể tải danh sách khách hàng",
+    "retry": "Thử lại",
     "create": {
-      "title": "Thêm khách hàng"
+      "title": "Thêm khách hàng mới",
+      "submit": "Thêm mới",
+      "success": "Đã thêm khách hàng thành công"
     },
     "edit": {
-      "title": "Sửa khách hàng"
+      "title": "Chỉnh sửa khách hàng",
+      "submit": "Lưu thay đổi",
+      "success": "Đã cập nhật khách hàng thành công"
     },
     "delete": {
-      "title": "Xác nhận xóa",
-      "confirm": "Bạn có chắc muốn xóa khách hàng",
-      "note": "Hành động này sẽ deactivate bản ghi."
+      "title": "Xóa khách hàng",
+      "warning": "Hành động này không thể hoàn tác.",
+      "submit": "Xóa",
+      "success": "Đã xóa khách hàng thành công"
     },
     "upload": {
-      "title": "Upload Excel — Danh sách khách hàng",
-      "dropHere": "Kéo thả file .xlsx vào đây",
-      "orClick": "hoặc click để chọn file",
-      "downloadTemplate": "Tải file mẫu",
-      "onlyXlsx": "Chỉ chấp nhận file .xlsx",
-      "emptyOrInvalid": "File không có dữ liệu hợp lệ. Kiểm tra cột \"Điểm trả hàng\".",
-      "parseError": "Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.",
-      "readError": "Không thể đọc file.",
-      "uploadError": "Lỗi upload. Vui lòng thử lại.",
-      "networkError": "Lỗi kết nối. Vui lòng thử lại.",
-      "success": "Đã import {count} bản ghi.",
-      "rowCount": "{count} bản ghi",
-      "hasErrors": "Có {count} lỗi — không có dòng nào được lưu:",
-      "columns": {
-        "row": "Dòng",
-        "diem_tra_hang": "Điểm trả hàng",
-        "reason": "Lý do"
-      }
+      "title": "Import khách hàng từ Excel",
+      "success": "Đã import {{count}} khách hàng thành công",
+      "colDiemGhtp": "Điểm giao hàng tính phí (không bắt buộc)"
+    },
+    "fields": {
+      "diemTraHang": "Điểm trả hàng",
+      "tenKhachHang": "Tên khách hàng",
+      "tuyenPhuong": "Tuyến-phường",
+      "tuyenCu": "Tuyến-cũ",
+      "diaChiGiaoHang": "Địa chỉ giao hàng",
+      "diemGiaoHangTinhPhi": "Điểm giao hàng tính phí",
+      "diemGiaoHangTinhPhiPlaceholder": "VD: HCM - Tây Thạnh…",
+      "bocXep": "Có bốc xếp",
+      "supplierCode": "Mã nhà cung cấp"
+    },
+    "errors": {
+      "diemTraHangRequired": "Điểm trả hàng không được rỗng",
+      "tenKhachHangRequired": "Tên khách hàng không được rỗng",
+      "diemTraHangDuplicate": "Điểm trả hàng đã tồn tại",
+      "diemGhtpMax": "Điểm giao hàng tính phí tối đa 255 ký tự",
+      "notFound": "Không tìm thấy khách hàng"
     }
   },
   "weightAdjustment": {
@@ -476,73 +468,12 @@
       "gioNhanRequired": "Giờ nhận là bắt buộc"
     }
   },
-  "customers": {
-    "title": "Danh sách khách nhận hàng",
-    "addCustomer": "Thêm mới",
-    "importExcel": "Import Excel",
-    "search": "Tìm kiếm theo tên...",
-    "filterTuyen": "Lọc theo tuyến",
-    "allTuyen": "Tất cả tuyến",
-    "columns": {
-      "stt": "STT",
-      "diemTraHang": "Điểm trả hàng",
-      "tenKhachHang": "Tên khách hàng",
-      "tuyenPhuong": "Tuyến-phường",
-      "tuyenCu": "Tuyến-cũ",
-      "diaChiGiaoHang": "Địa chỉ giao hàng",
-      "bocXep": "Bốc xếp",
-      "nhaCungCap": "Nhà cung cấp",
-      "actions": "Hành động"
-    },
-    "bocXep": {
-      "true": "Có",
-      "false": "Không"
-    },
-    "empty": "Chưa có khách hàng nào",
-    "noResults": "Không tìm thấy khách hàng nào",
-    "errorLoad": "Không thể tải danh sách khách hàng",
-    "retry": "Thử lại",
-    "create": {
-      "title": "Thêm khách hàng mới",
-      "submit": "Thêm mới",
-      "success": "Đã thêm khách hàng thành công"
-    },
-    "edit": {
-      "title": "Chỉnh sửa khách hàng",
-      "submit": "Lưu thay đổi",
-      "success": "Đã cập nhật khách hàng thành công"
-    },
-    "delete": {
-      "title": "Xóa khách hàng",
-      "warning": "Hành động này không thể hoàn tác.",
-      "submit": "Xóa",
-      "success": "Đã xóa khách hàng thành công"
-    },
-    "upload": {
-      "title": "Import khách hàng từ Excel",
-      "success": "Đã import {{count}} khách hàng thành công"
-    },
-    "fields": {
-      "diemTraHang": "Điểm trả hàng",
-      "tenKhachHang": "Tên khách hàng",
-      "tuyenPhuong": "Tuyến-phường",
-      "tuyenCu": "Tuyến-cũ",
-      "diaChiGiaoHang": "Địa chỉ giao hàng",
-      "bocXep": "Có bốc xếp",
-      "supplierCode": "Mã nhà cung cấp"
-    },
-    "errors": {
-      "diemTraHangRequired": "Điểm trả hàng không được rỗng",
-      "tenKhachHangRequired": "Tên khách hàng không được rỗng",
-      "diemTraHangDuplicate": "Điểm trả hàng đã tồn tại",
-      "notFound": "Không tìm thấy khách hàng"
-    }
-  },
   "catalog": {
     "menuTitle": "Quản lý danh mục",
     "vehicles": "Danh mục xe",
     "innerCityCustomers": "Danh mục KH nội thành",
-    "suppliers": "Danh mục NCC"
+    "suppliers": "Danh mục NCC",
+    "promoItems": "Danh mục hàng KM"
   },
   "jobs": {
     "menuTitle": "Quản lý Job"
@@ -589,6 +520,133 @@
     "error": {
       "load": "Không thể tải dữ liệu log",
       "retry": "Thử lại"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Xin chào, {name} — chào mừng bạn đến với PhuPhatCorp",
+    "error": "Không thể tải dữ liệu",
+    "retry": "Thử lại",
+    "noData": "Chưa có dữ liệu",
+    "tabs": {
+      "overview": "Tổng quan",
+      "vehicles": "Bảo trì xe",
+      "accounting": "Kế toán - Đối chiếu",
+      "operations": "Vận tải",
+      "fuel": "Nhiên liệu"
+    },
+    "period": {
+      "month": "Tháng này",
+      "quarter": "Quý này"
+    },
+    "kpi": {
+      "deliveredTons": "Sản lượng giao",
+      "invoiceCount": "Số hóa đơn",
+      "tripCount": "Số chuyến",
+      "fuelCost": "Chi phí nhiên liệu"
+    },
+    "overview": {
+      "kpiTitle": "Chỉ số chính",
+      "monthlyTons": "Sản lượng giao theo tháng (MT)",
+      "tons": "Tấn",
+      "dispatchToday": "Điều phối hôm nay",
+      "smallVehicles": "Lịch xe nhỏ",
+      "largeVehicles": "Lịch xe lớn",
+      "outsideRoutes": "Tuyến ngoài",
+      "lastReconcile": "Job đối chiếu gần nhất",
+      "reconcileResult": "Khớp {matched}/{scanned} hóa đơn đã quét"
+    },
+    "alerts": {
+      "title": "Cảnh báo",
+      "expiredInspections": "Đăng kiểm đã hết hạn",
+      "dueInspections": "Đăng kiểm sắp hết hạn (≤90 ngày)",
+      "expiredInsurances": "Bảo hiểm đã hết hạn",
+      "dueInsurances": "Bảo hiểm sắp hết hạn (≤90 ngày)",
+      "oilOverdue": "Xe quá hạn thay nhớt",
+      "oilDueSoon": "Xe sắp đến hạn thay nhớt",
+      "unmatchedInvoices": "Hóa đơn chưa đối chiếu"
+    },
+    "vehicles": {
+      "inspections": "Đăng kiểm",
+      "insurances": "Bảo hiểm",
+      "oilChanges": "Thay nhớt",
+      "repairs": "Chi phí sửa chữa",
+      "last12Months": "12 tháng gần nhất",
+      "allOk": "Tất cả xe đều trong hạn",
+      "plateNumber": "Biển số",
+      "driver": "Tài xế",
+      "expiryDate": "Ngày hết hạn",
+      "daysLeft": "Số ngày còn lại",
+      "status": "Trạng thái",
+      "currentKm": "KM hiện tại",
+      "kmSinceChange": "KM từ lần thay nhớt",
+      "repairCount": "Số lần sửa",
+      "repairCost": "Tổng chi phí",
+      "lastRepair": "Lần sửa gần nhất",
+      "bucket": {
+        "expired": "Đã hết hạn",
+        "d30": "≤ 30 ngày",
+        "d60": "≤ 60 ngày",
+        "d90": "≤ 90 ngày",
+        "ok": "Trong hạn",
+        "none": "Chưa có dữ liệu"
+      },
+      "oil": {
+        "overdue": "Quá hạn",
+        "due_soon": "Sắp đến hạn",
+        "ok": "Trong hạn",
+        "no_data": "Chưa có dữ liệu"
+      }
+    },
+    "accounting": {
+      "matched": "Đã đối chiếu",
+      "unmatched": "Chưa đối chiếu",
+      "total": "Tổng hóa đơn",
+      "byMonth": "Đối chiếu theo tháng",
+      "recentBatches": "Batch import gần đây",
+      "jobLogs": "Lịch sử job đối chiếu",
+      "file": "File",
+      "dateRange": "Khoảng ngày",
+      "rows": "Số dòng",
+      "uploadedBy": "Người upload",
+      "uploadedAt": "Thời điểm upload",
+      "startedAt": "Thời điểm chạy",
+      "trigger": "Loại",
+      "status": "Trạng thái",
+      "scanned": "Đã quét",
+      "manual": "Thủ công",
+      "scheduled": "Định kỳ"
+    },
+    "operations": {
+      "dateFrom": "Từ ngày",
+      "dateTo": "Đến ngày",
+      "reset": "Mặc định (30 ngày)",
+      "totalTrips": "Tổng số chuyến",
+      "totalTons": "Tổng trọng lượng",
+      "vehicleCount": "Số xe hoạt động",
+      "driverInvoices": "Phiếu / Số hóa đơn tài xế",
+      "dailyTrips": "Số chuyến theo ngày",
+      "byVehicle": "Thống kê theo xe",
+      "plateNumber": "Biển số",
+      "trips": "Số chuyến",
+      "tons": "Tấn"
+    },
+    "fuel": {
+      "last6Months": "Dữ liệu 6 tháng gần nhất",
+      "totalLiters": "Tổng số lít",
+      "totalCost": "Tổng chi phí",
+      "totalDistance": "Tổng quãng đường",
+      "avgRate": "Tiêu thụ trung bình",
+      "byMonth": "Chi phí theo tháng",
+      "byVehicle": "Tiêu thụ theo xe",
+      "deviations": "Chênh lệch đồng hồ vs GPS",
+      "noDeviation": "Không có chênh lệch",
+      "plateNumber": "Biển số",
+      "liters": "Lít",
+      "cost": "Chi phí",
+      "rate": "L/100km",
+      "odometer": "Đồng hồ (km)",
+      "diff": "Chênh lệch"
     }
   }
 }
