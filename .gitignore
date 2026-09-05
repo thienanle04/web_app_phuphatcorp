@@ -49,3 +49,4 @@ lerna-debug.log*
 
 .cursor/
 graphify-out/
+AGENTS.md
