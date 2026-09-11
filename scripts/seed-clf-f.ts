@@ -6,7 +6,7 @@
  *
  * Prerequisites:
  *   - provinces imported
- *   - suppliers CLF (supplier_code=2000000001)
+ *   - bảng giá CLF (tạo tự động nếu chưa có — không cần suppliers)
  *   - npm run seed:adjustment-periods
  *
  * After (optional): npm run cascade:route-pricing
@@ -33,7 +33,8 @@ loadEnv({ path: path.join(root, 'backend/.env') });
 
 const USER_ID = 19;
 const PERIOD = '2026-01-01';
-const SUPPLIER_CODE = '2000000001';
+const PRICE_BOOK_NAME = 'CLF';
+const LEGACY_SUPPLIER_CODE = '2000000001';
 const SHEET_NAME = 'CLF (f)';
 const XLSX_PATH = path.join(root, 'reference/xu_ly_du_lieu_ke_toan/BẢNG GIÁ - 2026 - 1.8.2026.xlsx');
 
@@ -88,24 +89,38 @@ function sanitizeText(s: unknown): string {
     .trim();
 }
 
-/** Excel often types Hòa; VN provinces DB uses Hoà (o + à). */
-function foldVietnameseOa(s: string): string {
-  return s
-    .replace(/òa/g, 'oà')
-    .replace(/Òa/g, 'Oà')
-    .replace(/ÒA/g, 'OÀ')
-    .replace(/óa/g, 'oá')
-    .replace(/Óa/g, 'Oá')
-    .replace(/ÓA/g, 'OÁ')
-    .replace(/ỏa/g, 'oả')
-    .replace(/Ỏa/g, 'Oả')
-    .replace(/ỎA/g, 'OẢ')
-    .replace(/õa/g, 'oã')
-    .replace(/Õa/g, 'Oã')
-    .replace(/ÕA/g, 'OÃ')
-    .replace(/ọa/g, 'oạ')
-    .replace(/Ọa/g, 'Oạ')
-    .replace(/ỌA/g, 'OẠ');
+/**
+ * Chuẩn hóa về chính tả DB (dấu trên o/u khi không có âm cuối): Hoà→Hòa, Thuỵ→Thụy.
+ * Không đụng Hoàn/Hoàng/Hoài (có phụ âm / vần ba).
+ */
+function canonicalGeoName(s: string): string {
+  const end = '(?!\\p{L})';
+  return sanitizeText(s)
+    .replace(new RegExp(`oà${end}`, 'gu'), 'òa')
+    .replace(new RegExp(`Oà${end}`, 'gu'), 'Òa')
+    .replace(new RegExp(`OÀ${end}`, 'gu'), 'ÒA')
+    .replace(new RegExp(`oá${end}`, 'gu'), 'óa')
+    .replace(new RegExp(`Oá${end}`, 'gu'), 'Óa')
+    .replace(new RegExp(`OÁ${end}`, 'gu'), 'ÓA')
+    .replace(new RegExp(`oả${end}`, 'gu'), 'ỏa')
+    .replace(new RegExp(`Oả${end}`, 'gu'), 'Ỏa')
+    .replace(new RegExp(`OẢ${end}`, 'gu'), 'ỎA')
+    .replace(new RegExp(`oã${end}`, 'gu'), 'õa')
+    .replace(new RegExp(`Oã${end}`, 'gu'), 'Õa')
+    .replace(new RegExp(`OÃ${end}`, 'gu'), 'ÕA')
+    .replace(new RegExp(`oạ${end}`, 'gu'), 'ọa')
+    .replace(new RegExp(`Oạ${end}`, 'gu'), 'Ọa')
+    .replace(new RegExp(`OẠ${end}`, 'gu'), 'ỌA')
+    .replace(new RegExp(`oè${end}`, 'gu'), 'òe')
+    .replace(new RegExp(`oé${end}`, 'gu'), 'óe')
+    .replace(new RegExp(`oẻ${end}`, 'gu'), 'ỏe')
+    .replace(new RegExp(`oẽ${end}`, 'gu'), 'õe')
+    .replace(new RegExp(`oẹ${end}`, 'gu'), 'ọe')
+    .replace(new RegExp(`(?<![qQ])uỳ${end}`, 'gu'), 'ùy')
+    .replace(new RegExp(`(?<![qQ])uý${end}`, 'gu'), 'úy')
+    .replace(new RegExp(`(?<![qQ])uỷ${end}`, 'gu'), 'ủy')
+    .replace(new RegExp(`(?<![qQ])uỹ${end}`, 'gu'), 'ũy')
+    .replace(new RegExp(`(?<![qQ])uỵ${end}`, 'gu'), 'ụy');
 }
 
 function parseMoney(v: unknown): number | null {
@@ -128,7 +143,7 @@ function normalizeProvince(raw: string): string {
   let p = sanitizeText(raw);
   p = p.replace(/^TP,?\s*/i, '').replace(/^Thành phố\s+/i, '').replace(/^Tỉnh\s+/i, '');
   if (/^(HCM|Hồ Chí Minh)$/i.test(p)) return 'Hồ Chí Minh';
-  return foldVietnameseOa(p);
+  return canonicalGeoName(p);
 }
 
 function buildGroupName(tinh: string, destNames: string[], note?: string | null): string {
@@ -351,12 +366,13 @@ async function resolveProvince(
   client: PoolClient,
   provinceName: string,
 ): Promise<{ code: string; name: string }> {
+  const name = canonicalGeoName(provinceName);
   const { rows } = await client.query<{ code: string; name: string }>(
     `SELECT code, name FROM provinces
      WHERE name ILIKE $1 OR full_name ILIKE $2
      ORDER BY CASE WHEN name ILIKE $1 THEN 0 ELSE 1 END, code
      LIMIT 1`,
-    [provinceName, `%${provinceName}%`],
+    [name, `%${name}%`],
   );
   if (!rows[0]) throw new Error(`Province not found: ${provinceName}`);
   return rows[0];
@@ -368,7 +384,7 @@ async function resolveWard(
   provinceCode: string,
   wardName: string,
 ): Promise<{ code: string; name: string }> {
-  const name = foldVietnameseOa(sanitizeText(wardName));
+  const name = canonicalGeoName(wardName);
   const { rows } = await client.query<{ code: string; name: string }>(
     `SELECT code, name FROM wards
      WHERE province_code = $1
@@ -420,28 +436,50 @@ async function resolveRecordDestinations(
   return out;
 }
 
+async function ensurePriceBook(client: PoolClient): Promise<number> {
+  const found = await client.query<{ id: number }>(
+    `SELECT id FROM price_books
+     WHERE status='active'
+       AND (
+         lower(trim(name)) = lower($1)
+         OR name ILIKE $1 || ' — %'
+         OR name ILIKE '%' || $2 || '%'
+       )
+     ORDER BY CASE WHEN lower(trim(name)) = lower($1) THEN 0 ELSE 1 END, id
+     LIMIT 1`,
+    [PRICE_BOOK_NAME, LEGACY_SUPPLIER_CODE],
+  );
+  if (found.rows[0]) return found.rows[0].id;
+  const created = await client.query<{ id: number }>(
+    `INSERT INTO price_books (name, created_by, updated_by) VALUES ($1,$2,$2) RETURNING id`,
+    [PRICE_BOOK_NAME, USER_ID],
+  );
+  console.log(`Created price book "${PRICE_BOOK_NAME}" id=${created.rows[0].id}`);
+  return created.rows[0].id;
+}
+
 async function findExistingGroup(
   client: PoolClient,
-  supplierId: number,
+  priceBookId: number,
   provinceCode: string,
   rec: ClfRecord,
 ): Promise<number | null> {
   if (rec.residual) {
     const { rows } = await client.query<{ id: number }>(
       `SELECT id FROM route_groups
-       WHERE supplier_id=$1 AND province_code=$2 AND status='active'
+       WHERE price_book_id=$1 AND province_code=$2 AND status='active'
          AND is_residual=TRUE
          AND COALESCE(NULLIF(TRIM(note),''),'') = $3
        LIMIT 1`,
-      [supplierId, provinceCode, noteKey(rec.note)],
+      [priceBookId, provinceCode, noteKey(rec.note)],
     );
     return rows[0]?.id ?? null;
   }
   const { rows } = await client.query<{ id: number }>(
     `SELECT id FROM route_groups
-     WHERE supplier_id=$1 AND province_code=$2 AND status='active' AND name=$3
+     WHERE price_book_id=$1 AND province_code=$2 AND status='active' AND name=$3
      LIMIT 1`,
-    [supplierId, provinceCode, rec.groupName],
+    [priceBookId, provinceCode, rec.groupName],
   );
   return rows[0]?.id ?? null;
 }
@@ -450,34 +488,34 @@ async function ensureGroupMembers(
   client: PoolClient,
   opts: {
     groupId: number;
-    supplierId: number;
+    priceBookId: number;
     provinceCode: string;
     tinh: string;
     destinations: RouteDestination[];
     note: string | null;
   },
 ): Promise<void> {
-  const { groupId, supplierId, provinceCode, tinh, destinations, note } = opts;
+  const { groupId, priceBookId, provinceCode, tinh, destinations, note } = opts;
 
   for (const dest of destinations) {
     const existingRoute = await client.query<{ id: number }>(
       `SELECT id FROM delivery_routes
-       WHERE supplier_id=$1 AND province_code=$2 AND status='active'
+       WHERE price_book_id=$1 AND province_code=$2 AND status='active'
          AND COALESCE(ward_code,'') = COALESCE($3,'')
          AND COALESCE(location_text,'') = COALESCE($4,'')
          AND COALESCE(NULLIF(TRIM(note),''),'') = $5
        LIMIT 1`,
-      [supplierId, provinceCode, dest.ward_code, dest.location_text, noteKey(note)],
+      [priceBookId, provinceCode, dest.ward_code, dest.location_text, noteKey(note)],
     );
     let routeId = existingRoute.rows[0]?.id;
     if (routeId == null) {
       const routeRes = await client.query<{ id: number }>(
         `INSERT INTO delivery_routes
-           (supplier_id, province_code, ward_code, location_text, note, tinh, phuong, created_by, updated_by)
+           (price_book_id, province_code, ward_code, location_text, note, tinh, phuong, created_by, updated_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8)
          RETURNING id`,
         [
-          supplierId,
+          priceBookId,
           provinceCode,
           dest.ward_code,
           dest.location_text,
@@ -581,7 +619,7 @@ async function ensureGroupPricing(
 async function insertGroupWithPricing(
   client: PoolClient,
   opts: {
-    supplierId: number;
+    priceBookId: number;
     periodId: number;
     provinceCode: string;
     tinh: string;
@@ -589,18 +627,18 @@ async function insertGroupWithPricing(
     destinations: RouteDestination[];
   },
 ): Promise<void> {
-  const { supplierId, periodId, provinceCode, tinh, rec, destinations } = opts;
+  const { priceBookId, periodId, provinceCode, tinh, rec, destinations } = opts;
   const groupRes = await client.query<{ id: number }>(
     `INSERT INTO route_groups
-       (supplier_id, name, province_code, tinh, is_residual, note, created_by, updated_by)
+       (price_book_id, name, province_code, tinh, is_residual, note, created_by, updated_by)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$7)
      RETURNING id`,
-    [supplierId, rec.groupName, provinceCode, tinh, rec.residual, rec.note, USER_ID],
+    [priceBookId, rec.groupName, provinceCode, tinh, rec.residual, rec.note, USER_ID],
   );
   const groupId = groupRes.rows[0].id;
   await ensureGroupMembers(client, {
     groupId,
-    supplierId,
+    priceBookId,
     provinceCode,
     tinh,
     destinations,
@@ -645,16 +683,8 @@ async function main(): Promise<void> {
   try {
     await client.query('BEGIN');
 
-    const supplierRes = await client.query<{ id: number }>(
-      `SELECT id FROM suppliers
-       WHERE status='active' AND (supplier_code = $1 OR name ILIKE 'CLF')
-       ORDER BY id LIMIT 1`,
-      [SUPPLIER_CODE],
-    );
-    if (!supplierRes.rows[0]) {
-      throw new Error(`CLF supplier not found (supplier_code=${SUPPLIER_CODE})`);
-    }
-    const supplierId = supplierRes.rows[0].id;
+    const priceBookId = await ensurePriceBook(client);
+    console.log(`Using price book id=${priceBookId} (${PRICE_BOOK_NAME})`);
 
     const periodRes = await client.query<{ id: number }>(
       `SELECT id FROM route_pricing_adjustment_periods WHERE start_date = $1::date`,
@@ -681,11 +711,11 @@ async function main(): Promise<void> {
         rec.groupName = buildGroupName(province.name, [], rec.note);
       }
 
-      const existingId = await findExistingGroup(client, supplierId, province.code, rec);
+      const existingId = await findExistingGroup(client, priceBookId, province.code, rec);
       if (existingId != null) {
         await ensureGroupMembers(client, {
           groupId: existingId,
-          supplierId,
+          priceBookId,
           provinceCode: province.code,
           tinh: province.name,
           destinations,
@@ -710,7 +740,7 @@ async function main(): Promise<void> {
       }
 
       await insertGroupWithPricing(client, {
-        supplierId,
+        priceBookId,
         periodId,
         provinceCode: province.code,
         tinh: province.name,

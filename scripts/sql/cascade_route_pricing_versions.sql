@@ -2,6 +2,8 @@
 -- Mirror BE createAbsolutePrice / updateAbsolutePrice cascade:
 --   mỗi kỳ sau = scale % từ version kỳ liền trước (round nghìn), base_version_id = prev.
 --
+-- Không filter theo NCC — cascade mọi config thuộc mọi price_books.
+--
 -- Chạy SAU khi đã có:
 --   1) route_pricing_adjustment_periods (vd. seed_adjustment_periods.sql)
 --   2) ≥1 version gốc (base_version_id IS NULL) trên route_price_configs

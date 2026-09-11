@@ -2,6 +2,7 @@
 -- Prefer: npx tsx scripts/seed-adjustment-periods.ts  (or npm run seed:adjustment-periods)
 -- SQL source kept for psql / review.
 --
+-- Kỳ điều chỉnh là master GLOBAL (không theo NCC / bảng giá).
 -- NOTE: idx_rp_adj_periods_one_open allows only ONE row with end_date IS NULL.
 --        Insert with end_date already chained (only latest = NULL).
 -- created_by / updated_by = 19

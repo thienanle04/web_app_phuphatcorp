@@ -4,7 +4,8 @@
  *
  * Prerequisites:
  *   1) seed-adjustment-periods.ts (periods)
- *   2) absolute versions (vd. seed-clf-f.ts)
+ *   2) absolute versions (vd. seed-clf-f.ts → price_books CLF)
+ * Cascade áp dụng mọi price_book (không filter NCC).
  *
  * Run from repo root:
  *   npx tsx scripts/cascade-route-pricing-versions.ts
