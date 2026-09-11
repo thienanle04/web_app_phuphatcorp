@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { pool } from '../config/database';
 import {
-  AdjustmentPeriod, DeliveryRoute, LookupResult, PricingMode, Province, RouteGroup, RouteGroupMember,
+  AdjustmentPeriod, DeliveryRoute, LookupResult, PriceBook, PricingMode, Province, RouteGroup, RouteGroupMember,
   RoutePriceConfigSummary, RoutePriceTier, RoutePriceVersion, Ward,
   PriceMatrixResponse, PriceMatrixTripsRow, PriceMatrixWeightColumn, PriceMatrixWeightTable,
   noteKey, normalizeLocation, roundToThousands,
@@ -494,7 +494,7 @@ async function loadMembers(groupId: number): Promise<RouteGroupMember[]> {
 }
 async function mapGroup(row: Record<string, unknown>): Promise<RouteGroup> {
   return {
-    id: num(row.id), supplier_id: num(row.supplier_id), name: String(row.name), province_code: String(row.province_code),
+    id: num(row.id), price_book_id: num(row.price_book_id), name: String(row.name), province_code: String(row.province_code),
     tinh: String(row.tinh), is_residual: Boolean(row.is_residual), note: (row.note as string | null) ?? null,
     status: row.status as 'active' | 'deactive', members: await loadMembers(num(row.id)),
     created_at: String(row.created_at), updated_at: String(row.updated_at),
@@ -531,6 +531,22 @@ async function resolveDestinations(
 }
 function destinationNames(destinations: Destination[]): string[] { return destinations.map((destination) => destination.phuong); }
 
+function normalizeBookName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) throw err('INVALID_PRICE_BOOK_NAME', 'Nhập tên bảng giá');
+  return trimmed.slice(0, 255);
+}
+
+function mapPriceBook(row: Record<string, unknown>): PriceBook {
+  return {
+    id: num(row.id),
+    name: String(row.name),
+    status: row.status as 'active' | 'deactive',
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+  };
+}
+
 export const routePricingService = {
   async listProvinces(): Promise<Province[]> {
     return (await pool.query<Province>('SELECT code, name, full_name FROM provinces ORDER BY name')).rows;
@@ -538,6 +554,76 @@ export const routePricingService = {
   async listWards(provinceCode: string): Promise<Ward[]> {
     if (!provinceCode) throw err('MISSING_PROVINCE', 'Thiếu province_code');
     return (await pool.query<Ward>('SELECT code, name, full_name, province_code FROM wards WHERE province_code = $1 ORDER BY name', [provinceCode])).rows;
+  },
+
+  async listPriceBooks(): Promise<PriceBook[]> {
+    const result = await pool.query(
+      `SELECT * FROM price_books WHERE status='active' ORDER BY lower(name), id`,
+    );
+    return result.rows.map(mapPriceBook);
+  },
+  async createPriceBook(name: string, userId: number): Promise<PriceBook> {
+    const bookName = normalizeBookName(name);
+    try {
+      const result = await pool.query(
+        `INSERT INTO price_books (name, created_by, updated_by) VALUES ($1,$2,$2) RETURNING *`,
+        [bookName, userId],
+      );
+      return mapPriceBook(result.rows[0]);
+    } catch (error) {
+      if (isPgUniqueViolation(error)) throw err('DUPLICATE_PRICE_BOOK', 'Tên bảng giá đã tồn tại');
+      throw error;
+    }
+  },
+  async updatePriceBook(id: number, name: string, userId: number): Promise<PriceBook> {
+    const existing = await pool.query(`SELECT id FROM price_books WHERE id=$1 AND status='active'`, [id]);
+    if (!existing.rows[0]) throw err('PRICE_BOOK_NOT_FOUND');
+    const bookName = normalizeBookName(name);
+    try {
+      const result = await pool.query(
+        `UPDATE price_books SET name=$1, updated_by=$2 WHERE id=$3 RETURNING *`,
+        [bookName, userId, id],
+      );
+      return mapPriceBook(result.rows[0]);
+    } catch (error) {
+      if (isPgUniqueViolation(error)) throw err('DUPLICATE_PRICE_BOOK', 'Tên bảng giá đã tồn tại');
+      throw error;
+    }
+  },
+  async deletePriceBook(id: number, userId: number): Promise<void> {
+    const existing = await pool.query(`SELECT id FROM price_books WHERE id=$1 AND status='active'`, [id]);
+    if (!existing.rows[0]) throw err('PRICE_BOOK_NOT_FOUND');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const groups = await client.query<{ id: number }>(
+        `SELECT id FROM route_groups WHERE price_book_id=$1 AND status='active'`,
+        [id],
+      );
+      for (const group of groups.rows) {
+        const members = await client.query<{ route_id: number }>(
+          `SELECT route_id FROM route_group_members WHERE route_group_id=$1`,
+          [group.id],
+        );
+        await client.query(`DELETE FROM route_group_members WHERE route_group_id=$1`, [group.id]);
+        for (const member of members.rows) {
+          await client.query(`UPDATE delivery_routes SET status='deactive', updated_by=$1 WHERE id=$2`, [userId, member.route_id]);
+        }
+        await client.query(`UPDATE route_groups SET status='deactive', updated_by=$1 WHERE id=$2`, [userId, group.id]);
+        await client.query(`UPDATE route_price_configs SET status='deactive' WHERE route_group_id=$1`, [group.id]);
+      }
+      await client.query(
+        `UPDATE delivery_routes SET status='deactive', updated_by=$1 WHERE price_book_id=$2 AND status='active'`,
+        [userId, id],
+      );
+      await client.query(`UPDATE price_books SET status='deactive', updated_by=$1 WHERE id=$2`, [userId, id]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   async listAdjustmentPeriods(): Promise<AdjustmentPeriod[]> {
@@ -652,10 +738,10 @@ export const routePricingService = {
     }
   },
 
-  async listRoutes(supplierId: number, filters: { search?: string; province_code?: string; status?: string } = {}): Promise<DeliveryRoute[]> {
-    if (!supplierId) throw err('MISSING_SUPPLIER');
-    const params: unknown[] = [supplierId, filters.status || 'active'];
-    let where = 'WHERE r.supplier_id = $1 AND r.status = $2';
+  async listRoutes(priceBookId: number, filters: { search?: string; province_code?: string; status?: string } = {}): Promise<DeliveryRoute[]> {
+    if (!priceBookId) throw err('MISSING_PRICE_BOOK');
+    const params: unknown[] = [priceBookId, filters.status || 'active'];
+    let where = 'WHERE r.price_book_id = $1 AND r.status = $2';
     if (filters.province_code) { params.push(filters.province_code); where += ` AND r.province_code = $${params.length}`; }
     if (filters.search) {
       params.push(`%${filters.search}%`);
@@ -668,9 +754,9 @@ export const routePricingService = {
        ${where} ORDER BY r.tinh, r.phuong`, params,
     )).rows;
   },
-  async createRoute(data: { supplier_id: number; province_code: string; ward_code?: string | null; location_text?: string | null; note?: string | null }, userId: number): Promise<DeliveryRoute> {
-    const supplier = await pool.query('SELECT id FROM suppliers WHERE id = $1 AND status = $2', [data.supplier_id, 'active']);
-    if (!supplier.rows[0]) throw err('SUPPLIER_NOT_FOUND');
+  async createRoute(data: { price_book_id: number; province_code: string; ward_code?: string | null; location_text?: string | null; note?: string | null }, userId: number): Promise<DeliveryRoute> {
+    const supplier = await pool.query('SELECT id FROM price_books WHERE id = $1 AND status = $2', [data.price_book_id, 'active']);
+    if (!supplier.rows[0]) throw err('PRICE_BOOK_NOT_FOUND');
     const province = await getProvince(data.province_code);
     const destination = destinationInput(data.ward_code, data.location_text);
     if (!province) throw err('INVALID_WARD', 'Tỉnh không hợp lệ');
@@ -682,19 +768,19 @@ export const routePricingService = {
     const note = cleanNote(data.note);
     const duplicate = await pool.query(
       `SELECT id FROM delivery_routes
-       WHERE supplier_id=$1 AND province_code=$2
+       WHERE price_book_id=$1 AND province_code=$2
          AND COALESCE(ward_code,'')=COALESCE($3,'')
          AND COALESCE(location_text,'')=COALESCE($4,'')
          AND COALESCE(NULLIF(TRIM(note),''),'')=$5
          AND status='active'`,
-      [data.supplier_id, data.province_code, destination.ward_code, destination.location_text, noteKey(note)],
+      [data.price_book_id, data.province_code, destination.ward_code, destination.location_text, noteKey(note)],
     );
     if (duplicate.rows[0]) throw err('DUPLICATE_ROUTE');
     try {
       const result = await pool.query<DeliveryRoute>(
-        `INSERT INTO delivery_routes (supplier_id, province_code, ward_code, location_text, note, tinh, phuong, created_by, updated_by)
+        `INSERT INTO delivery_routes (price_book_id, province_code, ward_code, location_text, note, tinh, phuong, created_by, updated_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8) RETURNING *`,
-        [data.supplier_id, data.province_code, destination.ward_code, destination.location_text, note, province.name, destination.phuong, userId],
+        [data.price_book_id, data.province_code, destination.ward_code, destination.location_text, note, province.name, destination.phuong, userId],
       );
       return result.rows[0];
     } catch (error) {
@@ -716,12 +802,12 @@ export const routePricingService = {
     const note = cleanNote(data.note);
     const duplicate = await pool.query(
       `SELECT id FROM delivery_routes
-       WHERE supplier_id=$1 AND province_code=$2
+       WHERE price_book_id=$1 AND province_code=$2
          AND COALESCE(ward_code,'')=COALESCE($3,'')
          AND COALESCE(location_text,'')=COALESCE($4,'')
          AND COALESCE(NULLIF(TRIM(note),''),'')=$5
          AND status='active' AND id != $6`,
-      [existing.rows[0].supplier_id, data.province_code, destination.ward_code, destination.location_text, noteKey(note), id],
+      [existing.rows[0].price_book_id, data.province_code, destination.ward_code, destination.location_text, noteKey(note), id],
     );
     if (duplicate.rows[0]) throw err('DUPLICATE_ROUTE');
     try {
@@ -743,18 +829,18 @@ export const routePricingService = {
     if (grouped.rows[0]) throw err('ROUTE_IN_ACTIVE_GROUP');
     await pool.query(`UPDATE delivery_routes SET status='deactive' WHERE id=$1`, [id]);
   },
-  async listGroups(supplierId: number, filters: { province_code?: string; search?: string } = {}): Promise<RouteGroup[]> {
-    if (!supplierId) throw err('MISSING_SUPPLIER');
-    const params: unknown[] = [supplierId];
-    let where = `WHERE g.supplier_id=$1 AND g.status='active'`;
+  async listGroups(priceBookId: number, filters: { province_code?: string; search?: string } = {}): Promise<RouteGroup[]> {
+    if (!priceBookId) throw err('MISSING_PRICE_BOOK');
+    const params: unknown[] = [priceBookId];
+    let where = `WHERE g.price_book_id=$1 AND g.status='active'`;
     if (filters.province_code) { params.push(filters.province_code); where += ` AND g.province_code=$${params.length}`; }
     if (filters.search) { params.push(`%${filters.search}%`); where += ` AND g.name ILIKE $${params.length}`; }
     const groups = await pool.query(`SELECT * FROM route_groups g ${where} ORDER BY g.tinh,g.name`, params);
     return Promise.all(groups.rows.map(mapGroup));
   },
-  async createGroup(data: { supplier_id: number; province_code: string; ward_codes?: string[]; location_text?: string | null; note?: string | null }, userId: number): Promise<RouteGroup> {
-    const supplier = await pool.query(`SELECT id FROM suppliers WHERE id=$1 AND status='active'`, [data.supplier_id]);
-    if (!supplier.rows[0]) throw err('SUPPLIER_NOT_FOUND');
+  async createGroup(data: { price_book_id: number; province_code: string; ward_codes?: string[]; location_text?: string | null; note?: string | null }, userId: number): Promise<RouteGroup> {
+    const supplier = await pool.query(`SELECT id FROM price_books WHERE id=$1 AND status='active'`, [data.price_book_id]);
+    if (!supplier.rows[0]) throw err('PRICE_BOOK_NOT_FOUND');
     const province = await getProvince(data.province_code);
     if (!province) throw err('INVALID_WARD', 'Tỉnh không hợp lệ');
     const destinations = await resolveDestinations(data.province_code, data.ward_codes, data.location_text);
@@ -766,21 +852,21 @@ export const routePricingService = {
       await client.query('BEGIN');
       if (residual) {
         const duplicate = await client.query(
-          `SELECT id FROM route_groups WHERE supplier_id=$1 AND province_code=$2 AND is_residual=TRUE AND status='active'
-           AND COALESCE(NULLIF(TRIM(note),''),'')=$3 FOR UPDATE`, [data.supplier_id, data.province_code, noteKey(note)],
+          `SELECT id FROM route_groups WHERE price_book_id=$1 AND province_code=$2 AND is_residual=TRUE AND status='active'
+           AND COALESCE(NULLIF(TRIM(note),''),'')=$3 FOR UPDATE`, [data.price_book_id, data.province_code, noteKey(note)],
         );
         if (duplicate.rows[0]) throw err('DUPLICATE_RESIDUAL_GROUP');
       }
       const group = await client.query(
-        `INSERT INTO route_groups (supplier_id,name,province_code,tinh,is_residual,note,created_by,updated_by)
+        `INSERT INTO route_groups (price_book_id,name,province_code,tinh,is_residual,note,created_by,updated_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$7) RETURNING *`,
-        [data.supplier_id, name, data.province_code, province.name, residual, note, userId],
+        [data.price_book_id, name, data.province_code, province.name, residual, note, userId],
       );
       for (const destination of destinations) {
         const route = await client.query(
-          `INSERT INTO delivery_routes (supplier_id,province_code,ward_code,location_text,note,tinh,phuong,created_by,updated_by)
+          `INSERT INTO delivery_routes (price_book_id,province_code,ward_code,location_text,note,tinh,phuong,created_by,updated_by)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8) RETURNING id`,
-          [data.supplier_id, data.province_code, destination.ward_code, destination.location_text, note, province.name, destination.phuong, userId],
+          [data.price_book_id, data.province_code, destination.ward_code, destination.location_text, note, province.name, destination.phuong, userId],
         );
         await client.query(`INSERT INTO route_group_members (route_group_id,route_id) VALUES ($1,$2)`, [group.rows[0].id, route.rows[0].id]);
       }
@@ -815,9 +901,9 @@ export const routePricingService = {
       await client.query('BEGIN');
       if (residual) {
         const duplicate = await client.query(
-          `SELECT id FROM route_groups WHERE supplier_id=$1 AND province_code=$2 AND is_residual=TRUE AND status='active'
+          `SELECT id FROM route_groups WHERE price_book_id=$1 AND province_code=$2 AND is_residual=TRUE AND status='active'
            AND id != $3 AND COALESCE(NULLIF(TRIM(note),''),'')=$4 FOR UPDATE`,
-          [existing.supplier_id, existing.province_code, id, noteKey(note)],
+          [existing.price_book_id, existing.province_code, id, noteKey(note)],
         );
         if (duplicate.rows[0]) throw err('DUPLICATE_RESIDUAL_GROUP');
       }
@@ -837,9 +923,9 @@ export const routePricingService = {
         for (const destination of destinations) {
           if (oldKeys.has(key(destination))) continue;
           const route = await client.query(
-            `INSERT INTO delivery_routes (supplier_id,province_code,ward_code,location_text,note,tinh,phuong,created_by,updated_by)
+            `INSERT INTO delivery_routes (price_book_id,province_code,ward_code,location_text,note,tinh,phuong,created_by,updated_by)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8) RETURNING id`,
-            [existing.supplier_id, existing.province_code, destination.ward_code, destination.location_text, note, province.name, destination.phuong, userId],
+            [existing.price_book_id, existing.province_code, destination.ward_code, destination.location_text, note, province.name, destination.phuong, userId],
           );
           await client.query(`INSERT INTO route_group_members (route_group_id,route_id) VALUES ($1,$2)`, [id, route.rows[0].id]);
         }
@@ -876,10 +962,10 @@ export const routePricingService = {
       await client.query('COMMIT');
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   },
-  async listPrices(supplierId: number, routeGroupId?: number): Promise<RoutePriceConfigSummary[]> {
-    if (!supplierId) throw err('MISSING_SUPPLIER');
-    const params: unknown[] = [supplierId];
-    let where = `WHERE g.supplier_id=$1 AND g.status='active'`;
+  async listPrices(priceBookId: number, routeGroupId?: number): Promise<RoutePriceConfigSummary[]> {
+    if (!priceBookId) throw err('MISSING_PRICE_BOOK');
+    const params: unknown[] = [priceBookId];
+    let where = `WHERE g.price_book_id=$1 AND g.status='active'`;
     if (routeGroupId) { params.push(routeGroupId); where += ` AND g.id=$${params.length}`; }
     const groups = await pool.query(`SELECT g.id,g.name,g.is_residual,g.province_code,g.tinh,c.id AS config_id FROM route_groups g LEFT JOIN route_price_configs c ON c.route_group_id=g.id AND c.status='active' ${where} ORDER BY g.tinh,g.name`, params);
     return Promise.all(groups.rows.map(async (group) => {
@@ -904,8 +990,8 @@ export const routePricingService = {
     return Promise.all(versions.rows.map(async (version) => mapVersionRow(version, await loadTiers(version.id))));
   },
 
-  async getPriceMatrix(supplierId: number): Promise<PriceMatrixResponse> {
-    if (!supplierId) throw err('MISSING_SUPPLIER');
+  async getPriceMatrix(priceBookId: number): Promise<PriceMatrixResponse> {
+    if (!priceBookId) throw err('MISSING_PRICE_BOOK');
 
     const periodsResult = await pool.query(
       `SELECT id, start_date, end_date, percent, note
@@ -924,9 +1010,9 @@ export const routePricingService = {
       `SELECT g.id, g.name, g.is_residual, g.province_code, g.tinh, c.id AS config_id
        FROM route_groups g
        LEFT JOIN route_price_configs c ON c.route_group_id = g.id AND c.status = 'active'
-       WHERE g.supplier_id = $1 AND g.status = 'active'
+       WHERE g.price_book_id = $1 AND g.status = 'active'
        ORDER BY g.tinh, g.name`,
-      [supplierId],
+      [priceBookId],
     );
 
     type GroupBundle = {
@@ -1285,50 +1371,7 @@ export const routePricingService = {
     }
   },
 
-  async lookup(params: { supplier_id: number; province_code?: string; ward_code?: string; location_text?: string; note?: string; tinh?: string; phuong?: string; weight_mt?: number; trips_per_vehicle_day?: number | null; is_pallet?: boolean; as_of?: string }): Promise<LookupResult> {
-    if (!params.supplier_id) throw err('MISSING_SUPPLIER');
-    let provinceCode = params.province_code;
-    let wardCode = params.ward_code;
-    if (!provinceCode && params.tinh) provinceCode = (await pool.query<{ code: string }>(`SELECT code FROM provinces WHERE name ILIKE $1 OR full_name ILIKE $1 LIMIT 1`, [params.tinh.trim()])).rows[0]?.code;
-    if (!provinceCode && params.phuong) {
-      const route = await pool.query<{ province_code: string; ward_code: string | null }>(`SELECT province_code,ward_code FROM delivery_routes WHERE supplier_id=$1 AND status='active' AND (phuong ILIKE $2 OR location_text ILIKE $2) LIMIT 1`, [params.supplier_id, params.phuong.trim()]);
-      provinceCode = route.rows[0]?.province_code; wardCode ||= route.rows[0]?.ward_code ?? undefined;
-    }
-    if (!wardCode && params.phuong && provinceCode) wardCode = (await pool.query<{ code: string }>(`SELECT code FROM wards WHERE province_code=$1 AND (name ILIKE $2 OR full_name ILIKE $2) LIMIT 1`, [provinceCode, params.phuong.trim()])).rows[0]?.code;
-    if (!provinceCode) throw err('NOT_FOUND', 'Không tìm thấy tỉnh');
-    const note = noteKey(params.note);
-    const member = await pool.query(
-      `SELECT g.id,g.name,g.is_residual FROM delivery_routes r JOIN route_group_members m ON m.route_id=r.id JOIN route_groups g ON g.id=m.route_group_id AND g.status='active'
-       WHERE r.supplier_id=$1 AND r.province_code=$2 AND r.status='active' AND COALESCE(NULLIF(TRIM(r.note),''),'')=$3 AND COALESCE(NULLIF(TRIM(g.note),''),'')=$3
-       AND (($4::text IS NOT NULL AND r.ward_code=$4) OR ($5::text IS NOT NULL AND LOWER(TRIM(r.location_text))=LOWER(TRIM($5)) ) OR ($6::text IS NOT NULL AND LOWER(TRIM(r.location_text))=LOWER(TRIM($6)))) LIMIT 1`,
-      [params.supplier_id, provinceCode, note, wardCode ?? null, params.location_text ?? null, params.phuong ?? null],
-    );
-    const group = member.rows[0] ?? (await pool.query(
-      `SELECT id,name,is_residual FROM route_groups WHERE supplier_id=$1 AND province_code=$2 AND is_residual=TRUE AND status='active' AND COALESCE(NULLIF(TRIM(note),''),'')=$3 LIMIT 1`,
-      [params.supplier_id, provinceCode, note],
-    )).rows[0];
-    if (!group) throw err('NOT_FOUND', 'Không tìm thấy nhóm giá');
-    const config = await pool.query(`SELECT id FROM route_price_configs WHERE route_group_id=$1 AND status='active'`, [group.id]);
-    if (!config.rows[0]) throw err('NOT_FOUND', 'Nhóm chưa có bảng giá');
-    const asOf = params.as_of || new Date().toISOString().slice(0, 10);
-    const version = await pool.query(
-      `${VERSION_SELECT} ${VERSION_JOIN}
-       WHERE v.price_config_id=$1 AND p.start_date <= $2::date AND (p.end_date IS NULL OR p.end_date > $2::date)
-       ORDER BY p.start_date DESC LIMIT 1`,
-      [config.rows[0].id, asOf],
-    );
-    if (!version.rows[0]) throw err('NOT_FOUND', 'Không có phiên bản giá hiệu lực');
-    const value = version.rows[0];
-    const mode = parsePricingMode(value.pricing_mode ?? 'by_weight');
-    const pallet = num(value.pallet_trip_price);
-    const effectiveFrom = toDateOnly(value.period_start_date);
-    if (params.is_pallet) return { route_group_id: group.id, group_name: group.name, is_residual: group.is_residual, price_version_id: value.id, effective_from: effectiveFrom, is_pallet: true, khung_label: 'Pallet', don_vi: 'Chuyến', pricing_unit: 'chuyen', price: pallet, billable_ton: null, pallet_trip_price: pallet };
-    if (mode === 'by_weight' && (params.weight_mt == null || Number.isNaN(params.weight_mt))) {
-      throw err('INVALID_TIERS', 'Thiếu weight_mt');
-    }
-    const weight = params.weight_mt ?? 0;
-    const tier = matchTier(mode, await loadTiers(value.id), weight, params.trips_per_vehicle_day);
-    const billable = tier.pricing_unit === 'tan' ? Math.max(weight, num(tier.min_billable_ton ?? weight)) : null;
-    return { route_group_id: group.id, group_name: group.name, is_residual: group.is_residual, price_version_id: value.id, effective_from: effectiveFrom, is_pallet: false, khung_label: khungLabel(mode, tier), don_vi: tier.pricing_unit === 'chuyen' ? 'Chuyến' : 'Tấn', pricing_unit: tier.pricing_unit, price: num(tier.price), billable_ton: billable, pallet_trip_price: pallet };
+  async lookup(_params?: unknown): Promise<LookupResult> {
+    throw err('LOOKUP_DEFERRED', 'Lookup sẽ được cập nhật sau khi chuyển sang bảng giá');
   },
 };

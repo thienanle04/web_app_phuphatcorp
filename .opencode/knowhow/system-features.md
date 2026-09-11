@@ -943,19 +943,23 @@ Menu sidebar top-level **Giá theo tuyến** — không nằm trong accordion.
 
 ### 11.1 Giá theo tuyến (/route-pricing)
 
-**Mục đích:** Quản lý kỳ điều chỉnh giá, nhóm tuyến theo NCC, bảng giá gốc / điều chỉnh theo kỳ, xem ma trận giá, và lookup phục vụ Delivery Import.
+**Mục đích:** Quản lý kỳ điều chỉnh giá, nhóm tuyến theo **bảng giá**, bảng giá gốc / điều chỉnh theo kỳ, xem ma trận giá. Lookup Delivery Import **chưa** gắn (501 LOOKUP_DEFERRED).
 
 **Data model — bảng chính:**
 ```sql
+price_books (
+  id, name VARCHAR unique active (lower trim), status, created_by, updated_by, ...
+)
 route_pricing_adjustment_periods (
   id, start_date DATE, end_date DATE nullable,  -- end_date do BE tự quản
   percent NUMERIC ≠ 0, note TEXT, created_by, updated_by, created_at, updated_at
 )
 route_groups (
-  id, supplier_id, name, province_code, tinh, is_residual,
+  id, price_book_id, name, province_code, tinh, is_residual,
   note TEXT, status, created_by, updated_by, ...
 )
 delivery_routes (… ward_code XOR location_text, note …) + route_group_members
+```
 route_price_configs (id, route_group_id, status, …)
 route_price_versions (
   id, price_config_id, pricing_mode ('by_weight'|'by_trips'),
@@ -972,43 +976,41 @@ route_price_tiers (
 - BR-001: Kỳ điều chỉnh là master **global**; UI không nhập `end_date` (BE đóng kỳ trước khi tạo kỳ mới).
 - BR-002: Thêm kỳ = apply `%` mọi version đang mở toàn hệ thống; không sửa kỳ — muốn đổi thì xóa kỳ gần nhất rồi tạo lại.
 - BR-003: Xóa kỳ gần nhất = rollback (xóa versions gắn kỳ + mở lại kỳ trước).
-- BR-004: Nhóm tuyến scoped theo NCC; đích = Phường/Xã **XOR** Địa điểm text **XOR** Còn lại tỉnh; `note` optional (ảnh hưởng tên + unique).
+- BR-004: Nhóm tuyến scoped theo **bảng giá** (`price_books`); đích = Phường/Xã **XOR** Địa điểm text **XOR** Còn lại tỉnh; `note` optional (ảnh hưởng tên + unique). User tạo/đặt tên bảng giá tự do.
 - BR-005: Mỗi nhóm chỉ nhập **bảng giá gốc** 1 lần; bắt buộc chọn `adjustment_period_id` (kỳ gốc); BE cascade tạo version cho mọi kỳ `start > kỳ gốc`.
 - BR-006: Version gắn `adjustment_period_id`; ngày hiệu lực / `%` derive từ kỳ (không lưu trùng trên version). Không có cột `note` trên `route_price_versions` — ghi chú chỉ ở kỳ / nhóm / tuyến.
 - BR-007: Sửa giá gốc → recompute cascade các kỳ sau.
-- BR-008: Tab **Bảng giá** = ma trận (`GET /prices/matrix`): weight gom schema exact hoặc tập con (cột = union, ô thiếu trống) + Pallet cuối; trips = hàng tuyến×bậc (không Pallet), cột = kỳ.
+- BR-008: Tab **Ma trận giá** = ma trận (`GET /prices/matrix?price_book_id=`): weight gom schema exact hoặc tập con (cột = union, ô thiếu trống) + Pallet cuối; trips = hàng tuyến×bậc (không Pallet), cột = kỳ.
 - BR-009: Tab **Quản lý giá** = CRUD/lịch sử version (badge mode + gốc/điều chỉnh ±%).
-- BR-010: Delivery Import lookup qua `GET /route-pricing/lookup` (`weight_mt` / `trips_per_vehicle_day`, `note` nhóm/tuyến).
+- BR-010: `GET /route-pricing/lookup` **deferred** (501 LOOKUP_DEFERRED) — CR riêng.
 
 **Flow — sử dụng chính:**
 ```
-Tab Kỳ điều chỉnh (global, không cần chọn NCC)
+Tab Kỳ điều chỉnh (global, không cần chọn bảng giá)
   → Thêm kỳ (start_date, %, note?) → BE đóng kỳ trước + apply % mọi version mở
   → Chỉ xóa được kỳ gần nhất (= rollback)
 
-Chọn NCC
+Chọn Bảng giá
   → Tab Nhóm tuyến: tạo/sửa nhóm (phường XOR location XOR residual + note)
   → Tab Quản lý giá: Thêm bảng giá gốc (kỳ gốc + by_weight|by_trips + tiers + pallet)
         → BE cascade versions kỳ sau
       → Sửa giá gốc → recompute cascade
-  → Tab Bảng giá: xem ma trận weight_tables[] + trips.rows
-
-Delivery Import
-  → GET /api/route-pricing/lookup
+  → Tab Ma trận giá: xem ma trận weight_tables[] + trips.rows
 ```
 
 **API Endpoints:**
 ```
+GET/POST/PUT/DELETE /api/route-pricing/price-books
 GET/POST/DELETE /api/route-pricing/adjustment-periods
 GET             /api/route-pricing/geo/provinces
 GET             /api/route-pricing/geo/wards?province_code=
 GET/POST/PUT/DELETE /api/route-pricing/routes
 GET/POST/PUT/DELETE /api/route-pricing/groups
 GET/POST        /api/route-pricing/prices
-GET             /api/route-pricing/prices/matrix?supplier_id=
+GET             /api/route-pricing/prices/matrix?price_book_id=
 PUT             /api/route-pricing/prices/groups/:routeGroupId/absolute
 GET             /api/route-pricing/prices/:configId/versions
-GET             /api/route-pricing/lookup
+GET             /api/route-pricing/lookup   -- 501 LOOKUP_DEFERRED
 ```
 
 **Files:**
@@ -1016,6 +1018,7 @@ GET             /api/route-pricing/lookup
 backend/src/migrations/040_create_route_pricing.sql
 backend/src/migrations/041_seed_route_pricing_permissions.sql
 backend/src/migrations/042_route_pricing_adjustment_periods.sql
+backend/src/migrations/044_route_pricing_price_books.sql
 backend/src/services/routePricingService.ts
 backend/src/controllers/routePricingController.ts
 backend/src/routes/routePricing.ts
@@ -1028,7 +1031,7 @@ frontend/src/pages/route-pricing/PriceMatrixTab.tsx
 ```
 
 **Access:** `route_pricing.view` (xem) / `route_pricing.manage` (CRUD). Route: `/route-pricing`  
-**BA / UI:** `docs/ba/20260711_route-pricing-analysis.md`, `docs/ba/20260731_route-pricing-price-matrix-view-analysis.md`, `docs/ui/20260731_route-pricing-adjustment-periods-cr-ui-spec.md`, `docs/ui/20260731_route-pricing-price-matrix-view-ui-spec.md`
+**BA / UI:** `docs/ba/20260911_route-pricing-price-books-cr.md`, `docs/ui/20260911_route-pricing-price-books-cr-ui-spec.md`, `docs/ba/20260711_route-pricing-analysis.md`, `docs/ba/20260731_route-pricing-price-matrix-view-analysis.md`
 
 ---
 

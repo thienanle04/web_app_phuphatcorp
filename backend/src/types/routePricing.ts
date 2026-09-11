@@ -14,9 +14,17 @@ export interface Ward {
   province_code: string;
 }
 
+export interface PriceBook {
+  id: number;
+  name: string;
+  status: 'active' | 'deactive';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DeliveryRoute {
   id: number;
-  supplier_id: number;
+  price_book_id: number;
   province_code: string;
   ward_code: string | null;
   location_text: string | null;
@@ -42,7 +50,7 @@ export interface RouteGroupMember {
 
 export interface RouteGroup {
   id: number;
-  supplier_id: number;
+  price_book_id: number;
   name: string;
   province_code: string;
   tinh: string;

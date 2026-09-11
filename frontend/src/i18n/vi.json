@@ -648,5 +648,52 @@
       "odometer": "Đồng hồ (km)",
       "diff": "Chênh lệch"
     }
+  },
+  "routePricing": {
+    "page": {
+      "title": "Giá theo tuyến",
+      "subtitle": "Quản lý kỳ điều chỉnh, nhóm tuyến và giá theo từng bảng giá"
+    },
+    "tab": {
+      "periods": "Kỳ điều chỉnh",
+      "groups": "Nhóm tuyến",
+      "manage": "Quản lý giá",
+      "matrix": "Ma trận giá"
+    },
+    "priceBook": {
+      "label": "Bảng giá *",
+      "placeholder": "Chọn bảng giá…",
+      "loading": "Đang tải bảng giá…",
+      "loadError": "Không thể tải danh sách bảng giá",
+      "retry": "Thử lại",
+      "empty": "Chưa có bảng giá",
+      "emptyCta": "Tạo bảng giá",
+      "create": "Tạo bảng giá",
+      "createTitle": "Tạo bảng giá",
+      "rename": "Đổi tên",
+      "renameTitle": "Đổi tên bảng giá",
+      "delete": "Xóa",
+      "name": "Tên *",
+      "namePlaceholder": "VD: CLF nội thành…",
+      "nameRequired": "Nhập tên bảng giá",
+      "duplicate": "Tên bảng giá đã tồn tại",
+      "saveError": "Không lưu được bảng giá",
+      "notFound": "Không tìm thấy bảng giá",
+      "confirmDelete": "Xóa bảng giá \"{name}\"? Nhóm tuyến trong bảng này sẽ ngừng sử dụng. Không hoàn tác từ giao diện."
+    },
+    "action": {
+      "cancel": "Hủy",
+      "save": "Lưu"
+    },
+    "message": {
+      "success": {
+        "createBook": "Đã tạo bảng giá",
+        "renameBook": "Đã đổi tên bảng giá",
+        "deleteBook": "Đã xóa bảng giá"
+      },
+      "error": {
+        "deleteBook": "Không xóa được bảng giá"
+      }
+    }
   }
 }

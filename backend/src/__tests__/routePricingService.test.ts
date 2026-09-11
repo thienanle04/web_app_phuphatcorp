@@ -285,3 +285,31 @@ describe('Regression: price version race guards (2026-07-12)', () => {
     });
   });
 });
+
+describe('price books', () => {
+  it('createPriceBook rejects blank name', async () => {
+    await expect(routePricingService.createPriceBook('   ', 1)).rejects.toMatchObject({
+      code: 'INVALID_PRICE_BOOK_NAME',
+    });
+  });
+
+  it('createPriceBook maps unique violation', async () => {
+    mockPool.query.mockRejectedValueOnce({ code: '23505' } as never);
+    await expect(routePricingService.createPriceBook('CLF', 1)).rejects.toMatchObject({
+      code: 'DUPLICATE_PRICE_BOOK',
+    });
+  });
+
+  it('deletePriceBook throws when missing', async () => {
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(routePricingService.deletePriceBook(9, 1)).rejects.toMatchObject({
+      code: 'PRICE_BOOK_NOT_FOUND',
+    });
+  });
+
+  it('lookup is deferred', async () => {
+    await expect(routePricingService.lookup({ supplier_id: 1 })).rejects.toMatchObject({
+      code: 'LOOKUP_DEFERRED',
+    });
+  });
+});
