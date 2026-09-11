@@ -602,5 +602,52 @@
       "odometer": "Odometer (km)",
       "diff": "Deviation"
     }
+  },
+  "routePricing": {
+    "page": {
+      "title": "Route pricing",
+      "subtitle": "Manage adjustment periods, route groups, and prices per price book"
+    },
+    "tab": {
+      "periods": "Adjustment periods",
+      "groups": "Route groups",
+      "manage": "Manage prices",
+      "matrix": "Price matrix"
+    },
+    "priceBook": {
+      "label": "Price book *",
+      "placeholder": "Select a price book…",
+      "loading": "Loading price books…",
+      "loadError": "Could not load price books",
+      "retry": "Try again",
+      "empty": "No price books yet",
+      "emptyCta": "Create price book",
+      "create": "Create price book",
+      "createTitle": "Create price book",
+      "rename": "Rename",
+      "renameTitle": "Rename price book",
+      "delete": "Delete",
+      "name": "Name *",
+      "namePlaceholder": "e.g. CLF urban…",
+      "nameRequired": "Enter a price book name",
+      "duplicate": "A price book with this name already exists",
+      "saveError": "Could not save the price book",
+      "notFound": "Price book not found",
+      "confirmDelete": "Delete price book \"{name}\"? Route groups in this book will be deactivated. This cannot be undone in the UI."
+    },
+    "action": {
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "message": {
+      "success": {
+        "createBook": "Price book created",
+        "renameBook": "Price book renamed",
+        "deleteBook": "Price book deleted"
+      },
+      "error": {
+        "deleteBook": "Could not delete the price book"
+      }
+    }
   }
 }

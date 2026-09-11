@@ -107,8 +107,8 @@ function useStickyLeftOffsets(columnCount: number) {
   return { lefts, registerCell };
 }
 
-export function PriceMatrixTab({ supplierId }: { supplierId: number }) {
-  const { data, isLoading, isError, refetch } = usePriceMatrix(supplierId);
+export function PriceMatrixTab({ priceBookId }: { priceBookId: number }) {
+  const { data, isLoading, isError, refetch } = usePriceMatrix(priceBookId);
   const [fromPeriodId, setFromPeriodId] = useState('');
 
   if (isLoading) {

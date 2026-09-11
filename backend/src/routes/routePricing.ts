@@ -8,6 +8,9 @@ import {
   lookupSchema,
   periodCreateSchema,
   periodDeleteSchema,
+  priceBookCreateSchema,
+  priceBookDeleteSchema,
+  priceBookUpdateSchema,
   priceCreateSchema,
   priceUpdateAbsoluteSchema,
   pricesListSchema,
@@ -32,6 +35,30 @@ router.get(
   requirePermission('route_pricing.view'),
   ...validate(geoWardsSchema),
   routePricingController.listWards,
+);
+
+router.get(
+  '/price-books',
+  requirePermission('route_pricing.view'),
+  routePricingController.listPriceBooks,
+);
+router.post(
+  '/price-books',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceBookCreateSchema),
+  routePricingController.createPriceBook,
+);
+router.put(
+  '/price-books/:id',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceBookUpdateSchema),
+  routePricingController.updatePriceBook,
+);
+router.delete(
+  '/price-books/:id',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceBookDeleteSchema),
+  routePricingController.deletePriceBook,
 );
 
 router.get(

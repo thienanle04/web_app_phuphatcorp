@@ -8,9 +8,12 @@ function handleServiceError(res: Response, err: unknown, fallback: string): void
   const e = err as { code?: string; message?: string };
   const code = e?.code;
   const map: Record<string, { status: number; message: string }> = {
-    MISSING_SUPPLIER: { status: 400, message: 'Thiếu nhà cung cấp' },
+    MISSING_PRICE_BOOK: { status: 400, message: 'Thiếu bảng giá' },
+    PRICE_BOOK_NOT_FOUND: { status: 404, message: 'Không tìm thấy bảng giá' },
+    DUPLICATE_PRICE_BOOK: { status: 409, message: 'Tên bảng giá đã tồn tại' },
+    INVALID_PRICE_BOOK_NAME: { status: 400, message: e.message || 'Tên bảng giá không hợp lệ' },
+    LOOKUP_DEFERRED: { status: 501, message: 'Lookup sẽ được cập nhật sau khi chuyển sang bảng giá' },
     MISSING_PROVINCE: { status: 400, message: 'Thiếu tỉnh' },
-    SUPPLIER_NOT_FOUND: { status: 404, message: 'Không tìm thấy nhà cung cấp' },
     NOT_FOUND: { status: 404, message: e.message || 'Không tìm thấy' },
     INVALID_WARD: { status: 400, message: e.message || 'Phường/tỉnh không hợp lệ' },
     DUPLICATE_ROUTE: { status: 409, message: 'Tuyến đã tồn tại (cùng đích và ghi chú)' },
@@ -42,18 +45,29 @@ function handleServiceError(res: Response, err: unknown, fallback: string): void
   sendError(res, fallback, 500, msg);
 }
 
-export const geoProvincesSchema: ValidationChain[] = [];
+export const priceBookCreateSchema: ValidationChain[] = [
+  body('name').isString().trim().notEmpty().withMessage('name là bắt buộc'),
+];
+
+export const priceBookUpdateSchema: ValidationChain[] = [
+  param('id').isInt({ min: 1 }),
+  body('name').isString().trim().notEmpty().withMessage('name là bắt buộc'),
+];
+
+export const priceBookDeleteSchema: ValidationChain[] = [
+  param('id').isInt({ min: 1 }),
+];
 
 export const geoWardsSchema: ValidationChain[] = [
   query('province_code').notEmpty().withMessage('province_code là bắt buộc'),
 ];
 
 export const routesListSchema: ValidationChain[] = [
-  query('supplier_id').isInt({ min: 1 }).withMessage('supplier_id là bắt buộc'),
+  query('price_book_id').isInt({ min: 1 }).withMessage('price_book_id là bắt buộc'),
 ];
 
 export const routeCreateSchema: ValidationChain[] = [
-  body('supplier_id').isInt({ min: 1 }).withMessage('supplier_id là bắt buộc'),
+  body('price_book_id').isInt({ min: 1 }).withMessage('price_book_id là bắt buộc'),
   body('province_code').notEmpty().withMessage('province_code là bắt buộc'),
   body('ward_code').optional({ nullable: true }).isString(),
   body('location_text').optional({ nullable: true }).isString(),
@@ -73,11 +87,11 @@ export const routeDeleteSchema: ValidationChain[] = [
 ];
 
 export const groupsListSchema: ValidationChain[] = [
-  query('supplier_id').isInt({ min: 1 }).withMessage('supplier_id là bắt buộc'),
+  query('price_book_id').isInt({ min: 1 }).withMessage('price_book_id là bắt buộc'),
 ];
 
 export const groupCreateSchema: ValidationChain[] = [
-  body('supplier_id').isInt({ min: 1 }).withMessage('supplier_id là bắt buộc'),
+  body('price_book_id').isInt({ min: 1 }).withMessage('price_book_id là bắt buộc'),
   body('province_code').notEmpty().withMessage('province_code là bắt buộc'),
   body('ward_codes').optional().isArray(),
   body('ward_codes.*').optional().isString(),
@@ -98,11 +112,11 @@ export const groupDeleteSchema: ValidationChain[] = [
 ];
 
 export const pricesListSchema: ValidationChain[] = [
-  query('supplier_id').isInt({ min: 1 }).withMessage('supplier_id là bắt buộc'),
+  query('price_book_id').isInt({ min: 1 }).withMessage('price_book_id là bắt buộc'),
 ];
 
 export const pricesMatrixSchema: ValidationChain[] = [
-  query('supplier_id').isInt({ min: 1 }).withMessage('supplier_id là bắt buộc'),
+  query('price_book_id').isInt({ min: 1 }).withMessage('price_book_id là bắt buộc'),
 ];
 
 export const priceCreateSchema: ValidationChain[] = [
@@ -189,10 +203,48 @@ export const routePricingController = {
     }
   },
 
+  async listPriceBooks(_req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const data = await routePricingService.listPriceBooks();
+      sendSuccess(res, data, 'Danh sách bảng giá');
+    } catch (err) {
+      handleServiceError(res, err, 'Không tải được danh sách bảng giá');
+    }
+  },
+
+  async createPriceBook(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const data = await routePricingService.createPriceBook(String(req.body.name), req.user!.userId);
+      sendSuccess(res, data, 'Đã tạo bảng giá', 201);
+    } catch (err) {
+      handleServiceError(res, err, 'Không tạo được bảng giá');
+    }
+  },
+
+  async updatePriceBook(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const data = await routePricingService.updatePriceBook(id, String(req.body.name), req.user!.userId);
+      sendSuccess(res, data, 'Đã đổi tên bảng giá');
+    } catch (err) {
+      handleServiceError(res, err, 'Không đổi tên được bảng giá');
+    }
+  },
+
+  async deletePriceBook(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const id = parseInt(req.params.id, 10);
+      await routePricingService.deletePriceBook(id, req.user!.userId);
+      sendSuccess(res, null, 'Đã xóa bảng giá');
+    } catch (err) {
+      handleServiceError(res, err, 'Không xóa được bảng giá');
+    }
+  },
+
   async listRoutes(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const supplierId = parseInt(String(req.query.supplier_id), 10);
-      const data = await routePricingService.listRoutes(supplierId, {
+      const priceBookId = parseInt(String(req.query.price_book_id), 10);
+      const data = await routePricingService.listRoutes(priceBookId, {
         search: req.query.search as string | undefined,
         province_code: req.query.province_code as string | undefined,
         status: (req.query.status as string) || 'active',
@@ -234,8 +286,8 @@ export const routePricingController = {
 
   async listGroups(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const supplierId = parseInt(String(req.query.supplier_id), 10);
-      const data = await routePricingService.listGroups(supplierId, {
+      const priceBookId = parseInt(String(req.query.price_book_id), 10);
+      const data = await routePricingService.listGroups(priceBookId, {
         province_code: req.query.province_code as string | undefined,
         search: req.query.search as string | undefined,
       });
@@ -249,7 +301,7 @@ export const routePricingController = {
     try {
       const data = await routePricingService.createGroup(
         {
-          supplier_id: req.body.supplier_id,
+          price_book_id: req.body.price_book_id,
           province_code: req.body.province_code,
           ward_codes: req.body.ward_codes,
           location_text: req.body.location_text,
@@ -293,11 +345,11 @@ export const routePricingController = {
 
   async listPrices(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const supplierId = parseInt(String(req.query.supplier_id), 10);
+      const priceBookId = parseInt(String(req.query.price_book_id), 10);
       const groupId = req.query.route_group_id
         ? parseInt(String(req.query.route_group_id), 10)
         : undefined;
-      const data = await routePricingService.listPrices(supplierId, groupId);
+      const data = await routePricingService.listPrices(priceBookId, groupId);
       sendSuccess(res, data, 'Danh sách bảng giá');
     } catch (err) {
       handleServiceError(res, err, 'Không tải được bảng giá');
@@ -306,8 +358,8 @@ export const routePricingController = {
 
   async getPriceMatrix(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const supplierId = parseInt(String(req.query.supplier_id), 10);
-      const data = await routePricingService.getPriceMatrix(supplierId);
+      const priceBookId = parseInt(String(req.query.price_book_id), 10);
+      const data = await routePricingService.getPriceMatrix(priceBookId);
       sendSuccess(res, data, 'Bảng giá ma trận');
     } catch (err) {
       handleServiceError(res, err, 'Không tải được bảng giá ma trận');

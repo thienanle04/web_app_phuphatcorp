@@ -19,31 +19,38 @@ export function useWards(provinceCode?: string) {
   });
 }
 
-export function useRoutes(supplierId?: number, search?: string) {
+export function usePriceBooks() {
   return useQuery({
-    queryKey: ['route-pricing', 'routes', supplierId, search],
-    queryFn: () => routePricingApi.listRoutes({ supplier_id: supplierId!, search }),
-    enabled: Boolean(supplierId),
+    queryKey: ['route-pricing', 'price-books'],
+    queryFn: () => routePricingApi.listPriceBooks(),
   });
 }
 
-export function useGroups(supplierId?: number) {
+export function useRoutes(priceBookId?: number, search?: string) {
   return useQuery({
-    queryKey: ['route-pricing', 'groups', supplierId],
-    queryFn: () => routePricingApi.listGroups({ supplier_id: supplierId! }),
-    enabled: Boolean(supplierId),
+    queryKey: ['route-pricing', 'routes', priceBookId, search],
+    queryFn: () => routePricingApi.listRoutes({ price_book_id: priceBookId!, search }),
+    enabled: Boolean(priceBookId),
   });
 }
 
-export function usePrices(supplierId?: number, routeGroupId?: number) {
+export function useGroups(priceBookId?: number) {
   return useQuery({
-    queryKey: ['route-pricing', 'prices', supplierId, routeGroupId],
+    queryKey: ['route-pricing', 'groups', priceBookId],
+    queryFn: () => routePricingApi.listGroups({ price_book_id: priceBookId! }),
+    enabled: Boolean(priceBookId),
+  });
+}
+
+export function usePrices(priceBookId?: number, routeGroupId?: number) {
+  return useQuery({
+    queryKey: ['route-pricing', 'prices', priceBookId, routeGroupId],
     queryFn: () =>
       routePricingApi.listPrices({
-        supplier_id: supplierId!,
+        price_book_id: priceBookId!,
         route_group_id: routeGroupId,
       }),
-    enabled: Boolean(supplierId),
+    enabled: Boolean(priceBookId),
   });
 }
 
@@ -55,11 +62,11 @@ export function usePriceVersions(configId?: number) {
   });
 }
 
-export function usePriceMatrix(supplierId?: number) {
+export function usePriceMatrix(priceBookId?: number) {
   return useQuery({
-    queryKey: ['route-pricing', 'prices-matrix', supplierId],
-    queryFn: () => routePricingApi.getPriceMatrix(supplierId!),
-    enabled: Boolean(supplierId),
+    queryKey: ['route-pricing', 'prices-matrix', priceBookId],
+    queryFn: () => routePricingApi.getPriceMatrix(priceBookId!),
+    enabled: Boolean(priceBookId),
   });
 }
 
@@ -70,7 +77,7 @@ export function useAdjustmentPeriods() {
   });
 }
 
-export function useRoutePricingMutations(supplierId?: number) {
+export function useRoutePricingMutations(priceBookId?: number) {
   const qc = useQueryClient();
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['route-pricing'] });
@@ -140,6 +147,19 @@ export function useRoutePricingMutations(supplierId?: number) {
       mutationFn: (id: number) => routePricingApi.deleteAdjustmentPeriod(id),
       onSuccess: invalidate,
     }),
-    supplierId,
+    createPriceBook: useMutation({
+      mutationFn: (name: string) => routePricingApi.createPriceBook(name),
+      onSuccess: invalidate,
+    }),
+    updatePriceBook: useMutation({
+      mutationFn: ({ id, name }: { id: number; name: string }) =>
+        routePricingApi.updatePriceBook(id, name),
+      onSuccess: invalidate,
+    }),
+    deletePriceBook: useMutation({
+      mutationFn: (id: number) => routePricingApi.deletePriceBook(id),
+      onSuccess: invalidate,
+    }),
+    priceBookId,
   };
 }
