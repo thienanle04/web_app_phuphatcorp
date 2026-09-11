@@ -6,6 +6,7 @@
     "docker:migrate": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-from-remote.ps1 -UpdateEnv",
     "seed:clf-f": "npx tsx scripts/seed-clf-f.ts",
     "seed:mcc-tt-f": "npx tsx scripts/seed-mcc-tt-f.ts",
+    "seed:mcc-gh-f": "npx tsx scripts/seed-mcc-gh-f.ts",
     "seed:adjustment-periods": "npx tsx scripts/seed-adjustment-periods.ts",
     "cascade:route-pricing": "npx tsx scripts/cascade-route-pricing-versions.ts"
   },
