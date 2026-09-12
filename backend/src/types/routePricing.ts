@@ -1,5 +1,5 @@
 export type PricingUnit = 'chuyen' | 'tan';
-export type PricingMode = 'by_weight' | 'by_trips';
+export type PricingMode = 'by_weight' | 'by_trips' | 'by_truck';
 
 export interface Province {
   code: string;
@@ -70,6 +70,7 @@ export interface RoutePriceTier {
   price: number;
   min_billable_ton?: number | null;
   sort_order?: number;
+  label?: string | null;
 }
 
 export interface AdjustmentPeriod {
@@ -135,7 +136,7 @@ export interface PriceMatrixPeriod {
 
 export interface PriceMatrixWeightColumn {
   key: string;
-  kind: 'pallet' | 'weight';
+  kind: 'pallet' | 'weight' | 'truck';
   label: string;
   unit_label: string;
   hint?: string | null;
@@ -179,6 +180,7 @@ export interface PriceMatrixTripsRow {
 export interface PriceMatrixResponse {
   periods: PriceMatrixPeriod[];
   weight_tables: PriceMatrixWeightTable[];
+  truck_tables: PriceMatrixWeightTable[];
   trips: { rows: PriceMatrixTripsRow[] };
 }
 

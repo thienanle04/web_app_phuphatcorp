@@ -122,10 +122,11 @@ export const pricesMatrixSchema: ValidationChain[] = [
 export const priceCreateSchema: ValidationChain[] = [
   body('route_group_id').isInt({ min: 1 }),
   body('adjustment_period_id').isInt({ min: 1 }).withMessage('adjustment_period_id là bắt buộc'),
-  body('pricing_mode').isIn(['by_weight', 'by_trips']).withMessage('pricing_mode không hợp lệ'),
+  body('pricing_mode').isIn(['by_weight', 'by_trips', 'by_truck']).withMessage('pricing_mode không hợp lệ'),
   body('pallet_trip_price').isFloat({ min: 0 }).withMessage('Giá Pallet phải ≥ 0'),
   body('tiers').isArray({ min: 1 }),
-  body('tiers.*.range_from').isFloat({ min: 0 }),
+  body('tiers.*.range_from').optional({ nullable: true }).isFloat({ min: 0 }),
+  body('tiers.*.label').optional({ nullable: true }).isString().isLength({ max: 255 }),
   body('tiers.*.range_to')
     .optional({ nullable: true })
     .customSanitizer((v) => (v === '' || v === undefined ? null : v))
@@ -145,10 +146,11 @@ export const priceCreateSchema: ValidationChain[] = [
 
 export const priceUpdateAbsoluteSchema: ValidationChain[] = [
   param('routeGroupId').isInt({ min: 1 }),
-  body('pricing_mode').isIn(['by_weight', 'by_trips']).withMessage('pricing_mode không hợp lệ'),
+  body('pricing_mode').isIn(['by_weight', 'by_trips', 'by_truck']).withMessage('pricing_mode không hợp lệ'),
   body('pallet_trip_price').isFloat({ min: 0 }).withMessage('Giá Pallet phải ≥ 0'),
   body('tiers').isArray({ min: 1 }),
-  body('tiers.*.range_from').isFloat({ min: 0 }),
+  body('tiers.*.range_from').optional({ nullable: true }).isFloat({ min: 0 }),
+  body('tiers.*.label').optional({ nullable: true }).isString().isLength({ max: 255 }),
   body('tiers.*.range_to')
     .optional({ nullable: true })
     .customSanitizer((v) => (v === '' || v === undefined ? null : v))

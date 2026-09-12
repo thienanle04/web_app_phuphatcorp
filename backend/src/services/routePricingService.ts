@@ -36,8 +36,12 @@ function buildGroupName(tinh: string, destNames: string[], note?: string | null)
 }
 
 function parsePricingMode(value: unknown): PricingMode {
-  if (value === 'by_weight' || value === 'by_trips') return value;
+  if (value === 'by_weight' || value === 'by_trips' || value === 'by_truck') return value;
   throw err('INVALID_TIERS', 'pricing_mode không hợp lệ');
+}
+
+function truckLabel(tier: { label?: string | null }): string {
+  return String(tier.label ?? '').trim();
 }
 
 /** Ton intervals `(from, to]` — left-open, right-closed. */
@@ -53,6 +57,26 @@ function closedRangesOverlap(aFrom: number, aTo: number | null, bFrom: number, b
 }
 
 function validateTiers(mode: PricingMode, tiers: RoutePriceTier[]): void {
+  if (mode === 'by_truck') {
+    if (!tiers.length) throw err('INVALID_TIERS', 'Cần ít nhất 1 bậc');
+    const seen = new Set<string>();
+    for (const tier of tiers) {
+      if (tier.pricing_unit !== 'chuyen' && tier.pricing_unit !== 'tan') {
+        throw err('INVALID_TIERS', 'pricing_unit không hợp lệ');
+      }
+      if (!(num(tier.price) > 0)) throw err('INVALID_TIERS', 'Giá phải > 0');
+      const label = truckLabel(tier);
+      if (!label) throw err('INVALID_TIERS', 'Nhãn loại xe không được trống');
+      if (label.length > 255) throw err('INVALID_TIERS', 'Nhãn loại xe tối đa 255 ký tự');
+      if (seen.has(label)) throw err('INVALID_TIERS', 'Các bậc trùng nhãn');
+      seen.add(label);
+      if (tier.min_billable_ton != null && num(tier.min_billable_ton) !== 0) {
+        throw err('INVALID_TIERS', 'Min tính không dùng ở chế độ loại xe');
+      }
+    }
+    return;
+  }
+
   if (mode === 'by_trips') {
     if (tiers.length < 1) throw err('INVALID_TIERS', 'Chế độ chuyến/xe/ngày cần ít nhất 1 bậc');
   } else if (!tiers.length) {
@@ -156,6 +180,9 @@ function matchTier(
 }
 
 function khungLabel(mode: PricingMode, tier: RoutePriceTier): string {
+  if (mode === 'by_truck') {
+    return truckLabel(tier) || 'Truck';
+  }
   if (mode === 'by_trips') {
     const from = num(tier.range_from);
     return tier.range_to == null
@@ -203,19 +230,21 @@ async function insertTiers(
   tiers: RoutePriceTier[],
 ): Promise<void> {
   for (const [sort, tier] of tiers.entries()) {
+    const isTruck = mode === 'by_truck';
     await client.query(
-      `INSERT INTO route_price_tiers (price_version_id,range_from,range_to,pricing_unit,price,min_billable_ton,sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      `INSERT INTO route_price_tiers (price_version_id,range_from,range_to,pricing_unit,price,min_billable_ton,sort_order,label)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
         versionId,
-        tier.range_from,
-        tier.range_to ?? null,
+        isTruck ? 0 : tier.range_from,
+        isTruck ? null : tier.range_to ?? null,
         mode === 'by_trips' ? 'chuyen' : tier.pricing_unit,
         tier.price,
         mode === 'by_weight' && tier.pricing_unit === 'tan' && num(tier.min_billable_ton ?? 0) > 0
           ? tier.min_billable_ton
           : null,
         sort,
+        isTruck ? truckLabel(tier) : null,
       ],
     );
   }
@@ -384,6 +413,38 @@ function schemaLabelFromColumns(columns: PriceMatrixWeightColumn[]): string {
   return columns.map((c) => c.label).join(' · ');
 }
 
+/** Exported for unit tests — ordered fingerprint for by_truck tiers. */
+export function truckTierColumnKey(tier: { label?: string | null; pricing_unit: string }): string {
+  return `t:${truckLabel(tier)}:${tier.pricing_unit}`;
+}
+
+export function truckSchemaKey(tiers: RoutePriceTier[]): string {
+  const ordered = tiers.some((t) => t.sort_order != null)
+    ? [...tiers].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    : tiers;
+  return ordered.map((t) => truckTierColumnKey(t)).join('|');
+}
+
+function buildTruckColumns(tiers: RoutePriceTier[]): PriceMatrixWeightColumn[] {
+  const ordered = [...tiers].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const columns: PriceMatrixWeightColumn[] = ordered.map((tier) => ({
+    key: truckTierColumnKey(tier),
+    kind: 'truck',
+    label: truckLabel(tier),
+    unit_label: tier.pricing_unit === 'chuyen' ? 'vnđ/chuyến' : 'vnđ/tấn',
+    hint: null,
+    pricing_unit: tier.pricing_unit,
+  }));
+  columns.push({
+    key: 'pallet',
+    kind: 'pallet',
+    label: 'Pallet',
+    unit_label: 'vnđ/chuyến',
+    hint: null,
+  });
+  return columns;
+}
+
 async function insertScaledVersionsFromBases(
   client: PoolClient,
   bases: Record<string, unknown>[],
@@ -471,7 +532,7 @@ async function getWard(code: string): Promise<Ward | null> {
 }
 async function loadTiers(versionId: number): Promise<RoutePriceTier[]> {
   const result = await pool.query<RoutePriceTier>(
-    `SELECT id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order
+    `SELECT id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order, label
      FROM route_price_tiers WHERE price_version_id = $1 ORDER BY sort_order, range_from`,
     [versionId],
   );
@@ -481,6 +542,7 @@ async function loadTiers(versionId: number): Promise<RoutePriceTier[]> {
     range_to: nullableNumber(tier.range_to),
     price: num(tier.price),
     min_billable_ton: nullableNumber(tier.min_billable_ton),
+    label: tier.label == null || String(tier.label).trim() === '' ? null : String(tier.label),
   }));
 }
 async function loadMembers(groupId: number): Promise<RouteGroupMember[]> {
@@ -1140,6 +1202,67 @@ export const routePricingService = {
         return a.schema_key.localeCompare(b.schema_key);
       });
 
+    type ExactTruckBucket = { schema_key: string; groups: GroupBundle[] };
+    const truckBuckets = new Map<string, ExactTruckBucket>();
+    for (const bundle of bundles) {
+      if (!bundle.absolute || bundle.absolute.pricing_mode !== 'by_truck') continue;
+      const key = truckSchemaKey(bundle.absolute.tiers);
+      let bucket = truckBuckets.get(key);
+      if (!bucket) {
+        bucket = { schema_key: key, groups: [] };
+        truckBuckets.set(key, bucket);
+      }
+      bucket.groups.push(bundle);
+    }
+
+    const truck_tables: PriceMatrixWeightTable[] = [...truckBuckets.values()]
+      .map((bucket) => {
+        const columns = buildTruckColumns(bucket.groups[0].absolute!.tiers);
+        const schema_key = columns.filter((c) => c.kind === 'truck').map((c) => c.key).join('|');
+        const sortedGroups = [...bucket.groups].sort((a, b) =>
+          a.tinh === b.tinh ? a.name.localeCompare(b.name, 'vi') : a.tinh.localeCompare(b.tinh, 'vi'),
+        );
+        const rows = sortedGroups.map((bundle, index) => {
+          const cells: Record<string, Record<string, number | null>> = {};
+          for (const period of periods) {
+            const version = bundle.byPeriod.get(period.id);
+            const periodCells: Record<string, number | null> = {};
+            for (const col of columns) {
+              if (col.kind === 'pallet') {
+                periodCells[col.key] = version ? version.pallet_trip_price : null;
+                continue;
+              }
+              if (!version) {
+                periodCells[col.key] = null;
+                continue;
+              }
+              const tier = version.tiers.find((t) => truckTierColumnKey(t) === col.key);
+              periodCells[col.key] = tier ? num(tier.price) : null;
+            }
+            cells[String(period.id)] = periodCells;
+          }
+          return {
+            stt: index + 1,
+            route_group_id: bundle.id,
+            group_name: bundle.name,
+            is_residual: bundle.is_residual,
+            province_code: bundle.province_code,
+            tinh: bundle.tinh,
+            cells,
+          };
+        });
+        return {
+          schema_key,
+          schema_label: columns.filter((c) => c.kind !== 'pallet').map((c) => c.label).join(' · '),
+          columns,
+          rows,
+        };
+      })
+      .sort((a, b) => {
+        if (b.rows.length !== a.rows.length) return b.rows.length - a.rows.length;
+        return a.schema_key.localeCompare(b.schema_key);
+      });
+
     const tripBundles = bundles
       .filter((b) => b.absolute?.pricing_mode === 'by_trips')
       .sort((a, b) =>
@@ -1186,6 +1309,7 @@ export const routePricingService = {
     return {
       periods,
       weight_tables,
+      truck_tables,
       trips: { rows: tripsRows },
     };
   },

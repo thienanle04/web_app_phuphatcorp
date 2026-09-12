@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type PriceTierInput,
+  type PricingMode,
   routePricingApi,
 } from '../api/routePricingApi';
 
@@ -121,7 +122,7 @@ export function useRoutePricingMutations(priceBookId?: number) {
       mutationFn: (body: {
         route_group_id: number;
         adjustment_period_id: number;
-        pricing_mode: 'by_weight' | 'by_trips';
+        pricing_mode: PricingMode;
         pallet_trip_price: number;
         tiers: PriceTierInput[];
       }) => routePricingApi.createPrice(body),
@@ -133,7 +134,7 @@ export function useRoutePricingMutations(priceBookId?: number) {
         ...body
       }: {
         routeGroupId: number;
-        pricing_mode: 'by_weight' | 'by_trips';
+        pricing_mode: PricingMode;
         pallet_trip_price: number;
         tiers: PriceTierInput[];
       }) => routePricingApi.updateAbsolutePrice(routeGroupId, body),
