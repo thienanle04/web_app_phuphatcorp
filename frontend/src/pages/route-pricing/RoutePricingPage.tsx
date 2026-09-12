@@ -923,7 +923,8 @@ function PriceVersionCard({
 }) {
   const showPallet = Number(version.pallet_trip_price) > 0;
   const mode: PricingMode = version.pricing_mode ?? 'by_weight';
-  const rangeHeader = mode === 'by_trips' ? 'Chuyến/xe/ngày' : 'Trọng lượng';
+  const rangeHeader =
+    mode === 'by_trips' ? 'Chuyến/xe/ngày' : mode === 'by_truck' ? 'Loại xe' : 'Trọng lượng';
 
   return (
     <div
@@ -943,8 +944,12 @@ function PriceVersionCard({
           {isOldest && version.adjustment_percent == null && (
             <Badge variant="info">Giá gốc</Badge>
           )}
-          <Badge variant={mode === 'by_trips' ? 'info' : 'default'}>
-            {mode === 'by_trips' ? 'Theo chuyến/xe/ngày' : 'Theo trọng lượng'}
+          <Badge variant={mode === 'by_weight' ? 'default' : 'info'}>
+            {mode === 'by_trips'
+              ? 'Theo chuyến/xe/ngày'
+              : mode === 'by_truck'
+                ? 'Theo loại xe'
+                : 'Theo trọng lượng'}
           </Badge>
           {version.adjustment_percent != null && (
             <Badge variant="warning">
@@ -981,7 +986,7 @@ function PriceVersionCard({
               key={i}
               className="border-t border-neutral-100 dark:border-neutral-800 align-top"
             >
-              <td className="py-2 pr-3 whitespace-pre-line">{formatTierRangeLabel(mode, t)}</td>
+              <td className="py-2 pr-3 whitespace-pre-line break-words">{formatTierRangeLabel(mode, t)}</td>
               <td className="py-2 pr-3 text-neutral-700 dark:text-neutral-300">
                 {t.pricing_unit === 'chuyen' ? 'vnđ/chuyến' : 'vnđ/tấn'}
               </td>
@@ -1020,10 +1025,13 @@ function formatTripsRange(fromTrips: number, toTrips: number | null | undefined)
 }
 
 function formatTierRangeLabel(mode: PricingMode, t: PriceTierInput): string {
-  if (mode === 'by_trips') {
-    return formatTripsRange(t.range_from, t.range_to ?? null);
+  if (mode === 'by_truck') {
+    return (t.label ?? '').trim();
   }
-  let line = formatTonRange(t.range_from, t.range_to ?? null);
+  if (mode === 'by_trips') {
+    return formatTripsRange(t.range_from ?? 0, t.range_to ?? null);
+  }
+  let line = formatTonRange(t.range_from ?? 0, t.range_to ?? null);
   if (
     t.pricing_unit === 'tan' &&
     t.min_billable_ton != null &&
@@ -1032,6 +1040,10 @@ function formatTierRangeLabel(mode: PricingMode, t: PriceTierInput): string {
     line += ` (cước tối thiểu ${formatTonNumber(Number(t.min_billable_ton))} tấn)`;
   }
   return line;
+}
+
+function truckTemplate(): PriceTierInput[] {
+  return [{ label: '', pricing_unit: 'chuyen', price: 0, range_from: 0, range_to: null }];
 }
 
 const WEIGHT_TEMPLATE: PriceTierInput[] = [
@@ -1102,7 +1114,13 @@ function PriceFormModal({
     if (mode === pricingMode) return;
     if (!window.confirm('Đổi chế độ sẽ xóa các bậc đang nhập. Tiếp tục?')) return;
     setPricingMode(mode);
-    setTiers(mode === 'by_weight' ? WEIGHT_TEMPLATE.map((t) => ({ ...t })) : tripsTemplate());
+    setTiers(
+      mode === 'by_weight'
+        ? WEIGHT_TEMPLATE.map((t) => ({ ...t }))
+        : mode === 'by_trips'
+          ? tripsTemplate()
+          : truckTemplate(),
+    );
   };
 
   const updateTripsTo = (idx: number, toValue: string) => {
@@ -1230,7 +1248,22 @@ function PriceFormModal({
               />
               Theo số chuyến/xe/ngày
             </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="pricing-mode"
+                checked={pricingMode === 'by_truck'}
+                onChange={() => switchMode('by_truck')}
+              />
+              Theo loại xe
+            </label>
           </div>
+          {pricingMode === 'by_truck' && (
+            <p className="mt-1 text-xs text-neutral-500">
+              Nhãn bậc copy từ Excel (loại / tải xe, ví dụ Truck 0,5mt hoặc 8 &lt; Truck ≤16). Không
+              dùng tấn hàng trên phiếu.
+            </p>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -1324,6 +1357,7 @@ function PriceFormModal({
                     type="button"
                     className="p-2 text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                     title="Xóa bậc"
+                    aria-label="Xóa bậc"
                     disabled={tiers.length === 1}
                     onClick={() => setTiers((previous) => previous.filter((_, i) => i !== idx))}
                   >
@@ -1375,6 +1409,7 @@ function PriceFormModal({
                     type="button"
                     className="p-2 text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                     title="Xóa bậc"
+                    aria-label="Xóa bậc"
                     disabled={tiers.length <= 1}
                     onClick={() =>
                       setTiers((previous) => rechainTrips(previous.filter((_, i) => i !== idx)))
@@ -1386,6 +1421,70 @@ function PriceFormModal({
               );
             })}
 
+          {pricingMode === 'by_truck' &&
+            tiers.map((t, idx) => (
+              <div
+                key={idx}
+                className="flex flex-wrap gap-2 items-end rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3"
+              >
+                <div className="min-w-0 flex-1 basis-48">
+                  <Input
+                    id={`truck-tier-label-${idx}`}
+                    name={`truck-tier-label-${idx}`}
+                    label="Nhãn loại xe"
+                    value={t.label ?? ''}
+                    spellCheck={false}
+                    autoComplete="off"
+                    placeholder="vd. Truck 0,5mt…"
+                    onChange={(e) => {
+                      const next = [...tiers];
+                      next[idx] = { ...t, label: e.target.value };
+                      setTiers(next);
+                    }}
+                  />
+                </div>
+                <div className="w-[7.5rem] shrink-0">
+                  <Select
+                    label="Đơn vị"
+                    value={t.pricing_unit}
+                    onChange={(e) => {
+                      const next = [...tiers];
+                      next[idx] = { ...t, pricing_unit: e.target.value as 'chuyen' | 'tan' };
+                      setTiers(next);
+                    }}
+                    options={[
+                      { value: 'chuyen', label: 'Chuyến' },
+                      { value: 'tan', label: 'Tấn' },
+                    ]}
+                  />
+                </div>
+                <div className="w-36 min-w-[8rem] flex-1">
+                  <Input
+                    id={`truck-tier-price-${idx}`}
+                    name={`truck-tier-price-${idx}`}
+                    label="Đơn giá"
+                    type="number"
+                    value={String(t.price)}
+                    onChange={(e) => {
+                      const next = [...tiers];
+                      next[idx] = { ...t, price: Number(e.target.value) };
+                      setTiers(next);
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="p-2 text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  title="Xóa bậc"
+                  aria-label="Xóa bậc"
+                  disabled={tiers.length === 1}
+                  onClick={() => setTiers((previous) => previous.filter((_, i) => i !== idx))}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+
           <Button
             variant="outline"
             type="button"
@@ -1394,6 +1493,13 @@ function PriceFormModal({
                 setTiers((prev) => [
                   ...prev,
                   { range_from: 0, range_to: null, pricing_unit: 'tan', price: 0 },
+                ]);
+                return;
+              }
+              if (pricingMode === 'by_truck') {
+                setTiers((prev) => [
+                  ...prev,
+                  { label: '', pricing_unit: 'chuyen', price: 0, range_from: 0, range_to: null },
                 ]);
                 return;
               }
@@ -1421,7 +1527,13 @@ function PriceFormModal({
                       pricing_unit: 'chuyen' as const,
                       min_billable_ton: null,
                     }))
-                  : tiers.map((tier) => ({
+                  : pricingMode === 'by_truck'
+                    ? tiers.map((tier) => ({
+                        label: (tier.label ?? '').trim(),
+                        pricing_unit: tier.pricing_unit,
+                        price: tier.price,
+                      }))
+                    : tiers.map((tier) => ({
                       ...tier,
                       min_billable_ton:
                         tier.pricing_unit === 'tan' ? tier.min_billable_ton ?? null : null,

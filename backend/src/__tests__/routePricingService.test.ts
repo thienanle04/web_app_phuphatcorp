@@ -1,5 +1,5 @@
 import { noteKey, normalizeLocation, roundToThousands } from '../types/routePricing';
-import { routePricingService, tierSchemaKey, weightTierColumnKey, isTierKeySubset, mergeCompatibleWeightBuckets, tierColumnKeys } from '../services/routePricingService';
+import { routePricingService, tierSchemaKey, weightTierColumnKey, isTierKeySubset, mergeCompatibleWeightBuckets, tierColumnKeys, truckSchemaKey, truckTierColumnKey } from '../services/routePricingService';
 import { pool } from './__mocks__/database';
 
 const mockPool = pool as jest.Mocked<typeof pool>;
@@ -175,6 +175,109 @@ describe('CR: pricing modes', () => {
         1,
       ),
     ).rejects.not.toMatchObject({ code: 'INVALID_TIERS' });
+  });
+});
+
+describe('CR: by_truck', () => {
+  const truckMix = [
+    { range_from: 0, range_to: null, label: 'Truck 0,5mt', pricing_unit: 'chuyen' as const, price: 1_500_000 },
+    { range_from: 0, range_to: null, label: '8 < Truck ≤16', pricing_unit: 'tan' as const, price: 200_000 },
+  ];
+
+  it('truckTierColumnKey / truckSchemaKey keep form order and do not merge subset', () => {
+    expect(truckTierColumnKey(truckMix[0])).toBe('t:Truck 0,5mt:chuyen');
+    expect(truckSchemaKey(truckMix)).toBe('t:Truck 0,5mt:chuyen|t:8 < Truck ≤16:tan');
+    expect(truckSchemaKey([...truckMix].reverse())).not.toBe(truckSchemaKey(truckMix));
+    expect(truckSchemaKey(truckMix)).not.toBe(
+      truckSchemaKey([{ ...truckMix[0], label: 'Truck 0.5mt' }, truckMix[1]]),
+    );
+  });
+
+  it('allows mixed units and ≤ vs <= as distinct labels', async () => {
+    await expect(
+      routePricingService.createAbsolutePrice(
+        {
+          route_group_id: 10,
+          adjustment_period_id: 1,
+          pricing_mode: 'by_truck',
+          pallet_trip_price: 0,
+          tiers: [
+            ...truckMix,
+            { range_from: 0, range_to: null, label: 'Truck <=2.5', pricing_unit: 'chuyen', price: 1_000_000 },
+          ],
+        },
+        1,
+      ),
+    ).rejects.not.toMatchObject({ code: 'INVALID_TIERS' });
+  });
+
+  it('rejects blank label', async () => {
+    await expect(
+      routePricingService.createAbsolutePrice(
+        {
+          route_group_id: 10,
+          adjustment_period_id: 1,
+          pricing_mode: 'by_truck',
+          pallet_trip_price: 0,
+          tiers: [{ range_from: 0, range_to: null, label: '   ', pricing_unit: 'chuyen', price: 1_500_000 }],
+        },
+        1,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
+  });
+
+  it('rejects duplicate trimmed labels', async () => {
+    await expect(
+      routePricingService.createAbsolutePrice(
+        {
+          route_group_id: 10,
+          adjustment_period_id: 1,
+          pricing_mode: 'by_truck',
+          pallet_trip_price: 0,
+          tiers: [
+            { range_from: 0, range_to: null, label: 'Truck 0,5mt', pricing_unit: 'chuyen', price: 1 },
+            { range_from: 0, range_to: null, label: '  Truck 0,5mt  ', pricing_unit: 'tan', price: 2 },
+          ],
+        },
+        1,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
+  });
+
+  it('rejects min_billable_ton and non-positive price', async () => {
+    await expect(
+      routePricingService.createAbsolutePrice(
+        {
+          route_group_id: 10,
+          adjustment_period_id: 1,
+          pricing_mode: 'by_truck',
+          pallet_trip_price: 0,
+          tiers: [
+            {
+              range_from: 0,
+              range_to: null,
+              label: 'Truck 1,5mt',
+              pricing_unit: 'tan',
+              price: 90_000,
+              min_billable_ton: 5,
+            },
+          ],
+        },
+        1,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
+    await expect(
+      routePricingService.createAbsolutePrice(
+        {
+          route_group_id: 10,
+          adjustment_period_id: 1,
+          pricing_mode: 'by_truck',
+          pallet_trip_price: 0,
+          tiers: [{ range_from: 0, range_to: null, label: 'Truck 1,5mt', pricing_unit: 'chuyen', price: 0 }],
+        },
+        1,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
   });
 });
 

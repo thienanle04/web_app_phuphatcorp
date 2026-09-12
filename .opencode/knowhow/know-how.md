@@ -272,8 +272,8 @@ Base URL: `/api`
 | GET/POST/PUT/DELETE | /route-pricing/price-books | view/manage | Master bảng giá (tên tự do, unique active) |
 | GET/POST/PUT/DELETE | /route-pricing/routes | view/manage | Scoped `price_book_id`; `ward_code` XOR `location_text`; `note` |
 | GET/POST/PUT/DELETE | /route-pricing/groups | view/manage | Scoped `price_book_id`; `ward_codes[]` XOR `location_text` XOR residual |
-| GET/POST | /route-pricing/prices | view/manage | Absolute: `adjustment_period_id` + cascade kỳ sau; `pricing_mode` + range |
-| GET | /route-pricing/prices/matrix | view | Ma trận theo `price_book_id`: weight_tables[] + trips.rows |
+| GET/POST | /route-pricing/prices | view/manage | Absolute: `adjustment_period_id` + cascade kỳ sau; `pricing_mode` `by_weight`\|`by_trips`\|`by_truck`; truck tiers dùng `label` |
+| GET | /route-pricing/prices/matrix | view | Ma trận theo `price_book_id`: weight_tables[] + truck_tables[] + trips.rows |
 | PUT | /route-pricing/prices/groups/:routeGroupId/absolute | manage | Sửa giá gốc + recompute cascade |
 | GET | /route-pricing/lookup | view | **Deferred** (501 LOOKUP_DEFERRED) — CR riêng sau |
 
