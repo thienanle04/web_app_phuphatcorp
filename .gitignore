@@ -16,6 +16,7 @@ Thumbs.db
 
 # Dependencies
 node_modules/
+__pycache__/
 
 # Build
 dist/
@@ -43,6 +44,7 @@ lerna-debug.log*
 ~$*.csv
 ~$*.docx
 ~$*.doc
+backups/
 
 # Local docker migrate artifacts
 .docker-migrate/
