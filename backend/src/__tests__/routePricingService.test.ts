@@ -1,5 +1,5 @@
 import { noteKey, normalizeLocation, roundToThousands } from '../types/routePricing';
-import { routePricingService, tierSchemaKey, weightTierColumnKey, isTierKeySubset, mergeCompatibleWeightBuckets, tierColumnKeys, truckSchemaKey, truckTierColumnKey, buildUnionTruckColumns } from '../services/routePricingService';
+import { routePricingService, tierSchemaKey, weightTierColumnKey, isTierKeySubset, mergeCompatibleWeightBuckets, tierColumnKeys, truckSchemaKey, truckTierColumnKey, buildUnionTruckColumns, truckClassMt } from '../services/routePricingService';
 import { pool } from './__mocks__/database';
 
 const mockPool = pool as jest.Mocked<typeof pool>;
@@ -210,6 +210,30 @@ describe('CR: by_truck', () => {
       'pallet',
     ]);
     expect(cols.filter((c) => c.kind === 'truck')).toHaveLength(3);
+  });
+
+  it('buildUnionTruckColumns orders class tải 0,5 → 15 even if first group lacks 0,5mt', () => {
+    expect(truckClassMt('Truck 0,5mt')).toBe(0.5);
+    expect(truckClassMt('Truck 1,25mt')).toBe(1.25);
+    expect(truckClassMt('8 < Truck ≤16')).toBeNull();
+    const firstSeen = [
+      { range_from: 0, range_to: null, label: 'Truck 1,25mt', pricing_unit: 'chuyen' as const, price: 1, sort_order: 0 },
+      { range_from: 0, range_to: null, label: 'Truck 2,5mt', pricing_unit: 'chuyen' as const, price: 2, sort_order: 1 },
+    ];
+    const laterHas05 = [
+      { range_from: 0, range_to: null, label: 'Truck 0,5mt', pricing_unit: 'chuyen' as const, price: 3, sort_order: 0 },
+      { range_from: 0, range_to: null, label: 'Truck 1,25mt', pricing_unit: 'chuyen' as const, price: 4, sort_order: 1 },
+      { range_from: 0, range_to: null, label: 'Truck 1,5mt', pricing_unit: 'chuyen' as const, price: 5, sort_order: 2 },
+      { range_from: 0, range_to: null, label: 'Truck 15mt', pricing_unit: 'tan' as const, price: 6, sort_order: 3 },
+    ];
+    const cols = buildUnionTruckColumns([firstSeen, laterHas05]);
+    expect(cols.filter((c) => c.kind === 'truck').map((c) => c.label)).toEqual([
+      'Truck 0,5mt',
+      'Truck 1,25mt',
+      'Truck 1,5mt',
+      'Truck 2,5mt',
+      'Truck 15mt',
+    ]);
   });
 
   it('allows mixed units and ≤ vs <= as distinct labels', async () => {
