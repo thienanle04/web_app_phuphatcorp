@@ -254,10 +254,13 @@ function PriceMatrixWeightTableView({
   table: PriceMatrixWeightTable;
 }) {
   const cols = table.columns;
+  const hideCaption = cols.some((c) => c.kind === 'truck') || !table.schema_label;
   const { lefts, registerCell } = useStickyLeftOffsets(2);
   return (
     <div className="space-y-2">
-      <p className="text-xs text-neutral-500">{table.schema_label}</p>
+      {!hideCaption && (
+        <p className="text-xs text-neutral-500">{table.schema_label}</p>
+      )}
       <div className="overflow-auto rounded-lg border border-neutral-200 dark:border-neutral-700 max-h-[70vh]">
         <table className="min-w-max border-separate border-spacing-0 text-xs">
           <thead>

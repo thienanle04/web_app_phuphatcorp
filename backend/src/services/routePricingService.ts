@@ -425,23 +425,41 @@ export function truckSchemaKey(tiers: RoutePriceTier[]): string {
   return ordered.map((t) => truckTierColumnKey(t)).join('|');
 }
 
-function buildTruckColumns(tiers: RoutePriceTier[]): PriceMatrixWeightColumn[] {
-  const ordered = [...tiers].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  const columns: PriceMatrixWeightColumn[] = ordered.map((tier) => ({
+function truckColumnFromTier(tier: RoutePriceTier): PriceMatrixWeightColumn {
+  return {
     key: truckTierColumnKey(tier),
     kind: 'truck',
     label: truckLabel(tier),
     unit_label: tier.pricing_unit === 'chuyen' ? 'vnđ/chuyến' : 'vnđ/tấn',
     hint: null,
     pricing_unit: tier.pricing_unit,
-  }));
-  columns.push({
+  };
+}
+
+function palletTruckColumn(): PriceMatrixWeightColumn {
+  return {
     key: 'pallet',
     kind: 'pallet',
     label: 'Pallet',
     unit_label: 'vnđ/chuyến',
     hint: null,
-  });
+  };
+}
+
+/** Union truck columns across groups: first-seen order, Pallet last. Exported for tests. */
+export function buildUnionTruckColumns(tierLists: RoutePriceTier[][]): PriceMatrixWeightColumn[] {
+  const seen = new Set<string>();
+  const columns: PriceMatrixWeightColumn[] = [];
+  for (const tiers of tierLists) {
+    const ordered = [...tiers].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    for (const tier of ordered) {
+      const key = truckTierColumnKey(tier);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      columns.push(truckColumnFromTier(tier));
+    }
+  }
+  columns.push(palletTruckColumn());
   return columns;
 }
 
@@ -495,7 +513,7 @@ async function insertScaledVersionsFromBases(
           pricing_unit: tier.pricing_unit,
           price: num(tier.price),
           min_billable_ton: nullableNumber(tier.min_billable_ton),
-          label: tier.label == null || String(tier.label).trim() === '' ? null : String(tier.label),
+          label: tier.label,
         })),
         data.percent,
       ),
@@ -1203,66 +1221,52 @@ export const routePricingService = {
         return a.schema_key.localeCompare(b.schema_key);
       });
 
-    type ExactTruckBucket = { schema_key: string; groups: GroupBundle[] };
-    const truckBuckets = new Map<string, ExactTruckBucket>();
-    for (const bundle of bundles) {
-      if (!bundle.absolute || bundle.absolute.pricing_mode !== 'by_truck') continue;
-      const key = truckSchemaKey(bundle.absolute.tiers);
-      let bucket = truckBuckets.get(key);
-      if (!bucket) {
-        bucket = { schema_key: key, groups: [] };
-        truckBuckets.set(key, bucket);
-      }
-      bucket.groups.push(bundle);
-    }
+    const truckGroups = bundles
+      .filter((b) => b.absolute?.pricing_mode === 'by_truck')
+      .sort((a, b) =>
+        a.tinh === b.tinh ? a.name.localeCompare(b.name, 'vi') : a.tinh.localeCompare(b.tinh, 'vi'),
+      );
 
-    const truck_tables: PriceMatrixWeightTable[] = [...truckBuckets.values()]
-      .map((bucket) => {
-        const columns = buildTruckColumns(bucket.groups[0].absolute!.tiers);
-        const schema_key = columns.filter((c) => c.kind === 'truck').map((c) => c.key).join('|');
-        const sortedGroups = [...bucket.groups].sort((a, b) =>
-          a.tinh === b.tinh ? a.name.localeCompare(b.name, 'vi') : a.tinh.localeCompare(b.tinh, 'vi'),
-        );
-        const rows = sortedGroups.map((bundle, index) => {
-          const cells: Record<string, Record<string, number | null>> = {};
-          for (const period of periods) {
-            const version = bundle.byPeriod.get(period.id);
-            const periodCells: Record<string, number | null> = {};
-            for (const col of columns) {
-              if (col.kind === 'pallet') {
-                periodCells[col.key] = version ? version.pallet_trip_price : null;
-                continue;
-              }
-              if (!version) {
-                periodCells[col.key] = null;
-                continue;
-              }
-              const tier = version.tiers.find((t) => truckTierColumnKey(t) === col.key);
-              periodCells[col.key] = tier ? num(tier.price) : null;
+    const truck_tables: PriceMatrixWeightTable[] = [];
+    if (truckGroups.length > 0) {
+      const columns = buildUnionTruckColumns(truckGroups.map((g) => g.absolute!.tiers));
+      const schema_key = columns.filter((c) => c.kind === 'truck').map((c) => c.key).join('|');
+      const rows = truckGroups.map((bundle, index) => {
+        const cells: Record<string, Record<string, number | null>> = {};
+        for (const period of periods) {
+          const version = bundle.byPeriod.get(period.id);
+          const periodCells: Record<string, number | null> = {};
+          for (const col of columns) {
+            if (col.kind === 'pallet') {
+              periodCells[col.key] = version ? version.pallet_trip_price : null;
+              continue;
             }
-            cells[String(period.id)] = periodCells;
+            if (!version) {
+              periodCells[col.key] = null;
+              continue;
+            }
+            const tier = version.tiers.find((t) => truckTierColumnKey(t) === col.key);
+            periodCells[col.key] = tier ? num(tier.price) : null;
           }
-          return {
-            stt: index + 1,
-            route_group_id: bundle.id,
-            group_name: bundle.name,
-            is_residual: bundle.is_residual,
-            province_code: bundle.province_code,
-            tinh: bundle.tinh,
-            cells,
-          };
-        });
+          cells[String(period.id)] = periodCells;
+        }
         return {
-          schema_key,
-          schema_label: columns.filter((c) => c.kind !== 'pallet').map((c) => c.label).join(' · '),
-          columns,
-          rows,
+          stt: index + 1,
+          route_group_id: bundle.id,
+          group_name: bundle.name,
+          is_residual: bundle.is_residual,
+          province_code: bundle.province_code,
+          tinh: bundle.tinh,
+          cells,
         };
-      })
-      .sort((a, b) => {
-        if (b.rows.length !== a.rows.length) return b.rows.length - a.rows.length;
-        return a.schema_key.localeCompare(b.schema_key);
       });
+      truck_tables.push({
+        schema_key,
+        schema_label: '',
+        columns,
+        rows,
+      });
+    }
 
     const tripBundles = bundles
       .filter((b) => b.absolute?.pricing_mode === 'by_trips')
