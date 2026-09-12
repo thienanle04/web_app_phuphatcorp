@@ -495,6 +495,7 @@ async function insertScaledVersionsFromBases(
           pricing_unit: tier.pricing_unit,
           price: num(tier.price),
           min_billable_ton: nullableNumber(tier.min_billable_ton),
+          label: tier.label,
         })),
         data.percent,
       ),
