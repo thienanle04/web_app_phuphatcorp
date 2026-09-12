@@ -1,6 +1,7 @@
 -- Cascade route_price_versions từ bảng giá gốc sang các kỳ điều chỉnh sau.
 -- Mirror BE createAbsolutePrice / updateAbsolutePrice cascade:
 --   mỗi kỳ sau = scale % từ version kỳ liền trước (round nghìn), base_version_id = prev.
+--   copy nguyên range / unit / min / sort_order / label (by_truck cần label; weight/trips label NULL).
 --
 -- Không filter theo NCC — cascade mọi config thuộc mọi price_books.
 --
@@ -90,7 +91,8 @@ BEGIN
         pricing_unit,
         price,
         min_billable_ton,
-        sort_order
+        sort_order,
+        label
       )
       SELECT
         new_id,
@@ -99,7 +101,8 @@ BEGIN
         t.pricing_unit,
         ROUND(t.price * factor / 1000.0) * 1000,
         t.min_billable_ton,
-        t.sort_order
+        t.sort_order,
+        t.label
       FROM route_price_tiers t
       WHERE t.price_version_id = prev_id
       ORDER BY t.sort_order, t.range_from;
