@@ -159,6 +159,28 @@ function splitDestinations(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** Excel "Bảo Lộc" = 3 phường DB: 1/2/3 Bảo Lộc. */
+function expandWardAliases(names: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (n: string) => {
+    const k = canonicalGeoName(n).toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(n);
+  };
+  for (const name of names) {
+    if (/^Bảo Lộc$/i.test(canonicalGeoName(name))) {
+      push('1 Bảo Lộc');
+      push('2 Bảo Lộc');
+      push('3 Bảo Lộc');
+      continue;
+    }
+    push(name);
+  }
+  return out;
+}
+
 function weightTiersFromCols(row: unknown[]): Tier[] {
   const p0 = parseMoney(row[5]);
   const p1 = parseMoney(row[6]);
@@ -245,7 +267,7 @@ function loadClfRecords(): ClfRecord[] {
       const phuongRaw = sanitizeText(row[2]);
       const diaDiem = sanitizeText(row[3]) || null;
       const note = cleanNote(sanitizeText(row[4]) || null);
-      const wardNames = phuongRaw ? splitDestinations(phuongRaw) : [];
+      const wardNames = phuongRaw ? expandWardAliases(splitDestinations(phuongRaw)) : [];
       const locationText = wardNames.length ? null : diaDiem;
       if (phuongRaw && diaDiem) {
         console.log(

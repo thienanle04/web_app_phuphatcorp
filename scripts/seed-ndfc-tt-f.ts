@@ -165,6 +165,28 @@ function splitDestinations(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** Excel "Bảo Lộc" = 3 phường DB: 1/2/3 Bảo Lộc. */
+function expandWardAliases(names: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (n: string) => {
+    const k = canonicalGeoName(n).toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(n);
+  };
+  for (const name of names) {
+    if (/^Bảo Lộc$/i.test(canonicalGeoName(name))) {
+      push('1 Bảo Lộc');
+      push('2 Bảo Lộc');
+      push('3 Bảo Lộc');
+      continue;
+    }
+    push(name);
+  }
+  return out;
+}
+
 /** Cân: col6 ≤2.5, col7 >8–16, col8 >16–23, col9 >23, col10 pallet. Không seed >2.5–8. */
 function weightTiersFromCols(row: unknown[]): { tiers: Tier[]; pallet: number } {
   const p0 = parseMoney(row[6]);
@@ -193,7 +215,7 @@ function wardNamesFromPhuong(province: string, phuongRaw: string): string[] {
   const names = phuongRaw ? splitDestinations(phuongRaw) : [];
   const p = canonicalGeoName(province);
   if (names.length === 1 && canonicalGeoName(names[0]) === p) return [];
-  return names;
+  return expandWardAliases(names);
 }
 
 type Section = 'weight' | 'trips' | 'skip';

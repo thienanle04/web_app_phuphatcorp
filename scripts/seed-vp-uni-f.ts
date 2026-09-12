@@ -1,26 +1,23 @@
 /**
- * Migrate sheet "MCC GH (f)" → route pricing (absolute @ 2026-01-01).
+ * Migrate sheet "VP-uni (f)" → route pricing (absolute @ 2026-01-01).
  *
  * Source: reference/xu_ly_du_lieu_ke_toan/BẢNG GIÁ - 2026 - 1.8.2026.xlsx
- * Layout (lệch CLF): STT | Tuyến cũ | Tuyến mới | Tỉnh | Phường | Địa điểm | Note | tiers | pallet
- *
- * Hai khối, một bảng giá "MCC GH":
- *   1) Cân — ≤2.5 / >2.5–8 (min 5 tấn, chỉ seed khi giá > 0) / >8–16 / >16–23 / >23 / pallet
- *   2) MCC - KHO — by_trips, một group, bốn bậc chuyến/xe/ngày
- * Dòng Tổng khối kho: log, không INSERT.
- * Note Excel (vd. Đường nhỏ) giữ nguyên.
+ * Layout: STT | Tỉnh | Phường | ≤2.5 | >2.5–8 (min 5) | >8–16 | >16–23 | >23
+ *   Phường → wards (RAISE nếu thiếu). "-" / trống → residual.
+ *   Không Địa điểm, note, pallet, trips, IBC.
+ *   Hai dòng cùng tỉnh+phường (vd. Hiệp Phước) gộp bậc giá.
  *
  * Prerequisites:
  *   - provinces imported
- *   - bảng giá MCC GH (tạo tự động nếu chưa có, match exact name)
+ *   - bảng giá VP-uni (tạo tự động nếu chưa có)
  *   - npm run seed:adjustment-periods
  *
  * After (optional): npm run cascade:route-pricing
  *
  * Run from repo root:
- *   npx tsx scripts/seed-mcc-gh-f.ts --dry-run
- *   npx tsx scripts/seed-mcc-gh-f.ts
- *   # or: npm run seed:mcc-gh-f
+ *   npx tsx scripts/seed-vp-uni-f.ts --dry-run
+ *   npx tsx scripts/seed-vp-uni-f.ts
+ *   # or: npm run seed:vp-uni-f
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,12 +36,12 @@ loadEnv({ path: path.join(root, 'backend/.env') });
 
 const USER_ID = 19;
 const PERIOD = '2026-01-01';
-const PRICE_BOOK_NAME = 'MCC GH';
-const SHEET_NAME = 'MCC GH (f)';
+const PRICE_BOOK_NAME = 'VP-uni';
+const SHEET_NAME = 'VP-uni (f)';
 const XLSX_PATH = path.join(root, 'reference/xu_ly_du_lieu_ke_toan/BẢNG GIÁ - 2026 - 1.8.2026.xlsx');
 
 type PricingUnit = 'tan' | 'chuyen';
-type PricingMode = 'by_weight' | 'by_trips';
+type PricingMode = 'by_weight';
 
 interface Tier {
   from: number;
@@ -54,14 +51,11 @@ interface Tier {
   min: number | null;
 }
 
-interface MccGhRecord {
+interface VpUniRecord {
   excelRow: number;
   groupName: string;
   province: string;
-  /** Cột Phường — lookup wards.ward_code */
   wardNames: string[];
-  /** Cột Địa điểm — free-text location_text (không trộn với wardNames) */
-  locationText: string | null;
   residual: boolean;
   note: string | null;
   pricing_mode: PricingMode;
@@ -140,14 +134,11 @@ function noteKey(note?: string | null): string {
   return (note ?? '').trim();
 }
 
-function cleanNote(note?: string | null): string | null {
-  return noteKey(note) || null;
-}
-
 function normalizeProvince(raw: string): string {
   let p = sanitizeText(raw);
   p = p.replace(/^TP,?\s*/i, '').replace(/^Thành phố\s+/i, '').replace(/^Tỉnh\s+/i, '');
   if (/^(HCM|Hồ Chí Minh)$/i.test(p)) return 'Hồ Chí Minh';
+  if (/^Dak\s*Lak$/i.test(p)) return 'Đắk Lắk';
   return canonicalGeoName(p);
 }
 
@@ -167,80 +158,64 @@ function splitDestinations(raw: string): string[] {
 /** Excel "Bảo Lộc" = 3 phường DB: 1/2/3 Bảo Lộc. */
 function expandWardAliases(names: string[]): string[] {
   const out: string[] = [];
-  const seen = new Set<string>();
-  const push = (n: string) => {
-    const k = canonicalGeoName(n).toLowerCase();
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(n);
-  };
   for (const name of names) {
     if (/^Bảo Lộc$/i.test(canonicalGeoName(name))) {
-      push('1 Bảo Lộc');
-      push('2 Bảo Lộc');
-      push('3 Bảo Lộc');
+      out.push('1 Bảo Lộc', '2 Bảo Lộc', '3 Bảo Lộc');
       continue;
     }
-    push(name);
+    out.push(name);
   }
   return out;
 }
 
-/** Cân: col7 ≤2.5, col8 >2.5–8 (min 5 tấn), col9 >8–16, col10 >16–23, col11 >23, col12 pallet. */
-function weightTiersFromCols(row: unknown[]): { tiers: Tier[]; pallet: number } {
-  const p0 = parseMoney(row[7]);
-  const p1 = parseMoney(row[8]);
-  const p2 = parseMoney(row[9]);
-  const p3 = parseMoney(row[10]);
-  const p4 = parseMoney(row[11]);
+function weightTiersFromCols(row: unknown[]): Tier[] {
+  const p0 = parseMoney(row[3]);
+  const p1 = parseMoney(row[4]);
+  const p2 = parseMoney(row[5]);
+  const p3 = parseMoney(row[6]);
+  const p4 = parseMoney(row[7]);
   const tiers: Tier[] = [];
   if (p0 != null && p0 > 0) tiers.push({ from: 0, to: 2.5, unit: 'chuyen', price: p0, min: null });
   if (p1 != null && p1 > 0) tiers.push({ from: 2.5, to: 8, unit: 'tan', price: p1, min: 5 });
   if (p2 != null && p2 > 0) tiers.push({ from: 8, to: 16, unit: 'tan', price: p2, min: null });
   if (p3 != null && p3 > 0) tiers.push({ from: 16, to: 23, unit: 'tan', price: p3, min: null });
   if (p4 != null && p4 > 0) tiers.push({ from: 23, to: null, unit: 'tan', price: p4, min: null });
-  return { tiers, pallet: parseMoney(row[12]) ?? 0 };
+  return tiers;
 }
 
-function parseTripRange(raw: string): { from: number; to: number | null } | null {
-  const n = sanitizeText(raw);
-  if (!n || /tổng/i.test(n)) return null;
-  if (/6\s*chuyến\s*trở lên/i.test(n)) return { from: 6, to: null };
-  if (/4\s*-?\s*5\s*chuyến/i.test(n)) return { from: 4, to: 5 };
-  if (/(?:^|[^\d])3\s*chuyến/i.test(n) && !/13/.test(n)) return { from: 3, to: 3 };
-  if (/0?1\s*-?\s*2\s*chuyến/i.test(n)) return { from: 1, to: 2 };
-  return null;
+function tierKey(t: Tier): string {
+  return `${t.from}|${t.to ?? ''}|${t.unit}`;
 }
 
-/** Phường trùng tên tỉnh (vd. "Hồ Chí Minh") → residual, không lookup ward. */
-function wardNamesFromPhuong(province: string, phuongRaw: string): string[] {
-  const names = phuongRaw ? splitDestinations(phuongRaw) : [];
-  const p = canonicalGeoName(province);
-  if (names.length === 1 && canonicalGeoName(names[0]) === p) return [];
-  return expandWardAliases(names);
-}
-
-type Section = 'weight' | 'trips' | 'skip';
-
-function detectSection(row: unknown[]): Section | null {
-  const joined = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    .map((i) => sanitizeText(row[i]))
-    .join('|');
-  if (/MCC\s*-?\s*KHO/i.test(joined)) return 'trips';
-  const c3 = sanitizeText(row[3]);
-  const c4 = sanitizeText(row[4]);
-  const c5 = sanitizeText(row[5]);
-  if (/^STT$/i.test(sanitizeText(row[0])) && /Giá cước/i.test(joined) && /Địa điểm/i.test(joined)) {
-    return 'trips';
+function mergeTiers(existing: Tier[], incoming: Tier[], excelRow: number, groupName: string): Tier[] {
+  const byKey = new Map(existing.map((t) => [tierKey(t), t]));
+  for (const t of incoming) {
+    const prev = byKey.get(tierKey(t));
+    if (!prev) {
+      byKey.set(tierKey(t), t);
+      continue;
+    }
+    if (prev.price !== t.price || prev.min !== t.min) {
+      throw new Error(
+        `Row ${excelRow}: conflict merge "${groupName}" tier ${tierKey(t)} ` +
+          `(${prev.price} vs ${t.price})`,
+      );
+    }
   }
-  if (!/^Tỉnh$/i.test(c3) || !/Phường|Địa điểm/i.test(c4 + c5)) return null;
-  if (/≤\s*2/i.test(joined) || /Giá pallet/i.test(joined) || />\s*23/i.test(joined)) {
-    return 'weight';
-  }
-  return 'weight';
+  const order = ['0|2.5|chuyen', '2.5|8|tan', '8|16|tan', '16|23|tan', '23||tan'];
+  return order.map((k) => byKey.get(k)).filter((t): t is Tier => t != null);
 }
 
-function loadMccGhRecords(): MccGhRecord[] {
+function recDedupeKey(province: string, residual: boolean, wardNames: string[]): string {
+  if (residual) return `r:${province}`;
+  return `w:${province}\0${wardNames.map((n) => canonicalGeoName(n).toLowerCase()).join('|')}`;
+}
+
+function isHeaderRow(row: unknown[]): boolean {
+  return /^Tỉnh$/i.test(sanitizeText(row[1])) && /Phường/i.test(sanitizeText(row[2]));
+}
+
+function loadVpUniRecords(): VpUniRecord[] {
   if (!fs.existsSync(XLSX_PATH)) {
     throw new Error(`Missing Excel: ${XLSX_PATH}`);
   }
@@ -254,124 +229,52 @@ function loadMccGhRecords(): MccGhRecord[] {
     raw: false,
   });
 
-  const records: MccGhRecord[] = [];
-  const seenKeys = new Set<string>();
-  const tripGroups = new Map<string, MccGhRecord>();
-  let section: Section = 'skip';
+  const byKey = new Map<string, VpUniRecord>();
+  let inTable = false;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
 
-    const headerSection = detectSection(row);
-    if (headerSection) {
-      section = headerSection;
+    if (isHeaderRow(row)) {
+      inTable = true;
       continue;
     }
-    if (section === 'skip') continue;
+    if (!inTable) continue;
 
     const c1 = sanitizeText(row[1]);
-    const c2 = sanitizeText(row[2]);
-    const provinceRaw = sanitizeText(row[3]);
-    if (!provinceRaw || /^vnđ/i.test(provinceRaw) || /^96\.2$/i.test(c1) || /^96\.2$/i.test(c2) || /^96\.2$/i.test(provinceRaw)) {
+    if (!c1 || /^vnđ/i.test(c1) || /^STT$/i.test(sanitizeText(row[0]))) continue;
+
+    const province = normalizeProvince(c1);
+    const phuongRaw = sanitizeText(row[2]);
+    const residual = !phuongRaw || phuongRaw === '-';
+    const wardNames = residual ? [] : expandWardAliases(splitDestinations(phuongRaw));
+    const tiers = weightTiersFromCols(row);
+    if (!tiers.length) {
+      throw new Error(`Row ${i + 1}: no weight price for ${province} / ${phuongRaw || '-'}`);
+    }
+    const labels = wardNames.length ? wardNames : [];
+    const groupName = buildGroupName(province, labels, null);
+    const key = recDedupeKey(province, residual, wardNames);
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.tiers = mergeTiers(existing.tiers, tiers, i + 1, groupName);
       continue;
     }
-    if (/^STT$/i.test(sanitizeText(row[0]))) continue;
-
-    const province = normalizeProvince(provinceRaw);
-
-    if (section === 'trips') {
-      const locationText = sanitizeText(row[5]);
-      const note = cleanNote(sanitizeText(row[6]) || null);
-      const tripLabel = sanitizeText(row[8]);
-      const price = parseMoney(row[9]);
-      if (/tổng/i.test(note ?? '') || /tổng/i.test(tripLabel) || /tổng/i.test(sanitizeText(row[6]))) {
-        console.log(`TỔNG excel=${price ?? ''} row ${i + 1} — parse only, no INSERT`);
-        continue;
-      }
-      if (!locationText || price == null || !(price > 0)) {
-        console.log(`SKIP trips (no price): row ${i + 1}`);
-        continue;
-      }
-      const range = parseTripRange(tripLabel);
-      if (!range) {
-        console.log(`SKIP trips (unparsed range "${tripLabel}"): row ${i + 1}`);
-        continue;
-      }
-      const groupName = buildGroupName(province, [locationText], null);
-      const key = `t:${province}\0${locationText}`;
-      let rec = tripGroups.get(key);
-      if (!rec) {
-        rec = {
-          excelRow: i + 1,
-          groupName,
-          province,
-          wardNames: [],
-          locationText,
-          residual: false,
-          note: null,
-          pricing_mode: 'by_trips',
-          pallet: 0,
-          tiers: [],
-        };
-        tripGroups.set(key, rec);
-      }
-      if (rec.tiers.some((t) => t.from === range.from && t.to === range.to)) {
-        console.log(`SKIP dup trip tier ${range.from}-${range.to}: row ${i + 1}`);
-        continue;
-      }
-      rec.tiers.push({ from: range.from, to: range.to, unit: 'chuyen', price, min: null });
-      rec.tiers.sort((a, b) => a.from - b.from);
-      continue;
-    }
-
-    const phuongRaw = sanitizeText(row[4]);
-    const diaDiem = sanitizeText(row[5]) || null;
-    const note = cleanNote(sanitizeText(row[6]) || null);
-
-    const wardNames = wardNamesFromPhuong(province, phuongRaw);
-    const locationText = wardNames.length ? null : diaDiem;
-    if (phuongRaw && diaDiem && wardNames.length) {
-      console.log(
-        `WARN row ${i + 1}: có cả Phường và Địa điểm — dùng Phường (wards), bỏ Địa điểm="${diaDiem}"`,
-      );
-    }
-    const residual = wardNames.length === 0 && !locationText;
-    const priced = weightTiersFromCols(row);
-    if (!priced.tiers.length) {
-      console.log(`SKIP (no weight price): row ${i + 1} ${province}`);
-      continue;
-    }
-    const labels = wardNames.length ? wardNames : locationText ? [locationText] : [];
-    const groupName = buildGroupName(province, labels, note);
-    const key = residual
-      ? `r:${province}\0${note || ''}`
-      : `n:${province}\0${groupName}`;
-    if (seenKeys.has(key)) {
-      console.log(`SKIP dup: ${groupName}`);
-      continue;
-    }
-    seenKeys.add(key);
-    records.push({
+    byKey.set(key, {
       excelRow: i + 1,
       groupName,
       province,
       wardNames,
-      locationText,
       residual,
-      note,
+      note: null,
       pricing_mode: 'by_weight',
-      pallet: priced.pallet > 0 ? priced.pallet : 0,
-      tiers: priced.tiers,
+      pallet: 0,
+      tiers,
     });
   }
 
-  for (const rec of Array.from(tripGroups.values())) {
-    if (!rec.tiers.length) continue;
-    records.push(rec);
-  }
-
-  return records;
+  return [...byKey.values()];
 }
 
 async function resolveProvince(
@@ -390,7 +293,6 @@ async function resolveProvince(
   return rows[0];
 }
 
-/** Lookup ward by name within province (Excel Phường → wards). */
 async function resolveWard(
   client: PoolClient,
   provinceCode: string,
@@ -425,43 +327,35 @@ async function resolveWard(
 async function resolveRecordDestinations(
   client: PoolClient,
   provinceCode: string,
-  rec: MccGhRecord,
+  rec: VpUniRecord,
 ): Promise<RouteDestination[]> {
   if (rec.residual) return [];
-  if (rec.wardNames.length && rec.locationText) {
-    throw new Error(
-      `Row ${rec.excelRow}: không trộn Phường và Địa điểm (${rec.groupName})`,
-    );
-  }
   const out: RouteDestination[] = [];
   for (const wName of rec.wardNames) {
     const ward = await resolveWard(client, provinceCode, wName);
     out.push({ ward_code: ward.code, location_text: null, phuong: ward.name });
   }
-  if (rec.locationText) {
-    out.push({
-      ward_code: null,
-      location_text: rec.locationText,
-      phuong: rec.locationText,
-    });
-  }
   return out;
 }
 
-async function ensurePriceBook(client: PoolClient, name: string): Promise<number> {
+async function ensurePriceBook(client: PoolClient): Promise<number> {
   const found = await client.query<{ id: number }>(
     `SELECT id FROM price_books
-     WHERE status='active' AND lower(trim(name)) = lower($1)
-     ORDER BY id
+     WHERE status='active'
+       AND (
+         lower(trim(name)) = lower($1)
+         OR name ILIKE $1 || ' — %'
+       )
+     ORDER BY CASE WHEN lower(trim(name)) = lower($1) THEN 0 ELSE 1 END, id
      LIMIT 1`,
-    [name],
+    [PRICE_BOOK_NAME],
   );
   if (found.rows[0]) return found.rows[0].id;
   const created = await client.query<{ id: number }>(
     `INSERT INTO price_books (name, created_by, updated_by) VALUES ($1,$2,$2) RETURNING id`,
-    [name, USER_ID],
+    [PRICE_BOOK_NAME, USER_ID],
   );
-  console.log(`Created price book "${name}" id=${created.rows[0].id}`);
+  console.log(`Created price book "${PRICE_BOOK_NAME}" id=${created.rows[0].id}`);
   return created.rows[0].id;
 }
 
@@ -469,7 +363,7 @@ async function findExistingGroup(
   client: PoolClient,
   priceBookId: number,
   provinceCode: string,
-  rec: MccGhRecord,
+  rec: VpUniRecord,
 ): Promise<number | null> {
   if (rec.residual) {
     const { rows } = await client.query<{ id: number }>(
@@ -553,7 +447,7 @@ async function ensureGroupMembers(
 
 async function ensureGroupPricing(
   client: PoolClient,
-  opts: { groupId: number; periodId: number; rec: MccGhRecord },
+  opts: { groupId: number; periodId: number; rec: VpUniRecord },
 ): Promise<'created' | 'updated' | 'exists'> {
   const { groupId, periodId, rec } = opts;
   const configRes = await client.query<{ id: number }>(
@@ -612,14 +506,6 @@ async function ensureGroupPricing(
     return 'created';
   }
 
-  // Sync pallet from Excel onto existing period version when changed
-  if (rec.pallet > 0 && Number(versionRes.rows[0].pallet_trip_price) !== rec.pallet) {
-    await client.query(`UPDATE route_price_versions SET pallet_trip_price=$1 WHERE id=$2`, [
-      rec.pallet,
-      versionRes.rows[0].id,
-    ]);
-    return 'updated';
-  }
   return 'exists';
 }
 
@@ -630,7 +516,7 @@ async function insertGroupWithPricing(
     periodId: number;
     provinceCode: string;
     tinh: string;
-    rec: MccGhRecord;
+    rec: VpUniRecord;
     destinations: RouteDestination[];
   },
 ): Promise<void> {
@@ -654,48 +540,52 @@ async function insertGroupWithPricing(
   await ensureGroupPricing(client, { groupId, periodId, rec });
 }
 
+async function resolveAll(
+  client: PoolClient,
+  records: VpUniRecord[],
+): Promise<void> {
+  for (const rec of records) {
+    const province = await resolveProvince(client, rec.province);
+    const destinations = await resolveRecordDestinations(client, province.code, rec);
+    if (!rec.residual) {
+      rec.groupName = buildGroupName(
+        province.name,
+        destinations.map((d) => d.phuong),
+        rec.note,
+      );
+    } else {
+      rec.groupName = buildGroupName(province.name, [], rec.note);
+    }
+    const kind = rec.residual ? 'residual' : `wards=${destinations.length}`;
+    console.log(
+      `#${rec.excelRow} [${rec.pricing_mode}] ${rec.groupName} | ${kind} pallet=${rec.pallet} tiers=${rec.tiers.length}`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
-  const records = loadMccGhRecords();
-  console.log(`Parsed ${records.length} MCC GH (f) groups from Excel`);
+  const records = loadVpUniRecords();
+  console.log(`Parsed ${records.length} VP-uni (f) groups from Excel`);
   console.log(
-    `  ${PRICE_BOOK_NAME}` +
-      ` by_weight=${records.filter((r) => r.pricing_mode === 'by_weight').length}` +
-      ` by_trips=${records.filter((r) => r.pricing_mode === 'by_trips').length}` +
-      ` withPallet=${records.filter((r) => r.pallet > 0).length}` +
+    `  by_weight=${records.filter((r) => r.pricing_mode === 'by_weight').length}` +
       ` residual=${records.filter((r) => r.residual).length}` +
       ` wards=${records.filter((r) => r.wardNames.length > 0).length}` +
-      ` locationText=${records.filter((r) => !!r.locationText).length}`,
+      ` locationText=0`,
   );
-  if (dryRun) {
-    for (const r of records) {
-      const kind = r.residual
-        ? 'residual'
-        : r.wardNames.length
-          ? `wards=${r.wardNames.length}`
-          : `location="${r.locationText}"`;
-      const tierHint =
-        r.pricing_mode === 'by_trips'
-          ? r.tiers.map((t) => `${t.from}-${t.to ?? '∞'}=${t.price}`).join(',')
-          : `tiers=${r.tiers.length}`;
-      console.log(
-        `#${r.excelRow} [${r.pricing_mode}] ${r.groupName} | ${kind} pallet=${r.pallet} ${tierHint} note=${r.note ?? ''}`,
-      );
-    }
-    console.log('Dry-run only — no DB writes.');
-    return;
-  }
 
   const client = await pool.connect();
-  let inserted = 0;
-  let repaired = 0;
-  let skipped = 0;
-  let palletSynced = 0;
-
   try {
+    await resolveAll(client, records);
+
+    if (dryRun) {
+      console.log('Dry-run only — no DB writes.');
+      return;
+    }
+
     await client.query('BEGIN');
 
-    const priceBookId = await ensurePriceBook(client, PRICE_BOOK_NAME);
+    const priceBookId = await ensurePriceBook(client);
     console.log(`Using price book id=${priceBookId} (${PRICE_BOOK_NAME})`);
 
     const periodRes = await client.query<{ id: number }>(
@@ -709,19 +599,13 @@ async function main(): Promise<void> {
     }
     const periodId = periodRes.rows[0].id;
 
+    let inserted = 0;
+    let repaired = 0;
+    let skipped = 0;
+
     for (const rec of records) {
       const province = await resolveProvince(client, rec.province);
       const destinations = await resolveRecordDestinations(client, province.code, rec);
-      // Group name theo tên ward trong DB (giống createGroup FE)
-      if (!rec.residual) {
-        rec.groupName = buildGroupName(
-          province.name,
-          destinations.map((d) => d.phuong),
-          rec.note,
-        );
-      } else {
-        rec.groupName = buildGroupName(province.name, [], rec.note);
-      }
 
       const existingId = await findExistingGroup(client, priceBookId, province.code, rec);
       if (existingId != null) {
@@ -741,9 +625,6 @@ async function main(): Promise<void> {
         if (pricing === 'created') {
           console.log(`Repaired: ${rec.groupName.slice(0, 80)}`);
           repaired += 1;
-        } else if (pricing === 'updated') {
-          console.log(`Pallet sync: ${rec.groupName.slice(0, 80)}`);
-          palletSynced += 1;
         } else {
           console.log(`Skip existing: ${rec.groupName.slice(0, 80)}`);
           skipped += 1;
@@ -765,10 +646,14 @@ async function main(): Promise<void> {
 
     await client.query('COMMIT');
     console.log(
-      `✅ MCC GH (f) done — inserted ${inserted}, repaired ${repaired}, palletSynced ${palletSynced}, skipped ${skipped}, total ${records.length}`,
+      `✅ VP-uni (f) done — inserted ${inserted}, repaired ${repaired}, skipped ${skipped}, total ${records.length}`,
     );
   } catch (err) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      /* dry-run / no txn */
+    }
     throw err;
   } finally {
     client.release();
@@ -777,6 +662,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('MCC GH (f) seed failed:', err);
+  console.error('VP-uni (f) seed failed:', err);
   process.exitCode = 1;
 });

@@ -8,6 +8,8 @@
     "seed:mcc-tt-f": "npx tsx scripts/seed-mcc-tt-f.ts",
     "seed:mcc-gh-f": "npx tsx scripts/seed-mcc-gh-f.ts",
     "seed:ndfc-tt-f": "npx tsx scripts/seed-ndfc-tt-f.ts",
+    "seed:ndfc-naic-f": "npx tsx scripts/seed-ndfc-naic-f.ts",
+    "seed:vp-uni-f": "npx tsx scripts/seed-vp-uni-f.ts",
     "seed:adjustment-periods": "npx tsx scripts/seed-adjustment-periods.ts",
     "cascade:route-pricing": "npx tsx scripts/cascade-route-pricing-versions.ts"
   },
