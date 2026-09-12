@@ -425,6 +425,25 @@ export function truckSchemaKey(tiers: RoutePriceTier[]): string {
   return ordered.map((t) => truckTierColumnKey(t)).join('|');
 }
 
+/** Parse class tải từ nhãn Excel `Truck 0,5mt` / `Truck 15mt`. Nhãn khoảng → null. */
+export function truckClassMt(label: string): number | null {
+  const m = String(label ?? '')
+    .trim()
+    .match(/(\d+(?:[.,]\d+)?)\s*mt\b/i);
+  if (!m) return null;
+  const n = Number(m[1].replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+function compareTruckColumns(a: PriceMatrixWeightColumn, b: PriceMatrixWeightColumn): number {
+  const ma = truckClassMt(a.label);
+  const mb = truckClassMt(b.label);
+  if (ma != null && mb != null && ma !== mb) return ma - mb;
+  if (ma != null && mb == null) return -1;
+  if (ma == null && mb != null) return 1;
+  return a.label.localeCompare(b.label, 'vi');
+}
+
 function truckColumnFromTier(tier: RoutePriceTier): PriceMatrixWeightColumn {
   return {
     key: truckTierColumnKey(tier),
@@ -446,7 +465,7 @@ function palletTruckColumn(): PriceMatrixWeightColumn {
   };
 }
 
-/** Union truck columns across groups: first-seen order, Pallet last. Exported for tests. */
+/** Union truck columns across groups, ordered by class tải (0,5 → 15), Pallet last. */
 export function buildUnionTruckColumns(tierLists: RoutePriceTier[][]): PriceMatrixWeightColumn[] {
   const seen = new Set<string>();
   const columns: PriceMatrixWeightColumn[] = [];
@@ -459,6 +478,7 @@ export function buildUnionTruckColumns(tierLists: RoutePriceTier[][]): PriceMatr
       columns.push(truckColumnFromTier(tier));
     }
   }
+  columns.sort(compareTruckColumns);
   columns.push(palletTruckColumn());
   return columns;
 }
