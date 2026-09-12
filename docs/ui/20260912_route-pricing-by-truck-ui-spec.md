@@ -159,8 +159,7 @@ Theo trọng lượng
   … weight_tables …
 
 Theo loại xe
-  [bảng 1 — schema A]
-  [bảng 2 — schema B nếu khác nhãn/đơn vị/thứ tự]
+  [đúng 1 bảng — mọi tuyến by_truck của price book]
 
 Theo chuyến / xe / ngày
   … trips …

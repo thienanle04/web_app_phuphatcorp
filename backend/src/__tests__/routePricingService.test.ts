@@ -1,5 +1,5 @@
 import { noteKey, normalizeLocation, roundToThousands } from '../types/routePricing';
-import { routePricingService, tierSchemaKey, weightTierColumnKey, isTierKeySubset, mergeCompatibleWeightBuckets, tierColumnKeys, truckSchemaKey, truckTierColumnKey } from '../services/routePricingService';
+import { routePricingService, tierSchemaKey, weightTierColumnKey, isTierKeySubset, mergeCompatibleWeightBuckets, tierColumnKeys, truckSchemaKey, truckTierColumnKey, buildUnionTruckColumns } from '../services/routePricingService';
 import { pool } from './__mocks__/database';
 
 const mockPool = pool as jest.Mocked<typeof pool>;
@@ -191,6 +191,25 @@ describe('CR: by_truck', () => {
     expect(truckSchemaKey(truckMix)).not.toBe(
       truckSchemaKey([{ ...truckMix[0], label: 'Truck 0.5mt' }, truckMix[1]]),
     );
+  });
+
+  it('buildUnionTruckColumns unions first-seen keys and keeps Pallet last', () => {
+    const schemaA = [
+      { range_from: 0, range_to: null, label: 'Truck 0,5mt', pricing_unit: 'chuyen' as const, price: 1, sort_order: 0 },
+      { range_from: 0, range_to: null, label: 'Truck 15mt', pricing_unit: 'tan' as const, price: 2, sort_order: 1 },
+    ];
+    const schemaB = [
+      { range_from: 0, range_to: null, label: 'Truck 15mt', pricing_unit: 'tan' as const, price: 3, sort_order: 0 },
+      { range_from: 0, range_to: null, label: '8 < Truck ≤16', pricing_unit: 'tan' as const, price: 4, sort_order: 1 },
+    ];
+    const cols = buildUnionTruckColumns([schemaA, schemaB]);
+    expect(cols.map((c) => c.key)).toEqual([
+      't:Truck 0,5mt:chuyen',
+      't:Truck 15mt:tan',
+      't:8 < Truck ≤16:tan',
+      'pallet',
+    ]);
+    expect(cols.filter((c) => c.kind === 'truck')).toHaveLength(3);
   });
 
   it('allows mixed units and ≤ vs <= as distinct labels', async () => {

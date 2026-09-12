@@ -132,19 +132,15 @@ BR-TRK-009: Cascade % / sửa giá gốc: copy nguyên label + pricing_unit + so
             chỉ scale price (và pallet) làm tròn nghìn như hiện tại.
             Placeholder range giữ 0 / NULL.
 
-BR-TRK-010: Ma trận — chỉ nhóm có version gốc by_truck:
-            fingerprint schema_key = join sort_order của
-              `t:{label}:{pricing_unit}`  (label đã trim, không encode thêm)
-            Hai nhóm cùng schema_key → một bảng.
-            Không merge subset (khác weight_tables).
-            columns = bậc theo sort_order, kind: 'truck' | 'pallet'; Pallet luôn cuối mỗi block kỳ.
-            column.key = schema token bậc (cùng `t:{label}:{unit}`).
-            column.label = đúng text đã lưu; unit_label = vnđ/chuyến | vnđ/tấn.
-            Response: truck_tables[] cùng shape weight_tables (rows/cells giống).
+BR-TRK-010: Ma trận — chỉ nhóm có version gốc by_truck.
+            **Một price book → tối đa một phần tử `truck_tables[0]`** (mọi tuyến by_truck
+            cùng bảng). Cột = hợp unique `t:{label}:{pricing_unit}` theo thứ tự xuất hiện
+            (nhóm sort tỉnh+tên, bậc `sort_order`); Pallet cuối. Ô không có bậc → null.
+            `schema_key` = join các cột truck (không dùng để tách bảng).
+            Không merge subset kiểu weight; không trộn hàng vào weight_tables / trips.
+            column.label = text đã lưu; unit_label = vnđ/chuyến | vnđ/tấn.
             Thứ tự section: weight_tables → truck_tables → trips.
-            Sort truck_tables: số nhóm DESC, rồi schema_key ASC.
-            Nhóm chưa có giá không vào truck_tables.
-            Không trộn hàng by_truck vào weight_tables / trips.
+            Nhóm chưa có giá không vào bảng.
 
 BR-TRK-011: Đổi chế độ trong form chưa lưu = confirm + xóa bậc + nạp form mode mới
             (weight = template 5 bậc hiện có; trips = template chuyến; truck = 1 dòng trống).
@@ -256,7 +252,7 @@ Response version/tiers **trả `label`** (weight/trips: `label: null`).
   "truck_tables": [
     {
       "schema_key": "t:Truck 0,5mt:chuyen|t:8 < Truck ≤16:tan",
-      "schema_label": "Truck 0,5mt · 8 < Truck ≤16",
+      "schema_label": "",
       "columns": [
         {
           "key": "t:Truck 0,5mt:chuyen",
@@ -280,7 +276,7 @@ Response version/tiers **trả `label`** (weight/trips: `label: null`).
 ```
 
 `PriceMatrixWeightColumn.kind` mở rộng `'pallet' | 'weight' | 'truck'` (cột bảng truck không dùng `'weight'`).  
-Client cũ bỏ qua `truck_tables` nếu chưa đọc field mới.
+Một book: `truck_tables` rỗng hoặc đúng 1 bảng (union cột). Client cũ bỏ qua `truck_tables` nếu chưa đọc field mới.
 
 ### GET `/route-pricing/lookup`
 
