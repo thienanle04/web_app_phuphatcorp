@@ -1,7 +1,8 @@
 -- Cascade route_price_versions từ bảng giá gốc sang các kỳ điều chỉnh sau.
 -- Mirror BE createAbsolutePrice / updateAbsolutePrice cascade:
 --   mỗi kỳ sau = scale % từ version kỳ liền trước (round nghìn), base_version_id = prev.
---   copy nguyên range / unit / min / sort_order / label (by_truck cần label; weight/trips label NULL).
+--   copy nguyên price_set_tier_id / range / unit / min / sort_order / label.
+--   pallet NULL giữ NULL (không scale thành 0).
 --
 -- Không filter theo NCC — cascade mọi config thuộc mọi price_books.
 --
@@ -77,7 +78,10 @@ BEGIN
       ) VALUES (
         abs_rec.price_config_id,
         abs_rec.pricing_mode,
-        ROUND(prev_pallet * factor / 1000.0) * 1000,
+        CASE
+          WHEN prev_pallet IS NULL THEN NULL
+          ELSE ROUND(prev_pallet * factor / 1000.0) * 1000
+        END,
         prev_id,
         per_rec.id,
         abs_rec.created_by
@@ -86,6 +90,7 @@ BEGIN
 
       INSERT INTO route_price_tiers (
         price_version_id,
+        price_set_tier_id,
         range_from,
         range_to,
         pricing_unit,
@@ -96,6 +101,7 @@ BEGIN
       )
       SELECT
         new_id,
+        t.price_set_tier_id,
         t.range_from,
         t.range_to,
         t.pricing_unit,
@@ -108,7 +114,10 @@ BEGIN
       ORDER BY t.sort_order, t.range_from;
 
       prev_id := new_id;
-      prev_pallet := ROUND(prev_pallet * factor / 1000.0) * 1000;
+      prev_pallet := CASE
+        WHEN prev_pallet IS NULL THEN NULL
+        ELSE ROUND(prev_pallet * factor / 1000.0) * 1000
+      END;
       created_count := created_count + 1;
     END LOOP;
   END LOOP;

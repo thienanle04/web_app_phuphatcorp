@@ -27,6 +27,16 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import type { PoolClient } from '../backend/node_modules/@types/pg/index';
+import {
+  STANDARD_WEIGHT_PALLET,
+  assertTiersBelongToSpec,
+  TRIPS_MCC_GH,
+  ensureCanonicalPriceSets,
+  logRequiredPriceSets,
+  writeSeedAbsolutePrice,
+  type PriceSetCatalog,
+  type PriceSetSpec,
+} from './fSheetPriceSet';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -73,6 +83,14 @@ interface RouteDestination {
   ward_code: string | null;
   location_text: string | null;
   phuong: string;
+}
+
+let priceSets: PriceSetCatalog;
+
+function specFor(rec: MccGhRecord): PriceSetSpec {
+  const spec = rec.pricing_mode === 'by_trips' ? TRIPS_MCC_GH : STANDARD_WEIGHT_PALLET;
+  assertTiersBelongToSpec(spec, rec.tiers, `row ${rec.excelRow}`);
+  return spec;
 }
 
 const pool = new Pool({
@@ -556,71 +574,15 @@ async function ensureGroupPricing(
   opts: { groupId: number; periodId: number; rec: MccGhRecord },
 ): Promise<'created' | 'updated' | 'exists'> {
   const { groupId, periodId, rec } = opts;
-  const configRes = await client.query<{ id: number }>(
-    `SELECT id FROM route_price_configs WHERE route_group_id=$1 AND status='active' LIMIT 1`,
-    [groupId],
-  );
-
-  if (!configRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_configs (route_group_id, created_by)
-       VALUES ($1,$2) RETURNING id`,
-      [groupId, USER_ID],
-    );
-    const versionRes = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [created.rows[0].id, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    for (let sort = 0; sort < rec.tiers.length; sort++) {
-      const t = rec.tiers[sort];
-      await client.query(
-        `INSERT INTO route_price_tiers
-           (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [versionRes.rows[0].id, t.from, t.to, t.unit, t.price, t.min, sort],
-      );
-    }
-    return 'created';
-  }
-
-  const configId = configRes.rows[0].id;
-  const versionRes = await client.query<{ id: number; pallet_trip_price: string }>(
-    `SELECT id, pallet_trip_price FROM route_price_versions
-     WHERE price_config_id=$1 AND adjustment_period_id=$2
-     ORDER BY CASE WHEN base_version_id IS NULL THEN 0 ELSE 1 END, id
-     LIMIT 1`,
-    [configId, periodId],
-  );
-  if (!versionRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [configId, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    for (let sort = 0; sort < rec.tiers.length; sort++) {
-      const t = rec.tiers[sort];
-      await client.query(
-        `INSERT INTO route_price_tiers
-           (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [created.rows[0].id, t.from, t.to, t.unit, t.price, t.min, sort],
-      );
-    }
-    return 'created';
-  }
-
-  // Sync pallet from Excel onto existing period version when changed
-  if (rec.pallet > 0 && Number(versionRes.rows[0].pallet_trip_price) !== rec.pallet) {
-    await client.query(`UPDATE route_price_versions SET pallet_trip_price=$1 WHERE id=$2`, [
-      rec.pallet,
-      versionRes.rows[0].id,
-    ]);
-    return 'updated';
-  }
-  return 'exists';
+  return writeSeedAbsolutePrice(client, {
+    groupId,
+    periodId,
+    userId: USER_ID,
+    set: priceSets.get(specFor(rec)),
+    tiers: rec.tiers,
+    pallet: rec.pallet,
+    context: `row ${rec.excelRow} ${rec.groupName}`,
+  });
 }
 
 async function insertGroupWithPricing(
@@ -682,6 +644,7 @@ async function main(): Promise<void> {
         `#${r.excelRow} [${r.pricing_mode}] ${r.groupName} | ${kind} pallet=${r.pallet} ${tierHint} note=${r.note ?? ''}`,
       );
     }
+    logRequiredPriceSets(records.map(specFor));
     console.log('Dry-run only — no DB writes.');
     return;
   }
@@ -708,6 +671,7 @@ async function main(): Promise<void> {
       );
     }
     const periodId = periodRes.rows[0].id;
+    priceSets = await ensureCanonicalPriceSets(client, records.map(specFor), USER_ID);
 
     for (const rec of records) {
       const province = await resolveProvince(client, rec.province);

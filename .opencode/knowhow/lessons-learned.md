@@ -5,6 +5,22 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 # Lessons Learned — PhuPhatCorp
 
 ---
+## Seed F-sheet: bậc chuyến không tách thành 2 tuyến
+- **Ngày:** 2026-09-17
+- **Feature:** `scripts/seed-*-f.ts`
+- **Pitfall:** Đưa chữ "Áp dụng 1-3 chuyến/xe/ngày" vào `route_groups.note` / tên nhóm thì cùng điểm (vd. Hiệp Phước - Unidepot) thành 2 group. Unique route tính cả `note`.
+- **Quy tắc:** Cùng Tỉnh + Địa điểm = một group `by_trips`. Chữ áp dụng chỉ map thành `range_from`/`range_to`. Note nhóm để trống trừ khi Excel có note thật (không phải khung chuyến).
+- **Files:** `scripts/seed-clf-f.ts` (CLV / MCC GH / NDFC TT đã gom sẵn).
+
+---
+## Seed F-sheet phải gắn bộ giá đầy đủ, không tự ghi bậc
+- **Ngày:** 2026-09-17
+- **Feature:** Route pricing price sets + `scripts/seed-*-f.ts`
+- **Pitfall:** Sau migration 055, `route_price_tiers.price_set_tier_id` là NOT NULL. Seed cũ insert range trực tiếp và ghi `pallet_trip_price = 0` sẽ fail, và nếu tự tạo bộ theo đúng các ô Excel đã điền thì thành bộ tập con (bị cấm).
+- **Quy tắc:** Chọn bộ catalog đầy đủ (hoặc tạo đúng khung đó nếu chưa có và không trùng/tập con). Dòng chỉ có một vài bậc vẫn gắn bộ đủ, bỏ trống bậc không có số. Pallet 0 lưu `NULL`. Cascade phải copy `price_set_tier_id` và giữ pallet `NULL`.
+- **Files:** `scripts/fSheetPriceSet.ts`, các `scripts/seed-*-f.ts`, `scripts/sql/cascade_route_pricing_versions.sql`.
+
+---
 ## Feature: "Download All" Attached Documents in TicketDetailModal
 - **Ngày:** 2026-09-13
 - **Feature:** Theo dõi hóa đơn (`TicketDetailModal`)

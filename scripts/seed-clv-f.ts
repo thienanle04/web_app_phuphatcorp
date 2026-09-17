@@ -3,7 +3,7 @@
  *
  * Source: reference/xu_ly_du_lieu_ke_toan/BẢNG GIÁ - 2026 - 1.8.2026.xlsx
  *
- * Ba khối, ba bảng giá (tên phải có sẵn trong DB — fail-fast, không INSERT book):
+ * Ba khối, ba bảng giá (tạo nếu chưa có, match exact name):
  *   1) Excel "MCC ĐÍNH KÈM" → book "CLV" — by_weight
  *      STT | Tuyến cũ | Tuyến mới | Tỉnh | Phường | Địa điểm | Note | 5 bậc | pallet
  *      ≤2.5 chuyến / >2.5–8 min 5t / >8–16 / >16–23 / >23 / pallet — skip giá ≤ 0
@@ -16,7 +16,6 @@
  *
  * Prerequisites:
  *   - provinces imported
- *   - 3 bảng giá đúng tên (tạo tay)
  *   - npm run seed:adjustment-periods
  *
  * After (optional): npm run cascade:route-pricing
@@ -31,6 +30,18 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import type { PoolClient } from '../backend/node_modules/@types/pg/index';
+import {
+  STANDARD_WEIGHT_PALLET,
+  assertTiersBelongToSpec,
+  TRIPS_1_3,
+  TRIPS_1_PLUS,
+  TRUCK_CLV,
+  ensureCanonicalPriceSets,
+  logRequiredPriceSets,
+  writeSeedAbsolutePrice,
+  type PriceSetCatalog,
+  type PriceSetSpec,
+} from './fSheetPriceSet';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -90,6 +101,29 @@ const TRUCK_COLS: { col: number; label: string; unit: PricingUnit }[] = [
   { col: 10, label: 'Truck 2,5mt', unit: 'chuyen' },
   { col: 11, label: 'Truck 15mt', unit: 'tan' },
 ];
+
+let priceSets: PriceSetCatalog;
+
+function specFor(rec: ClvRecord): PriceSetSpec {
+  let spec: PriceSetSpec;
+  if (rec.pricing_mode === 'by_truck') spec = TRUCK_CLV;
+  else if (rec.pricing_mode === 'by_trips') {
+    const open = rec.tiers.some((tier) => tier.from === 1 && tier.to == null);
+    const chained = rec.tiers.some(
+      (tier) => (tier.from === 1 && tier.to === 3) || (tier.from === 4 && tier.to == null),
+    );
+    if (open && chained) {
+      throw new Error(`row ${rec.excelRow}: trộn chuyến 1+ với 1–3/>3 trên cùng nhóm`);
+    }
+    if (open) spec = TRIPS_1_PLUS;
+    else if (chained) spec = TRIPS_1_3;
+    else throw new Error(`row ${rec.excelRow}: bậc chuyến không thuộc bộ đã chốt`);
+  } else {
+    spec = STANDARD_WEIGHT_PALLET;
+  }
+  assertTiersBelongToSpec(spec, rec.tiers, `row ${rec.excelRow}`);
+  return spec;
+}
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -546,7 +580,7 @@ async function resolveRecordDestinations(
   return out;
 }
 
-async function requirePriceBook(client: PoolClient, name: string): Promise<number> {
+async function ensurePriceBook(client: PoolClient, name: string): Promise<number> {
   const found = await client.query<{ id: number }>(
     `SELECT id FROM price_books
      WHERE status='active' AND lower(trim(name)) = lower($1)
@@ -555,13 +589,12 @@ async function requirePriceBook(client: PoolClient, name: string): Promise<numbe
     [name],
   );
   if (found.rows[0]) return found.rows[0].id;
-  const nearby = await client.query<{ name: string }>(
-    `SELECT name FROM price_books WHERE status='active' AND name ILIKE '%CLV%' ORDER BY name`,
+  const created = await client.query<{ id: number }>(
+    `INSERT INTO price_books (name, created_by, updated_by) VALUES ($1,$2,$2) RETURNING id`,
+    [name, USER_ID],
   );
-  const hint = nearby.rows.length
-    ? nearby.rows.map((r) => r.name).join(', ')
-    : '(no CLV-like names)';
-  throw new Error(`Price book "${name}" not found (fail-fast, not creating). Nearby: ${hint}`);
+  console.log(`Created price book "${name}" id=${created.rows[0].id}`);
+  return created.rows[0].id;
 }
 
 async function findExistingGroup(
@@ -650,80 +683,20 @@ async function ensureGroupMembers(
   }
 }
 
-async function insertTiers(client: PoolClient, versionId: number, rec: ClvRecord): Promise<void> {
-  for (let sort = 0; sort < rec.tiers.length; sort++) {
-    const t = rec.tiers[sort];
-    if (rec.pricing_mode === 'by_truck') {
-      await client.query(
-        `INSERT INTO route_price_tiers
-           (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order, label)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [versionId, 0, null, t.unit, t.price, null, sort, t.label ?? null],
-      );
-    } else {
-      await client.query(
-        `INSERT INTO route_price_tiers
-           (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [versionId, t.from, t.to, t.unit, t.price, t.min, sort],
-      );
-    }
-  }
-}
-
 async function ensureGroupPricing(
   client: PoolClient,
   opts: { groupId: number; periodId: number; rec: ClvRecord },
 ): Promise<'created' | 'updated' | 'exists'> {
   const { groupId, periodId, rec } = opts;
-  const configRes = await client.query<{ id: number }>(
-    `SELECT id FROM route_price_configs WHERE route_group_id=$1 AND status='active' LIMIT 1`,
-    [groupId],
-  );
-
-  if (!configRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_configs (route_group_id, created_by)
-       VALUES ($1,$2) RETURNING id`,
-      [groupId, USER_ID],
-    );
-    const versionRes = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [created.rows[0].id, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    await insertTiers(client, versionRes.rows[0].id, rec);
-    return 'created';
-  }
-
-  const configId = configRes.rows[0].id;
-  const versionRes = await client.query<{ id: number; pallet_trip_price: string }>(
-    `SELECT id, pallet_trip_price FROM route_price_versions
-     WHERE price_config_id=$1 AND adjustment_period_id=$2
-     ORDER BY CASE WHEN base_version_id IS NULL THEN 0 ELSE 1 END, id
-     LIMIT 1`,
-    [configId, periodId],
-  );
-  if (!versionRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [configId, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    await insertTiers(client, created.rows[0].id, rec);
-    return 'created';
-  }
-
-  if (rec.pallet > 0 && Number(versionRes.rows[0].pallet_trip_price) !== rec.pallet) {
-    await client.query(`UPDATE route_price_versions SET pallet_trip_price=$1 WHERE id=$2`, [
-      rec.pallet,
-      versionRes.rows[0].id,
-    ]);
-    return 'updated';
-  }
-  return 'exists';
+  return writeSeedAbsolutePrice(client, {
+    groupId,
+    periodId,
+    userId: USER_ID,
+    set: priceSets.get(specFor(rec)),
+    tiers: rec.tiers,
+    pallet: rec.pallet,
+    context: `row ${rec.excelRow} ${rec.groupName}`,
+  });
 }
 
 async function insertGroupWithPricing(
@@ -797,6 +770,7 @@ async function main(): Promise<void> {
 
   if (dryRun) {
     for (const r of records) logRecord(r);
+    logRequiredPriceSets(records.map(specFor));
     console.log('Dry-run only — no DB writes.');
     await pool.end();
     return;
@@ -812,9 +786,9 @@ async function main(): Promise<void> {
     await client.query('BEGIN');
 
     const bookIds = new Map<string, number>();
-    bookIds.set(PRICE_BOOK_WEIGHT, await requirePriceBook(client, PRICE_BOOK_WEIGHT));
-    bookIds.set(PRICE_BOOK_KHO, await requirePriceBook(client, PRICE_BOOK_KHO));
-    bookIds.set(PRICE_BOOK_TRUCK, await requirePriceBook(client, PRICE_BOOK_TRUCK));
+    bookIds.set(PRICE_BOOK_WEIGHT, await ensurePriceBook(client, PRICE_BOOK_WEIGHT));
+    bookIds.set(PRICE_BOOK_KHO, await ensurePriceBook(client, PRICE_BOOK_KHO));
+    bookIds.set(PRICE_BOOK_TRUCK, await ensurePriceBook(client, PRICE_BOOK_TRUCK));
     for (const [name, id] of bookIds) {
       console.log(`Using price book id=${id} (${name})`);
     }
@@ -829,6 +803,7 @@ async function main(): Promise<void> {
       );
     }
     const periodId = periodRes.rows[0].id;
+    priceSets = await ensureCanonicalPriceSets(client, records.map(specFor), USER_ID);
 
     for (const rec of records) {
       const priceBookId = bookIds.get(rec.priceBookName);

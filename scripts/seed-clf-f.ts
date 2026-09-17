@@ -4,10 +4,14 @@
  * Source: reference/xu_ly_du_lieu_ke_toan/BẢNG GIÁ - 2026 - 1.8.2026.xlsx
  * (cleaned: Tỉnh | Phường→wards | Địa điểm→location_text | Note | tiers | Giá pallet)
  *
+ * Khối chuyến: cùng Tỉnh + Địa điểm = một group, nhiều bậc (1–12/13+ hoặc 1–3/>3).
+ * Chữ "Áp dụng … chuyến" là bậc, không ghi vào note / tên nhóm.
+ *
  * Prerequisites:
  *   - provinces imported
  *   - bảng giá CLF (tạo tự động nếu chưa có — không cần suppliers)
  *   - npm run seed:adjustment-periods
+ *   - bộ giá đầy đủ (script tạo nếu chưa có và không trùng/tập con)
  *
  * After (optional): npm run cascade:route-pricing
  *
@@ -21,6 +25,19 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import type { PoolClient } from '../backend/node_modules/@types/pg/index';
+import {
+  IBC_WEIGHT,
+  STANDARD_WEIGHT_PALLET,
+  TRIPS_1_3,
+  TRIPS_1_PLUS,
+  TRIPS_CLF_1_12,
+  assertTiersBelongToSpec,
+  ensureCanonicalPriceSets,
+  logRequiredPriceSets,
+  writeSeedAbsolutePrice,
+  type PriceSetCatalog,
+  type PriceSetSpec,
+} from './fSheetPriceSet';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -68,6 +85,35 @@ interface RouteDestination {
   ward_code: string | null;
   location_text: string | null;
   phuong: string;
+}
+
+let priceSets: PriceSetCatalog;
+
+function specFor(rec: ClfRecord): PriceSetSpec {
+  let spec: PriceSetSpec;
+  if (rec.pricing_mode === 'by_trips') {
+    if (!rec.tiers.length) throw new Error(`row ${rec.excelRow}: trips không có bậc`);
+    const clf = rec.tiers.some(
+      (tier) => (tier.from === 1 && tier.to === 12) || (tier.from === 13 && tier.to == null),
+    );
+    const chained = rec.tiers.some(
+      (tier) => (tier.from === 1 && tier.to === 3) || (tier.from === 4 && tier.to == null),
+    );
+    const open = rec.tiers.some((tier) => tier.from === 1 && tier.to == null);
+    const kinds = [clf, chained, open].filter(Boolean).length;
+    if (kinds !== 1) {
+      throw new Error(`row ${rec.excelRow}: trộn khung chuyến trên cùng nhóm`);
+    }
+    if (clf) spec = TRIPS_CLF_1_12;
+    else if (chained) spec = TRIPS_1_3;
+    else spec = TRIPS_1_PLUS;
+  } else if (rec.tiers.some((tier) => tier.from === 3 || tier.from === 7 || tier.from === 10)) {
+    spec = IBC_WEIGHT;
+  } else {
+    spec = STANDARD_WEIGHT_PALLET;
+  }
+  assertTiersBelongToSpec(spec, rec.tiers, `row ${rec.excelRow}`);
+  return spec;
 }
 
 const pool = new Pool({
@@ -244,6 +290,7 @@ function loadClfRecords(): ClfRecord[] {
 
   const records: ClfRecord[] = [];
   const seenKeys = new Set<string>();
+  const tripGroups = new Map<string, ClfRecord>();
   let section: Section = 'skip';
 
   for (let i = 0; i < rows.length; i++) {
@@ -315,30 +362,37 @@ function loadClfRecords(): ClfRecord[] {
         console.log(`SKIP trips (no price): row ${i + 1}`);
         continue;
       }
-      const note = cleanNote(tripNote || null);
       const range = parseTripsNote(tripNote);
-      const tiers: Tier[] = range
-        ? [{ from: range.from, to: range.to, unit: 'chuyen', price, min: null }]
-        : [{ from: 1, to: null, unit: 'chuyen', price, min: null }];
-      const groupName = buildGroupName(province, [diaDiem], note);
-      const key = `n:${province}\0${groupName}`;
-      if (seenKeys.has(key)) {
-        console.log(`SKIP dup trips: ${groupName}`);
+      const tier: Tier = range
+        ? { from: range.from, to: range.to, unit: 'chuyen', price, min: null }
+        : { from: 1, to: null, unit: 'chuyen', price, min: null };
+      if (!range && tripNote) {
+        console.log(`WARN row ${i + 1}: note chuyến không parse được "${tripNote}" — bậc 1+`);
+      }
+      const groupName = buildGroupName(province, [diaDiem], null);
+      const key = `t:${province}\0${diaDiem}`;
+      let rec = tripGroups.get(key);
+      if (!rec) {
+        rec = {
+          excelRow: i + 1,
+          groupName,
+          province,
+          wardNames: [],
+          locationText: diaDiem,
+          residual: false,
+          note: null,
+          pricing_mode: 'by_trips',
+          pallet: 0,
+          tiers: [],
+        };
+        tripGroups.set(key, rec);
+      }
+      if (rec.tiers.some((t) => t.from === tier.from && t.to === tier.to)) {
+        console.log(`SKIP dup trip tier ${tier.from}-${tier.to ?? '∞'}: row ${i + 1}`);
         continue;
       }
-      seenKeys.add(key);
-      records.push({
-        excelRow: i + 1,
-        groupName,
-        province,
-        wardNames: [],
-        locationText: diaDiem,
-        residual: false,
-        note,
-        pricing_mode: 'by_trips',
-        pallet: 0,
-        tiers,
-      });
+      rec.tiers.push(tier);
+      rec.tiers.sort((a, b) => a.from - b.from);
       continue;
     }
 
@@ -379,6 +433,10 @@ function loadClfRecords(): ClfRecord[] {
         tiers,
       });
     }
+  }
+
+  for (const rec of tripGroups.values()) {
+    if (rec.tiers.length) records.push(rec);
   }
 
   return records;
@@ -571,71 +629,15 @@ async function ensureGroupPricing(
   opts: { groupId: number; periodId: number; rec: ClfRecord },
 ): Promise<'created' | 'updated' | 'exists'> {
   const { groupId, periodId, rec } = opts;
-  const configRes = await client.query<{ id: number }>(
-    `SELECT id FROM route_price_configs WHERE route_group_id=$1 AND status='active' LIMIT 1`,
-    [groupId],
-  );
-
-  if (!configRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_configs (route_group_id, created_by)
-       VALUES ($1,$2) RETURNING id`,
-      [groupId, USER_ID],
-    );
-    const versionRes = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [created.rows[0].id, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    for (let sort = 0; sort < rec.tiers.length; sort++) {
-      const t = rec.tiers[sort];
-      await client.query(
-        `INSERT INTO route_price_tiers
-           (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [versionRes.rows[0].id, t.from, t.to, t.unit, t.price, t.min, sort],
-      );
-    }
-    return 'created';
-  }
-
-  const configId = configRes.rows[0].id;
-  const versionRes = await client.query<{ id: number; pallet_trip_price: string }>(
-    `SELECT id, pallet_trip_price FROM route_price_versions
-     WHERE price_config_id=$1 AND adjustment_period_id=$2
-     ORDER BY CASE WHEN base_version_id IS NULL THEN 0 ELSE 1 END, id
-     LIMIT 1`,
-    [configId, periodId],
-  );
-  if (!versionRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [configId, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    for (let sort = 0; sort < rec.tiers.length; sort++) {
-      const t = rec.tiers[sort];
-      await client.query(
-        `INSERT INTO route_price_tiers
-           (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [created.rows[0].id, t.from, t.to, t.unit, t.price, t.min, sort],
-      );
-    }
-    return 'created';
-  }
-
-  // Sync pallet from Excel onto existing period version when changed
-  if (rec.pallet > 0 && Number(versionRes.rows[0].pallet_trip_price) !== rec.pallet) {
-    await client.query(`UPDATE route_price_versions SET pallet_trip_price=$1 WHERE id=$2`, [
-      rec.pallet,
-      versionRes.rows[0].id,
-    ]);
-    return 'updated';
-  }
-  return 'exists';
+  return writeSeedAbsolutePrice(client, {
+    groupId,
+    periodId,
+    userId: USER_ID,
+    set: priceSets.get(specFor(rec)),
+    tiers: rec.tiers,
+    pallet: rec.pallet,
+    context: `row ${rec.excelRow} ${rec.groupName}`,
+  });
 }
 
 async function insertGroupWithPricing(
@@ -688,10 +690,15 @@ async function main(): Promise<void> {
         : r.wardNames.length
           ? `wards=${r.wardNames.length}`
           : `location="${r.locationText}"`;
+      const tierHint =
+        r.pricing_mode === 'by_trips'
+          ? r.tiers.map((t) => `${t.from}-${t.to ?? '∞'}=${t.price}`).join(',')
+          : `tiers=${r.tiers.length}`;
       console.log(
-        `#${r.excelRow} [${r.pricing_mode}] ${r.groupName} | ${kind} pallet=${r.pallet} tiers=${r.tiers.length}`,
+        `#${r.excelRow} [${r.pricing_mode}] ${r.groupName} | ${kind} pallet=${r.pallet} ${tierHint}`,
       );
     }
+    logRequiredPriceSets(records.map(specFor));
     console.log('Dry-run only — no DB writes.');
     return;
   }
@@ -718,6 +725,7 @@ async function main(): Promise<void> {
       );
     }
     const periodId = periodRes.rows[0].id;
+    priceSets = await ensureCanonicalPriceSets(client, records.map(specFor), USER_ID);
 
     for (const rec of records) {
       const province = await resolveProvince(client, rec.province);

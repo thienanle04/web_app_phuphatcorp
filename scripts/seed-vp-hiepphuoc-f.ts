@@ -27,6 +27,15 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import type { PoolClient } from '../backend/node_modules/@types/pg/index';
+import {
+  TRUCK_VP_HP,
+  assertTiersBelongToSpec,
+  ensureCanonicalPriceSets,
+  logRequiredPriceSets,
+  writeSeedAbsolutePrice,
+  type PriceSetCatalog,
+  type PriceSetSpec,
+} from './fSheetPriceSet';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -83,6 +92,13 @@ const TRUCK_COLS: { col: number; label: string; unit: PricingUnit }[] = [
   { col: 9, label: '16< Truck ≤23', unit: 'tan' },
   { col: 10, label: 'Truck >23', unit: 'tan' },
 ];
+
+let priceSets: PriceSetCatalog;
+
+function specFor(rec: VpHpRecord): PriceSetSpec {
+  assertTiersBelongToSpec(TRUCK_VP_HP, rec.tiers, `row ${rec.excelRow}`);
+  return TRUCK_VP_HP;
+}
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -513,68 +529,20 @@ async function ensureGroupMembers(
   }
 }
 
-async function insertTruckTiers(
-  client: PoolClient,
-  versionId: number,
-  tiers: Tier[],
-): Promise<void> {
-  for (let sort = 0; sort < tiers.length; sort++) {
-    const t = tiers[sort];
-    await client.query(
-      `INSERT INTO route_price_tiers
-         (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order, label)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [versionId, 0, null, t.unit, t.price, null, sort, t.label],
-    );
-  }
-}
-
 async function ensureGroupPricing(
   client: PoolClient,
   opts: { groupId: number; periodId: number; rec: VpHpRecord },
-): Promise<'created' | 'exists'> {
+): Promise<'created' | 'updated' | 'exists'> {
   const { groupId, periodId, rec } = opts;
-  const configRes = await client.query<{ id: number }>(
-    `SELECT id FROM route_price_configs WHERE route_group_id=$1 AND status='active' LIMIT 1`,
-    [groupId],
-  );
-
-  if (!configRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_configs (route_group_id, created_by)
-       VALUES ($1,$2) RETURNING id`,
-      [groupId, USER_ID],
-    );
-    const versionRes = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [created.rows[0].id, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    await insertTruckTiers(client, versionRes.rows[0].id, rec.tiers);
-    return 'created';
-  }
-
-  const configId = configRes.rows[0].id;
-  const versionRes = await client.query<{ id: number }>(
-    `SELECT id FROM route_price_versions
-     WHERE price_config_id=$1 AND adjustment_period_id=$2
-     ORDER BY CASE WHEN base_version_id IS NULL THEN 0 ELSE 1 END, id
-     LIMIT 1`,
-    [configId, periodId],
-  );
-  if (!versionRes.rows[0]) {
-    const created = await client.query<{ id: number }>(
-      `INSERT INTO route_price_versions
-         (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [configId, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-    );
-    await insertTruckTiers(client, created.rows[0].id, rec.tiers);
-    return 'created';
-  }
-
-  return 'exists';
+  return writeSeedAbsolutePrice(client, {
+    groupId,
+    periodId,
+    userId: USER_ID,
+    set: priceSets.get(specFor(rec)),
+    tiers: rec.tiers,
+    pallet: rec.pallet,
+    context: `row ${rec.excelRow} ${rec.groupName}`,
+  });
 }
 
 async function insertGroupWithPricing(
@@ -665,12 +633,15 @@ async function main(): Promise<void> {
       ` notePhu=${records.filter((r) => r.note === DUP_NOTE).length}`,
   );
 
+  records.forEach((rec) => specFor(rec));
+
   const client = await pool.connect();
   let began = false;
   try {
     await resolveAll(client, records);
 
     if (dryRun) {
+      logRequiredPriceSets(records.map(specFor));
       console.log('Dry-run only — no DB writes.');
       return;
     }
@@ -691,6 +662,7 @@ async function main(): Promise<void> {
       );
     }
     const periodId = periodRes.rows[0].id;
+    priceSets = await ensureCanonicalPriceSets(client, records.map(specFor), USER_ID);
 
     let inserted = 0;
     let repaired = 0;

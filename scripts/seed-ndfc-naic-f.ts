@@ -26,6 +26,14 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import type { PoolClient } from '../backend/node_modules/@types/pg/index';
+import {
+  STANDARD_WEIGHT_PALLET,
+  assertTiersBelongToSpec,
+  ensureCanonicalPriceSets,
+  logRequiredPriceSets,
+  writeSeedAbsolutePrice,
+  type PriceSetCatalog,
+} from './fSheetPriceSet';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -66,6 +74,13 @@ interface NdfcNaicRecord {
 interface RouteDestination {
   ward_code: string;
   phuong: string;
+}
+
+let priceSets: PriceSetCatalog;
+
+function specFor(rec: NdfcNaicRecord) {
+  assertTiersBelongToSpec(STANDARD_WEIGHT_PALLET, rec.tiers, `row ${rec.excelRow}`);
+  return STANDARD_WEIGHT_PALLET;
 }
 
 const pool = new Pool({
@@ -395,26 +410,15 @@ async function insertGroupWithPricing(
     destinations,
   });
 
-  const created = await client.query<{ id: number }>(
-    `INSERT INTO route_price_configs (route_group_id, created_by)
-     VALUES ($1,$2) RETURNING id`,
-    [groupId, USER_ID],
-  );
-  const versionRes = await client.query<{ id: number }>(
-    `INSERT INTO route_price_versions
-       (price_config_id, pricing_mode, pallet_trip_price, adjustment_period_id, created_by)
-     VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-    [created.rows[0].id, rec.pricing_mode, rec.pallet, periodId, USER_ID],
-  );
-  for (let sort = 0; sort < rec.tiers.length; sort++) {
-    const t = rec.tiers[sort];
-    await client.query(
-      `INSERT INTO route_price_tiers
-         (price_version_id, range_from, range_to, pricing_unit, price, min_billable_ton, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [versionRes.rows[0].id, t.from, t.to, t.unit, t.price, t.min, sort],
-    );
-  }
+  await writeSeedAbsolutePrice(client, {
+    groupId,
+    periodId,
+    userId: USER_ID,
+    set: priceSets.get(STANDARD_WEIGHT_PALLET),
+    tiers: rec.tiers,
+    pallet: rec.pallet,
+    context: `row ${rec.excelRow} ${rec.groupName}`,
+  });
 }
 
 async function main(): Promise<void> {
@@ -434,6 +438,7 @@ async function main(): Promise<void> {
           ` pallet=${r.pallet} 16-23=${r.tiers[0]?.price}`,
       );
     }
+    logRequiredPriceSets(records.map(specFor));
     console.log('Dry-run only — no DB writes.');
     return;
   }
@@ -458,6 +463,7 @@ async function main(): Promise<void> {
       );
     }
     const periodId = periodRes.rows[0].id;
+    priceSets = await ensureCanonicalPriceSets(client, records.map(specFor), USER_ID);
 
     for (const rec of records) {
       const province = await resolveProvince(client, rec.province);
