@@ -66,7 +66,6 @@ const ENTITY_LABELS: Record<string, string> = {
   weight_adjustment: 'Điều chỉnh TL',
   batch: 'Batch dữ liệu',
   dispatch_schedule: 'Điều phối',
-  delivery_schedule: 'Lịch đi hàng',
   job: 'Job đối chiếu',
 };
 

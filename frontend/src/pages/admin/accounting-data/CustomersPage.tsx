@@ -1,15 +1,14 @@
 import { useState, useMemo } from 'react';
-import { Plus, Upload, Pencil, Trash2, AlertTriangle, RefreshCw, Check, X } from 'lucide-react';
-import { Pagination } from '../../../components/ui/Pagination';
+import { Plus, Upload, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/Table';
 import { useGetCustomers } from '../../../hooks/useCustomers';
 import { CreateCustomerModal } from '../../../components/admin/CreateCustomerModal';
 import { EditCustomerModal } from '../../../components/admin/EditCustomerModal';
 import { DeleteCustomerDialog } from '../../../components/admin/DeleteCustomerDialog';
 import { UploadCustomersModal } from '../../../components/admin/UploadCustomersModal';
+import { CustomersTable } from '../../../components/admin/CustomersTable';
 import { useAuth } from '../../../hooks/useAuth';
 import { useI18n } from '../../../i18n/useI18n';
 import type { Customer } from '../../../api/customersApi';
@@ -39,7 +38,7 @@ export function CustomersPage() {
   const [filterTuyen, setFilterTuyen] = useState('');
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 50;
 
   const showToast = (message: string, variant: 'success' | 'error' = 'success') => {
     const id = Date.now();
@@ -139,140 +138,46 @@ export function CustomersPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 bg-neutral-100 dark:bg-neutral-800 rounded animate-pulse" />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-neutral-500 dark:text-neutral-400">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
-              <p className="text-sm">{t('customers.errorLoad')}</p>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                {t('customers.retry')}
-              </Button>
-            </div>
-          ) : filteredRows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 text-neutral-500 dark:text-neutral-400">
-              <p className="text-sm">
-                {search || filterTuyen ? t('customers.noResults') : t('customers.empty')}
-              </p>
-              {!search && !filterTuyen && canManage && (
-                <Button size="sm" onClick={() => setModal({ type: 'create' })}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('customers.addCustomer')}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-14">{t('customers.columns.stt')}</TableHead>
-                    <TableHead className="w-48">{t('customers.columns.diemTraHang')}</TableHead>
-                    <TableHead className="w-48 hidden md:table-cell">{t('customers.columns.tuyenPhuong')}</TableHead>
-                    <TableHead className="min-w-48 hidden md:table-cell">{t('customers.columns.diemGiaoHangTinhPhi')}</TableHead>
-                    <TableHead className="min-w-64">{t('customers.columns.tenKhachHang')}</TableHead>
-                    <TableHead className="w-20 text-center">{t('customers.columns.bocXep')}</TableHead>
-                    <TableHead className="hidden lg:table-cell">{t('customers.columns.nhaCungCap')}</TableHead>
-                    {canManage && <TableHead className="w-20">{t('customers.columns.actions')}</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagedRows.map((row, idx) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="text-neutral-500 dark:text-neutral-400 text-sm">
-                        {(page - 1) * PAGE_SIZE + idx + 1}
-                      </TableCell>
-                      <TableCell
-                        className="font-medium text-neutral-900 dark:text-neutral-100 max-w-48 truncate"
-                        title={row.diem_tra_hang}
-                      >
-                        {row.diem_tra_hang}
-                      </TableCell>
-                      <TableCell className="text-neutral-600 dark:text-neutral-400 hidden md:table-cell max-w-48 truncate">
-                        {row.tuyen_phuong || '—'}
-                      </TableCell>
-                      <TableCell
-                        className="text-neutral-600 dark:text-neutral-400 hidden md:table-cell min-w-0 max-w-48 truncate"
-                        title={row.diem_giao_hang_tinh_phi ?? undefined}
-                      >
-                        {row.diem_giao_hang_tinh_phi || (
-                          <span className="text-neutral-400 dark:text-neutral-600">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className="text-neutral-700 dark:text-neutral-300 max-w-64 truncate"
-                        title={row.ten_khach_hang}
-                      >
-                        {row.ten_khach_hang}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {row.boc_xep ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
-                            <Check className="w-3 h-3" />
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500">
-                            <X className="w-3 h-3" />
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-neutral-600 dark:text-neutral-400 hidden lg:table-cell">
-                        {row.supplier ? (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                            title={row.supplier.supplier_code}
-                          >
-                            {row.supplier.name}
-                          </span>
-                        ) : (
-                          <span className="text-neutral-400 dark:text-neutral-600">—</span>
-                        )}
-                      </TableCell>
-                      {canManage && (
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setModal({ type: 'edit', row })}
-                              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors"
-                              title="Sửa"
-                              aria-label="Sửa"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setModal({ type: 'delete', row })}
-                              className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                              title="Xóa"
-                              aria-label="Xóa"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                totalItems={filteredRows.length}
-                pageSize={PAGE_SIZE}
-                onPageChange={setPage}
-              />
-            </div>
+      {isLoading ? (
+        <div className="space-y-3 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-10 rounded bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+          ))}
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-neutral-200 bg-white py-16 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+          <AlertTriangle className="w-8 h-8 text-red-400" />
+          <p className="text-sm">{t('customers.errorLoad')}</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {t('customers.retry')}
+          </Button>
+        </div>
+      ) : filteredRows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-neutral-200 bg-white py-16 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+          <p className="text-sm">
+            {search || filterTuyen ? t('customers.noResults') : t('customers.empty')}
+          </p>
+          {!search && !filterTuyen && canManage && (
+            <Button size="sm" onClick={() => setModal({ type: 'create' })}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('customers.addCustomer')}
+            </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      ) : (
+        <CustomersTable
+          rows={pagedRows}
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalItems={filteredRows.length}
+          totalPages={totalPages}
+          canManage={canManage}
+          onPageChange={setPage}
+          onEdit={(row) => setModal({ type: 'edit', row })}
+          onDelete={(row) => setModal({ type: 'delete', row })}
+        />
+      )}
 
       {/* Create modal */}
       <CreateCustomerModal

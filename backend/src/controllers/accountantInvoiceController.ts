@@ -24,7 +24,7 @@ export const updateInvoiceSchema: ValidationChain[] = [
   param('id').isInt({ min: 1 }).withMessage('ID không hợp lệ'),
   body('trang_thai')
     .notEmpty().withMessage('Trạng thái là bắt buộc')
-    .isIn(['không có', 'xe không chạy', 'data sai']).withMessage('Trạng thái không hợp lệ'),
+    .isIn(['không có', 'xe không chạy', 'data sai', 'data khác']).withMessage('Trạng thái không hợp lệ'),
   body('ghi_chu').optional({ nullable: true }),
   body('so_xe').optional().isLength({ max: 100 }).withMessage('Số xe tối đa 100 ký tự'),
 ];

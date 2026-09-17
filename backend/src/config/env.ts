@@ -24,6 +24,7 @@ export const env = {
     accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
     secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
     bucket: process.env.MINIO_BUCKET || 'phuphatcorp-inspections',
+    bangKeBucket: process.env.MINIO_BANG_KE_BUCKET || 'phuphatcorp-bang-ke-tho',
     publicUrl: process.env.MINIO_PUBLIC_URL || process.env.MINIO_ENDPOINT
       ? `${process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http'}://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || '9000'}`
       : '',

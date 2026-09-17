@@ -501,6 +501,7 @@ export const fuelRecordService = {
     // Collect ALL rows — grouped by month only for batchId tracking
     const allRows: unknown[][] = [];
     const monthSet = new Set<string>();
+    const seenKeys = new Set<string>(); // Track (vehicle_id, record_date) to avoid duplicates
 
     // Process each sheet — parse rows, month from column A date
     for (let sheetIdx = 0; sheetIdx < wb.SheetNames.length; sheetIdx++) {
@@ -510,7 +511,23 @@ export const fuelRecordService = {
 
       let currentLocation = 'ANH HUY';
 
-      for (let i = 2; i < rawRows.length; i++) {
+      // Detect where the header row is: check row 0 vs row 1
+      let startRow = 2; // Default: row 0 is Title, row 1 is Header, row 2 is Data
+      if (rawRows.length > 0) {
+        const r0Str = JSON.stringify(rawRows[0] || '').toUpperCase();
+        const r1Str = rawRows.length > 1 ? JSON.stringify(rawRows[1] || '').toUpperCase() : '';
+        if (r0Str.includes('NGÀY') && r0Str.includes('SỐ XE')) {
+          // Row 0 is header -> Data starts at row 1
+          startRow = 1;
+        } else if (r1Str.includes('NGÀY') && r1Str.includes('SỐ XE')) {
+          // Row 1 is header -> Data starts at row 2
+          startRow = 2;
+        }
+      }
+
+      let lastValidDateInSheet: string | null = null;
+
+      for (let i = startRow; i < rawRows.length; i++) {
         const row = rawRows[i] as unknown[];
         const rowNum = i + 1;
 
@@ -535,28 +552,57 @@ export const fuelRecordService = {
         const gpsNew = gpsNewRaw !== '' ? parseFloat(gpsNewRaw) : null;
         const gpsLiters = gpsLitersRaw !== '' ? parseFloat(gpsLitersRaw) : null;
         const unitPrice = parseFloat(String(row[12] ?? ''));
+        const costFromCol14 = parseFloat(String(row[13] ?? ''));
 
         // Skip TC (summary) rows
         if (String(row[3]).trim() === 'TC') continue;
         if (!plateNum.match(/^\d{2}[A-Za-z]/)) continue;
 
         // Parse record date FIRST — used for month grouping
-        let recordDate: string;
+        let recordDate: string | null = null;
         if (dateVal instanceof Date) {
           recordDate = dateVal.toISOString().split('T')[0];
-        } else if (typeof dateVal === 'number' && dateVal > 40000 && dateVal < 80000) {
-          // Standard Excel serial → JS Date: (serial - 25569) days from Unix epoch
-          const dateObj = new Date((dateVal - 25569) * 86400000);
-          recordDate = dateObj.toISOString().split('T')[0];
+        } else if (typeof dateVal === 'number') {
+          // Excel serial number - validate range (40000 = ~2009, 60000 = ~2064)
+          if (dateVal >= 40000 && dateVal <= 60000) {
+            const dateObj = new Date((dateVal - 25569) * 86400000);
+            recordDate = dateObj.toISOString().split('T')[0];
+          }
         } else {
           const dateStr = String(dateVal ?? '').trim();
           if (dateStr) {
-            const parsed = new Date(dateStr);
-            if (!isNaN(parsed.getTime())) {
-              recordDate = parsed.toISOString().split('T')[0];
-            } else continue;
-          } else continue;
+            // Try DD/MM/YYYY or DD-MM-YYYY format (common in Vietnamese Excel)
+            const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if (ddmmyyyyMatch) {
+              const day = ddmmyyyyMatch[1].padStart(2, '0');
+              const month = ddmmyyyyMatch[2].padStart(2, '0');
+              const year = ddmmyyyyMatch[3];
+              recordDate = `${year}-${month}-${day}`;
+            } else {
+              const parsed = new Date(dateStr);
+              if (!isNaN(parsed.getTime())) {
+                recordDate = parsed.toISOString().split('T')[0];
+              }
+            }
+          }
         }
+
+        // If date is missing but row has valid data (cost > 0 or liters > 0), fallback to last valid date in sheet
+        const hasValidFinancialData = (!isNaN(costFromCol14) && costFromCol14 > 0) || (!isNaN(liters) && liters > 0);
+        if (!recordDate && hasValidFinancialData && lastValidDateInSheet) {
+          recordDate = lastValidDateInSheet;
+        }
+
+        if (!recordDate) {
+          continue; // Skip placeholder rows with no date and no data
+        }
+
+        // Validate final date is reasonable (2020-2030)
+        if (recordDate < '2020-01-01' || recordDate > '2030-12-31') {
+          continue;
+        }
+
+        lastValidDateInSheet = recordDate;
 
         const month = recordDate.substring(0, 7);
         monthSet.add(month);
@@ -619,13 +665,21 @@ export const fuelRecordService = {
         // Row data: [vehicleId, recordDate, odoOld, odoNew, distance, liters, fuelRate,
         //            gpsOld, gpsNew, gpsDist, gpsLiters, gpsFR,
         //            unitPrice, totalCost, location, userId]
-        allRows.push([
+        const rowData = [
           vehicleId, recordDate, odoOldVal, odoNewVal,
           distance, litersVal, fuelRate,
           gpsOldSanitized, gpsNewSanitized, gpsDist,
           gpsLitersSanitized, gpsFR,
           unitPriceVal, totalCost, currentLocation, userId,
-        ]);
+        ];
+
+        // Deduplicate: check (vehicle_id, record_date, odoOldVal, litersVal, costVal)
+        const key = `${vehicleId}_${recordDate}_${odoOldVal}_${litersVal}_${totalCost}`;
+        if (seenKeys.has(key)) {
+          continue; // Skip duplicate
+        }
+        seenKeys.add(key);
+        allRows.push(rowData);
       }
     }
 
@@ -668,11 +722,9 @@ export const fuelRecordService = {
             gps_old, gps_new, gps_distance, gps_liters, gps_fuel_rate,
             unit_price, total_cost, batch_id, location, created_by)
            VALUES ${placeholders.join(', ')}
-           ON CONFLICT (vehicle_id, record_date) DO UPDATE SET
-            odometer_old = EXCLUDED.odometer_old,
+           ON CONFLICT (vehicle_id, record_date, odometer_old, liters, total_cost) DO UPDATE SET
             odometer_new = EXCLUDED.odometer_new,
             distance = EXCLUDED.distance,
-            liters = EXCLUDED.liters,
             fuel_rate = EXCLUDED.fuel_rate,
             gps_old = EXCLUDED.gps_old,
             gps_new = EXCLUDED.gps_new,
@@ -680,7 +732,6 @@ export const fuelRecordService = {
             gps_liters = EXCLUDED.gps_liters,
             gps_fuel_rate = EXCLUDED.gps_fuel_rate,
             unit_price = EXCLUDED.unit_price,
-            total_cost = EXCLUDED.total_cost,
             batch_id = EXCLUDED.batch_id,
             location = EXCLUDED.location,
             updated_at = NOW()`,

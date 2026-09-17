@@ -48,7 +48,8 @@ describe('customerService.list', () => {
 
 describe('customerService.create', () => {
   it('creates successfully when diem_tra_hang is unique', async () => {
-    mockPool.query.mockResolvedValueOnce({ rows: [mockRow] } as never);
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never); // uniqueness check
+    mockPool.query.mockResolvedValueOnce({ rows: [mockRow] } as never); // INSERT
 
     const result = await customerService.create({
       diem_tra_hang: 'Acecook Việt Nam',
@@ -60,8 +61,8 @@ describe('customerService.create', () => {
       boc_xep: false,
     });
     expect(result).toEqual(mockRow);
-    expect(mockPool.query).toHaveBeenCalledTimes(1);
-    const insertArgs = mockPool.query.mock.calls[0][1] as unknown[];
+    expect(mockPool.query).toHaveBeenCalledTimes(2);
+    const insertArgs = mockPool.query.mock.calls[1][1] as unknown[];
     expect(insertArgs[5]).toBe('HCM - Tây Thạnh');
   });
 
@@ -73,7 +74,8 @@ describe('customerService.create', () => {
       dia_chi_giao_hang: null,
       diem_giao_hang_tinh_phi: null,
     };
-    mockPool.query.mockResolvedValueOnce({ rows: [rowNoOptional] } as never);
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never); // uniqueness check
+    mockPool.query.mockResolvedValueOnce({ rows: [rowNoOptional] } as never); // INSERT
 
     const result = await customerService.create({
       diem_tra_hang: 'Acecook Việt Nam',
@@ -87,7 +89,8 @@ describe('customerService.create', () => {
   });
 
   it('trims diem_giao_hang_tinh_phi and stores null when blank', async () => {
-    mockPool.query.mockResolvedValueOnce({ rows: [{ ...mockRow, diem_giao_hang_tinh_phi: null }] } as never);
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never); // uniqueness check
+    mockPool.query.mockResolvedValueOnce({ rows: [{ ...mockRow, diem_giao_hang_tinh_phi: null }] } as never); // INSERT
 
     await customerService.create({
       diem_tra_hang: 'Acecook Việt Nam',
@@ -96,7 +99,7 @@ describe('customerService.create', () => {
       diem_giao_hang_tinh_phi: '   ',
     });
 
-    const insertArgs = mockPool.query.mock.calls[0][1] as unknown[];
+    const insertArgs = mockPool.query.mock.calls[1][1] as unknown[];
     expect(insertArgs[5]).toBeNull();
   });
 });
@@ -107,6 +110,7 @@ describe('customerService.update', () => {
   it('updates active record successfully', async () => {
     const updatedRow = { ...mockRow, ten_khach_hang: 'ACECOOK UPDATED' };
     mockPool.query.mockResolvedValueOnce({ rows: [mockRow] } as never); // findById
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never); // uniqueness check
     mockPool.query.mockResolvedValueOnce({ rows: [updatedRow] } as never); // UPDATE
 
     const result = await customerService.update(1, {
@@ -137,6 +141,7 @@ describe('customerService.update', () => {
   it('allows update with same diem_tra_hang (no conflict with itself)', async () => {
     const updatedRow = { ...mockRow, boc_xep: true };
     mockPool.query.mockResolvedValueOnce({ rows: [mockRow] } as never); // findById
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never); // uniqueness check
     mockPool.query.mockResolvedValueOnce({ rows: [updatedRow] } as never); // UPDATE
 
     const result = await customerService.update(1, {
@@ -181,6 +186,7 @@ describe('customerService.uploadMany', () => {
   ];
 
   it('inserts all rows and returns count', async () => {
+    mockPool.query.mockResolvedValueOnce({ rows: [] } as never); // no existing duplicates
     mockClient.query
       .mockResolvedValueOnce({} as never) // BEGIN
       .mockResolvedValueOnce({} as never) // INSERT row 1

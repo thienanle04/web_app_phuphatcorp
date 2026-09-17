@@ -12,27 +12,28 @@ const app = express();
 
 // CORS whitelist - allow both local dev and production
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
   'https://phuphatcorp.scrapetool.cloud',
   'https://app.phuphat.com',
   'https://app-staging.phuphat.com',
-  'https://app.phuphat.com',
 ];
+
+// Regex matching localhost & 127.0.0.1 on any port (for React Vite, Flutter Web, Dev Tools)
+const localhostRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
+      // Allow requests with no origin (like mobile native apps or curl requests)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin) || localhostRegex.test(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`Origin ${origin} not allowed by CORS`));
       }
     },
     credentials: true,
+    exposedHeaders: ['Content-Disposition'],
   }),
 );
 app.use(

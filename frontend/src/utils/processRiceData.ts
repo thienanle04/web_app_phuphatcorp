@@ -1,6 +1,6 @@
 /**
  * processRiceData.ts
- * Parse & filter data_gao.xlsx theo master data lịch đi hàng (delivery_schedules DB).
+ * Parse & filter data_gao.xlsx theo master data hóa đơn tài xế (driver_invoices DB).
  *
  * Logic chính:
  * 1. Parse file data_gao.xlsx (sheet "Data xuất")
@@ -276,11 +276,11 @@ export async function parseRiceFile(file: File): Promise<ParseResult> {
   });
 }
 
-// ─── Build master plate map from delivery_schedules ───────────────────────────
+// ─── Build master plate map from driver_invoices ──────────────────────────────
 
 /**
  * Xây dựng map: ngay → Set<normalizedPlate>
- * từ danh sách delivery_schedules lấy từ API.
+ * từ danh sách driver_invoices lấy từ API.
  */
 export function buildMasterPlateMap(
   schedules: Array<{ ngay: string; so_xe: string | null }>

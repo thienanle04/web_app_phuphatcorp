@@ -1,5 +1,6 @@
 import { noteKey, normalizeLocation, roundToThousands } from '../types/routePricing';
 import { routePricingService, tierSchemaKey, weightTierColumnKey, isTierKeySubset, mergeCompatibleWeightBuckets, tierColumnKeys, truckSchemaKey, truckTierColumnKey, buildUnionTruckColumns, truckClassMt } from '../services/routePricingService';
+import { priceSetService } from '../services/priceSetService';
 import { pool } from './__mocks__/database';
 
 const mockPool = pool as jest.Mocked<typeof pool>;
@@ -13,16 +14,6 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPool.connect.mockResolvedValue(mockClient as never);
 });
-
-const sampleWeightTiers = [
-  { range_from: 0, range_to: 2.5, pricing_unit: 'chuyen' as const, price: 1_500_000 },
-  { range_from: 2.5, range_to: null, pricing_unit: 'tan' as const, price: 90_000, min_billable_ton: 5 },
-];
-
-const sampleTripsTiers = [
-  { range_from: 1, range_to: 2, pricing_unit: 'chuyen' as const, price: 1_500_000 },
-  { range_from: 3, range_to: null, pricing_unit: 'chuyen' as const, price: 1_200_000 },
-];
 
 describe('Price matrix schema helpers', () => {
   const schemaA = [
@@ -125,17 +116,16 @@ describe('CR: pricing modes', () => {
     expect(normalizeLocation('  KCN Hiệp Phước ')).toBe('KCN Hiệp Phước');
   });
 
-  it('createAbsolutePrice rejects overlapping weight tiers', async () => {
+  it('frame overlap is validated on the price set, not when saving a group price', async () => {
     await expect(
-      routePricingService.createAbsolutePrice(
+      priceSetService.create(
         {
-          route_group_id: 10,
-          adjustment_period_id: 1,
+          name: 'Overlap group',
           pricing_mode: 'by_weight',
-          pallet_trip_price: 800000,
+          has_pallet: false,
           tiers: [
-            { range_from: 0, range_to: 5, pricing_unit: 'chuyen', price: 1500000 },
-            { range_from: 4, range_to: null, pricing_unit: 'tan', price: 90000 },
+            { range_from: 0, range_to: 5, pricing_unit: 'chuyen' },
+            { range_from: 4, range_to: null, pricing_unit: 'tan' },
           ],
         },
         1,
@@ -143,34 +133,17 @@ describe('CR: pricing modes', () => {
     ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
   });
 
-  it('createAbsolutePrice rejects trips mode with broken chain', async () => {
+  it('trips chain gaps are not rejected as INVALID_TIERS at price-set create', async () => {
     await expect(
-      routePricingService.createAbsolutePrice(
+      priceSetService.create(
         {
-          route_group_id: 10,
-          adjustment_period_id: 1,
+          name: 'Gap',
           pricing_mode: 'by_trips',
-          pallet_trip_price: 800000,
+          has_pallet: false,
           tiers: [
-            { range_from: 1, range_to: 2, pricing_unit: 'chuyen', price: 1500000 },
-            { range_from: 4, range_to: null, pricing_unit: 'chuyen', price: 1200000 },
+            { range_from: 1, range_to: 2, pricing_unit: 'chuyen' },
+            { range_from: 4, range_to: null, pricing_unit: 'chuyen' },
           ],
-        },
-        1,
-      ),
-    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
-  });
-
-  it('createAbsolutePrice allows trips mode with single open tier from 1', async () => {
-    // Passes validateTiers; without DB mocks fails later — must not be INVALID_TIERS
-    await expect(
-      routePricingService.createAbsolutePrice(
-        {
-          route_group_id: 10,
-          adjustment_period_id: 1,
-          pricing_mode: 'by_trips',
-          pallet_trip_price: 0,
-          tiers: [{ range_from: 1, range_to: null, pricing_unit: 'chuyen', price: 1500000 }],
         },
         1,
       ),
@@ -236,87 +209,28 @@ describe('CR: by_truck', () => {
     ]);
   });
 
-  it('allows mixed units and ≤ vs <= as distinct labels', async () => {
+  it('rejects blank and duplicate truck labels on the set, not on price save', async () => {
     await expect(
-      routePricingService.createAbsolutePrice(
+      priceSetService.create(
         {
-          route_group_id: 10,
-          adjustment_period_id: 1,
+          name: 'Blank',
           pricing_mode: 'by_truck',
-          pallet_trip_price: 0,
-          tiers: [
-            ...truckMix,
-            { range_from: 0, range_to: null, label: 'Truck <=2.5', pricing_unit: 'chuyen', price: 1_000_000 },
-          ],
-        },
-        1,
-      ),
-    ).rejects.not.toMatchObject({ code: 'INVALID_TIERS' });
-  });
-
-  it('rejects blank label', async () => {
-    await expect(
-      routePricingService.createAbsolutePrice(
-        {
-          route_group_id: 10,
-          adjustment_period_id: 1,
-          pricing_mode: 'by_truck',
-          pallet_trip_price: 0,
-          tiers: [{ range_from: 0, range_to: null, label: '   ', pricing_unit: 'chuyen', price: 1_500_000 }],
-        },
-        1,
-      ),
-    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
-  });
-
-  it('rejects duplicate trimmed labels', async () => {
-    await expect(
-      routePricingService.createAbsolutePrice(
-        {
-          route_group_id: 10,
-          adjustment_period_id: 1,
-          pricing_mode: 'by_truck',
-          pallet_trip_price: 0,
-          tiers: [
-            { range_from: 0, range_to: null, label: 'Truck 0,5mt', pricing_unit: 'chuyen', price: 1 },
-            { range_from: 0, range_to: null, label: '  Truck 0,5mt  ', pricing_unit: 'tan', price: 2 },
-          ],
-        },
-        1,
-      ),
-    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
-  });
-
-  it('rejects min_billable_ton and non-positive price', async () => {
-    await expect(
-      routePricingService.createAbsolutePrice(
-        {
-          route_group_id: 10,
-          adjustment_period_id: 1,
-          pricing_mode: 'by_truck',
-          pallet_trip_price: 0,
-          tiers: [
-            {
-              range_from: 0,
-              range_to: null,
-              label: 'Truck 1,5mt',
-              pricing_unit: 'tan',
-              price: 90_000,
-              min_billable_ton: 5,
-            },
-          ],
+          has_pallet: false,
+          tiers: [{ label: '   ', pricing_unit: 'chuyen' }],
         },
         1,
       ),
     ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
     await expect(
-      routePricingService.createAbsolutePrice(
+      priceSetService.create(
         {
-          route_group_id: 10,
-          adjustment_period_id: 1,
+          name: 'Dup',
           pricing_mode: 'by_truck',
-          pallet_trip_price: 0,
-          tiers: [{ range_from: 0, range_to: null, label: 'Truck 1,5mt', pricing_unit: 'chuyen', price: 0 }],
+          has_pallet: false,
+          tiers: [
+            { label: 'Truck 0,5mt', pricing_unit: 'chuyen' },
+            { label: '  Truck 0,5mt  ', pricing_unit: 'tan' },
+          ],
         },
         1,
       ),
@@ -324,8 +238,62 @@ describe('CR: by_truck', () => {
   });
 });
 
+describe('Manual adjust cascade math', () => {
+  it('scales with roundToThousands like service cascade', () => {
+    const next = roundToThousands(2_000_000 * (1 + 5 / 100));
+    expect(next).toBe(2_100_000);
+    expect(roundToThousands(1_084_500)).toBe(1_085_000);
+  });
+});
+
 describe('Regression: price version race guards (2026-07-12)', () => {
+  function mockActiveWeightSet() {
+    mockPool.query
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 1,
+          name: 'Set',
+          pricing_mode: 'by_weight',
+          has_pallet: true,
+          status: 'active',
+          created_at: 'x',
+          updated_at: 'x',
+        }],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 11,
+            price_set_id: 1,
+            sort_order: 0,
+            range_from: 0,
+            range_to: 2.5,
+            pricing_unit: 'chuyen',
+            min_billable_ton: null,
+            label: null,
+          },
+          {
+            id: 12,
+            price_set_id: 1,
+            sort_order: 1,
+            range_from: 2.5,
+            range_to: null,
+            pricing_unit: 'tan',
+            min_billable_ton: 5,
+            label: null,
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ n: 0 }] } as never);
+  }
+
+  const pricedTiers = [
+    { price_set_tier_id: 11, price: 1_500_000, range_from: 0, range_to: 2.5, pricing_unit: 'chuyen' as const },
+    { price_set_tier_id: 12, price: 90_000, range_from: 2.5, range_to: null, pricing_unit: 'tan' as const },
+  ];
+
   it('createAbsolutePrice throws ABSOLUTE_UPDATE_FORBIDDEN when version already exists (in-TX check)', async () => {
+    mockActiveWeightSet();
     mockClient.query
       .mockResolvedValueOnce({ rows: [] } as never) // BEGIN
       .mockResolvedValueOnce({ rows: [{ id: 1, start_date: '2026-07-12' }] } as never) // period
@@ -340,9 +308,9 @@ describe('Regression: price version race guards (2026-07-12)', () => {
         {
           route_group_id: 10,
           adjustment_period_id: 1,
-          pricing_mode: 'by_weight',
+          price_set_id: 1,
           pallet_trip_price: 800000,
-          tiers: sampleWeightTiers,
+          tiers: pricedTiers,
         },
         1,
       ),
@@ -353,6 +321,7 @@ describe('Regression: price version race guards (2026-07-12)', () => {
   });
 
   it('createAbsolutePrice maps unique violation to ABSOLUTE_UPDATE_FORBIDDEN', async () => {
+    mockActiveWeightSet();
     const uniqueErr = Object.assign(new Error('duplicate key'), {
       code: '23505',
       constraint: 'idx_rpv_config_period',
@@ -373,9 +342,9 @@ describe('Regression: price version race guards (2026-07-12)', () => {
         {
           route_group_id: 10,
           adjustment_period_id: 1,
-          pricing_mode: 'by_trips',
+          price_set_id: 1,
           pallet_trip_price: 800000,
-          tiers: sampleTripsTiers,
+          tiers: pricedTiers,
         },
         1,
       ),
@@ -451,6 +420,252 @@ describe('price books', () => {
     await expect(routePricingService.deletePriceBook(9, 1)).rejects.toMatchObject({
       code: 'PRICE_BOOK_NOT_FOUND',
     });
+  });
+
+  it('manualAdjustVersion rejects an added tier that is already on the period', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] } as never) // BEGIN
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 7,
+          price_config_id: 3,
+          pricing_mode: 'by_weight',
+          pallet_trip_price: null,
+          pallet_manual_adjusted: false,
+          period_start_date: '2026-08-01',
+          adjustment_period_id: 2,
+        }],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 50,
+          price_set_tier_id: 12,
+          range_from: 2.5,
+          range_to: null,
+          pricing_unit: 'tan',
+          price: 90_000,
+          min_billable_ton: 5,
+          sort_order: 1,
+          label: null,
+          is_manual_adjusted: false,
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ price_set_id: 1 }] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 1, name: 'Set', pricing_mode: 'by_weight', has_pallet: false,
+          status: 'active', created_at: 'x', updated_at: 'x',
+        }],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 12, price_set_id: 1, sort_order: 1, range_from: 2.5, range_to: null,
+          pricing_unit: 'tan', min_billable_ton: 5, label: null,
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ n: 1 }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never); // ROLLBACK
+
+    await expect(
+      routePricingService.manualAdjustVersion(
+        7,
+        {
+          pallet_trip_price: null,
+          tiers: [{ id: 50, price: 90_000 }],
+          added_tiers: [{ price_set_tier_id: 12, price: 100_000 }],
+        },
+        1,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_TIERS' });
+  });
+
+  it('manualAdjustVersion inserts an unused tier and scales later periods', async () => {
+    const versionRow = {
+      id: 7,
+      price_config_id: 3,
+      pricing_mode: 'by_weight',
+      pallet_trip_price: null,
+      pallet_manual_adjusted: false,
+      base_version_id: 1,
+      period_percent: 0,
+      period_start_date: '2026-08-01',
+      period_end_date: '2026-09-01',
+      adjustment_period_id: 2,
+      created_at: 'x',
+    };
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [versionRow] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 50,
+          price_set_tier_id: 11,
+          range_from: 0,
+          range_to: 2.5,
+          pricing_unit: 'chuyen',
+          price: 1_500_000,
+          min_billable_ton: null,
+          sort_order: 0,
+          label: null,
+          is_manual_adjusted: false,
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ price_set_id: 1 }] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 1, name: 'Set', pricing_mode: 'by_weight', has_pallet: false,
+          status: 'active', created_at: 'x', updated_at: 'x',
+        }],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 11, price_set_id: 1, sort_order: 0, range_from: 0, range_to: 2.5,
+            pricing_unit: 'chuyen', min_billable_ton: null, label: null,
+          },
+          {
+            id: 12, price_set_id: 1, sort_order: 1, range_from: 2.5, range_to: null,
+            pricing_unit: 'tan', min_billable_ton: 5, label: null,
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ n: 1 }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never) // pallet update
+      .mockResolvedValueOnce({ rows: [] } as never) // existing tier update
+      .mockResolvedValueOnce({ rows: [] } as never) // insert current
+      .mockResolvedValueOnce({ rows: [{ id: 9, percent: 10, start_date: '2026-09-01' }] } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 8, pallet_trip_price: null }] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 60,
+          price_set_tier_id: 11,
+          range_from: 0,
+          range_to: 2.5,
+          pricing_unit: 'chuyen',
+          price: 1_500_000,
+          min_billable_ton: null,
+          sort_order: 0,
+          label: null,
+          is_manual_adjusted: false,
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [] } as never) // insert later
+      .mockResolvedValueOnce({ rows: [] } as never); // COMMIT
+    mockPool.query
+      .mockResolvedValueOnce({ rows: [versionRow] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+
+    await routePricingService.manualAdjustVersion(
+      7,
+      {
+        pallet_trip_price: null,
+        tiers: [{ id: 50, price: 1_500_000 }],
+        added_tiers: [{ price_set_tier_id: 12, price: 90_000 }],
+      },
+      1,
+    );
+
+    const inserts = mockClient.query.mock.calls.filter((call) =>
+      String(call[0]).includes('INSERT INTO route_price_tiers'),
+    );
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0][1]).toEqual(expect.arrayContaining([12, 90_000, true]));
+    expect(inserts[1][1]).toEqual(expect.arrayContaining([12, roundToThousands(90_000 * 1.1), false]));
+  });
+
+  it('manualAdjustVersion rejects pallet when the price set has no pallet slot', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 7,
+          price_config_id: 3,
+          pricing_mode: 'by_weight',
+          pallet_trip_price: null,
+          period_start_date: '2026-08-01',
+        }],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 50, price_set_tier_id: 11, range_from: 0, range_to: 2.5,
+          pricing_unit: 'chuyen', price: 1_500_000, min_billable_ton: null,
+          sort_order: 0, label: null, is_manual_adjusted: false,
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ price_set_id: 1 }] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 1, name: 'Set', pricing_mode: 'by_weight', has_pallet: false,
+          status: 'active', created_at: 'x', updated_at: 'x',
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ n: 1 }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+
+    await expect(
+      routePricingService.manualAdjustVersion(
+        7,
+        { pallet_trip_price: 800_000, tiers: [{ id: 50, price: 1_500_000 }] },
+        1,
+      ),
+    ).rejects.toMatchObject({ code: 'PALLET_NOT_IN_SET' });
+  });
+
+  it('manualAdjustVersion adds pallet and scales later periods', async () => {
+    const versionRow = {
+      id: 7,
+      price_config_id: 3,
+      pricing_mode: 'by_weight',
+      pallet_trip_price: null,
+      pallet_manual_adjusted: false,
+      base_version_id: 1,
+      period_percent: 0,
+      period_start_date: '2026-08-01',
+      period_end_date: '2026-09-01',
+      adjustment_period_id: 2,
+      created_at: 'x',
+    };
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [versionRow] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 50, price_set_tier_id: 11, range_from: 0, range_to: 2.5,
+          pricing_unit: 'chuyen', price: 1_500_000, min_billable_ton: null,
+          sort_order: 0, label: null, is_manual_adjusted: false,
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ price_set_id: 1 }] } as never)
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 1, name: 'Set', pricing_mode: 'by_weight', has_pallet: true,
+          status: 'active', created_at: 'x', updated_at: 'x',
+        }],
+      } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ n: 1 }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never) // current pallet update
+      .mockResolvedValueOnce({ rows: [] } as never) // existing tier update
+      .mockResolvedValueOnce({ rows: [{ id: 9, percent: 10, start_date: '2026-09-01' }] } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 8, pallet_trip_price: null }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never) // later tiers
+      .mockResolvedValueOnce({ rows: [] } as never) // later pallet update
+      .mockResolvedValueOnce({ rows: [] } as never); // COMMIT
+    mockPool.query
+      .mockResolvedValueOnce({ rows: [versionRow] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+
+    await routePricingService.manualAdjustVersion(
+      7,
+      { pallet_trip_price: 800_000, tiers: [{ id: 50, price: 1_500_000 }] },
+      1,
+    );
+
+    const laterPallet = mockClient.query.mock.calls.find((call) =>
+      String(call[0]).includes('SET pallet_trip_price=$1, pallet_manual_adjusted=FALSE'),
+    );
+    expect(laterPallet?.[1]?.[0]).toBe(roundToThousands(800_000 * 1.1));
   });
 
   it('lookup is deferred', async () => {

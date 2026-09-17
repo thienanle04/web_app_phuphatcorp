@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   dispatchApi,
   type CreateDispatchScheduleRequest,
+  type CreateDispatchScheduleBatchItem,
   type UpdateDispatchScheduleRequest,
 } from '../api/dispatchApi';
 
@@ -19,6 +20,17 @@ export function useCreateDispatchSchedule() {
     mutationFn: (data: CreateDispatchScheduleRequest) => dispatchApi.create(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['dispatch-schedules', variables.ngay] });
+    },
+  });
+}
+
+export function useBatchCreateDispatchSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ items, date }: { items: CreateDispatchScheduleBatchItem[]; date: string }) =>
+      dispatchApi.batchCreate(items),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['dispatch-schedules', variables.date] });
     },
   });
 }

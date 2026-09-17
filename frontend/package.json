@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "migrate": "node -e \"if(process.env.ALLOW_MIGRATE !== 'true') { console.error('Migration bị khóa! Hãy gán ALLOW_MIGRATE=true để tiếp tục.'); process.exit(1); }\" && node ./scripts/migrate.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -49,4 +50,5 @@
   "engines": {
     "node": ">=20.19.0"
   }
+  
 }

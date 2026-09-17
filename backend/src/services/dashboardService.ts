@@ -5,7 +5,6 @@ import { deliveryDataService } from './deliveryDataService';
 export interface OverviewKpis {
   delivered_tons: number;
   invoice_count: number;
-  trip_count: number;
   fuel_cost: number;
 }
 
@@ -95,24 +94,9 @@ export interface AccountingData {
   job_logs: ReconcileLogRow[];
 }
 
-export interface OperationsDailyRow {
-  date: string;
-  trips: number;
-  tons: number;
-}
-
-export interface OperationsVehicleRow {
-  so_xe: string;
-  trips: number;
-  tons: number;
-}
-
 export interface OperationsData {
   date_from: string;
   date_to: string;
-  summary: { total_trips: number; total_tons: number; vehicle_count: number };
-  daily: OperationsDailyRow[];
-  by_vehicle: OperationsVehicleRow[];
   driver_invoices: { record_count: number; invoice_count: number };
 }
 
@@ -208,8 +192,6 @@ const dashboardService = {
                FROM delivery_data WHERE ngay_hd >= $1::date) AS delivered_tons,
             (SELECT COUNT(DISTINCT so_hd)
                FROM delivery_data WHERE ngay_hd >= $1::date AND so_hd IS NOT NULL AND so_hd <> '') AS invoice_count,
-            (SELECT COUNT(*)::int
-               FROM delivery_schedules WHERE ngay >= $1::date) AS trip_count,
             (SELECT COALESCE(SUM(total_cost), 0)
                FROM fuel_records WHERE record_date >= $1::date) AS fuel_cost`,
           [startDate],
@@ -304,7 +286,6 @@ const dashboardService = {
       kpis: {
         delivered_tons: parseFloat(kpi.delivered_tons) || 0,
         invoice_count: parseInt(kpi.invoice_count, 10),
-        trip_count: parseInt(kpi.trip_count, 10),
         fuel_cost: parseFloat(kpi.fuel_cost) || 0,
       },
       monthly_tons: monthlyResult.rows.map((r) => ({
@@ -426,71 +407,18 @@ const dashboardService = {
       dateFrom ||
       new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    const [summaryResult, dailyResult, byVehicleResult, driverInvoiceResult] = await Promise.all([
-      pool.query(
-        `SELECT
-          COUNT(*)::int AS total_trips,
-          COALESCE(SUM(tan), 0) AS total_tons,
-          COUNT(DISTINCT so_xe)::int AS vehicle_count
-        FROM delivery_schedules
-        WHERE ngay >= $1::date AND ngay <= $2::date`,
-        [from, to],
-      ),
-      pool.query(
-        `WITH days AS (
-          SELECT d.day::date AS date
-          FROM generate_series($1::date, $2::date, INTERVAL '1 day') d(day)
-        )
-        SELECT
-          to_char(days.date, 'DD/MM') AS date,
-          COUNT(ds.id)::int AS trips,
-          COALESCE(SUM(ds.tan), 0) AS tons
-        FROM days
-        LEFT JOIN delivery_schedules ds ON ds.ngay = days.date
-        GROUP BY days.date
-        ORDER BY days.date`,
-        [from, to],
-      ),
-      pool.query(
-        `SELECT
-          so_xe,
-          COUNT(*)::int AS trips,
-          COALESCE(SUM(tan), 0) AS tons
-        FROM delivery_schedules
-        WHERE ngay >= $1::date AND ngay <= $2::date
-          AND so_xe IS NOT NULL AND so_xe <> ''
-        GROUP BY so_xe
-        ORDER BY trips DESC, so_xe ASC`,
-        [from, to],
-      ),
-      pool.query(
-        `SELECT
-          COUNT(*)::int AS record_count,
-          COALESCE(SUM(jsonb_array_length(so_hoa_don)), 0)::int AS invoice_count
-        FROM driver_invoices
-        WHERE ngay >= $1::date AND ngay <= $2::date`,
-        [from, to],
-      ),
-    ]);
+    const driverInvoiceResult = await pool.query(
+      `SELECT
+        COUNT(*)::int AS record_count,
+        COALESCE(SUM(jsonb_array_length(so_hoa_don)), 0)::int AS invoice_count
+      FROM driver_invoices
+      WHERE ngay >= $1::date AND ngay <= $2::date`,
+      [from, to],
+    );
 
     return {
       date_from: from,
       date_to: to,
-      summary: {
-        total_trips: summaryResult.rows[0].total_trips,
-        total_tons: parseFloat(summaryResult.rows[0].total_tons) || 0,
-        vehicle_count: summaryResult.rows[0].vehicle_count,
-      },
-      daily: dailyResult.rows.map((r) => ({
-        date: r.date,
-        trips: r.trips,
-        tons: parseFloat(r.tons) || 0,
-      })),
-      by_vehicle: byVehicleResult.rows.map((r) => ({
-        so_xe: r.so_xe,
-        trips: r.trips,
-        tons: parseFloat(r.tons) || 0,
-      })),
       driver_invoices: driverInvoiceResult.rows[0],
     };
   },

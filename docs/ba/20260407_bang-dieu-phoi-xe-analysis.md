@@ -100,7 +100,8 @@ CREATE TABLE dispatch_schedules (
 
   -- Trip info
   diem_nhan    TEXT NOT NULL,
-  diem_tra     TEXT NOT NULL,
+  tan          TEXT,                  -- tấn (optional)
+  can          TEXT,                  -- CAN (optional)
   gio_nhan     TIME NOT NULL,
   ghi_chu      TEXT,
 
@@ -141,13 +142,12 @@ Response: {
 DispatchSchedule: {
   id: number,
   ngay: string,          -- YYYY-MM-DD
+  loai_tuyen: string,    -- 'Tuyến cố định' | 'Tuyến ngoài'
   loai_xe: string,
   xe_type: string,
-  bien_so: string,
-  tai_xe: string | null,
-  ma_chuyen: string | null,
   diem_nhan: string,
-  diem_tra: string,
+  tan: string | null,
+  can: string | null,
   gio_nhan: string,      -- HH:MM
   ghi_chu: string | null,
   created_at: string
@@ -158,17 +158,14 @@ DispatchSchedule: {
 ```
 Request: {
   ngay: string,          -- YYYY-MM-DD (required)
+  loai_tuyen: string,    -- 'Tuyến cố định' | 'Tuyến ngoài' (required)
   loai_xe: string,       -- 'Xe lớn' | 'Xe nhỏ' (required)
   xe_type: string,       -- 'Xe nhà' | 'Xe ngoài' (required)
-  bien_so: string,       -- (required)
-  tai_xe?: string,
-  ma_chuyen?: string,
   diem_nhan: string,     -- (required)
-  diem_tra: string,      -- (required)
+  tan?: string,          -- (optional)
+  can?: string,          -- (optional)
   gio_nhan: string,      -- HH:MM (required)
   ghi_chu?: string,
-  vehicle_id?: number,   -- optional FK reference
-  trip_code_id?: number  -- optional FK reference
 }
 Response: { success: true, data: DispatchSchedule }
 ```

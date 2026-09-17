@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, Pencil } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { vehicleInsuranceApi, type InsuranceRecord, type InsuranceImage } from '../../api/vehicleInsuranceApi';
 import type { VehicleInsuranceSummary } from '../../api/vehicleInsuranceApi';
@@ -14,34 +14,43 @@ interface Props {
   onClose: () => void;
   vehicle: VehicleInsuranceSummary;
   onError: (message: string) => void;
+  onSuccess?: (message: string) => void;
 }
 
 function isImageFile(mimeType: string | null): boolean {
   return mimeType ? mimeType.startsWith('image/') : false;
 }
 
-export function InsuranceHistoryModal({ isOpen, onClose, vehicle, onError }: Props) {
+export function InsuranceHistoryModal({ isOpen, onClose, vehicle, onError, onSuccess }: Props) {
   const [records, setRecords] = useState<InsuranceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [imagesMap, setImagesMap] = useState<Record<number, InsuranceImage[]>>({});
   const [loadingImages, setLoadingImages] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ purchase_date: '', expiry_date: '', notes: '' });
+  const [saving, setSaving] = useState(false);
+
+  const fetchHistory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await vehicleInsuranceApi.fetchAll({ vehicle_id: vehicle.vehicle_id, status: 'all', limit: 100 });
+      setRecords(r.insurances);
+    } catch {
+      onError('Không thể tải lịch sử bảo hiểm');
+    } finally {
+      setLoading(false);
+    }
+  }, [vehicle.vehicle_id, onError]);
 
   useEffect(() => {
     if (isOpen) {
-      setLoading(true);
       setExpandedId(null);
       setImagesMap({});
-      vehicleInsuranceApi.fetchAll({ vehicle_id: vehicle.vehicle_id, status: 'all', limit: 100 })
-        .then((r) => {
-          setRecords(r.insurances);
-        })
-        .catch(() => {
-          onError('Không thể tải lịch sử bảo hiểm');
-        })
-        .finally(() => setLoading(false));
+      setEditingId(null);
+      fetchHistory();
     }
-  }, [isOpen, vehicle.vehicle_id, onError]);
+  }, [isOpen, vehicle.vehicle_id, fetchHistory]);
 
   const toggleExpand = useCallback(async (recordId: number) => {
     if (expandedId === recordId) {
@@ -80,6 +89,47 @@ export function InsuranceHistoryModal({ isOpen, onClose, vehicle, onError }: Pro
     }
   };
 
+  const latestActiveId = records
+    .filter((r) => r.status === 'active')
+    .sort((a, b) => new Date(b.expiry_date).getTime() - new Date(a.expiry_date).getTime())[0]?.id ?? null;
+
+  const startEdit = (r: InsuranceRecord) => {
+    setEditingId(r.id);
+    setEditForm({
+      purchase_date: r.purchase_date ? r.purchase_date.split('T')[0] : '',
+      expiry_date: r.expiry_date ? r.expiry_date.split('T')[0] : '',
+      notes: r.notes ?? '',
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ purchase_date: '', expiry_date: '', notes: '' });
+  };
+
+  const submitEdit = async () => {
+    if (!editingId) return;
+    if (new Date(editForm.expiry_date) <= new Date(editForm.purchase_date)) {
+      onError('Ngày hết hạn phải sau ngày mua');
+      return;
+    }
+    setSaving(true);
+    try {
+      await vehicleInsuranceApi.update(editingId, {
+        purchase_date: editForm.purchase_date,
+        expiry_date: editForm.expiry_date,
+        notes: editForm.notes || undefined,
+      });
+      onSuccess?.('Đã cập nhật bảo hiểm');
+      cancelEdit();
+      await fetchHistory();
+    } catch {
+      onError('Không thể cập nhật bảo hiểm');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Lịch sử bảo hiểm: ${vehicle.plate_number} - ${vehicle.driver_name}`} size="xl">
       <div className="overflow-x-auto">
@@ -104,14 +154,17 @@ export function InsuranceHistoryModal({ isOpen, onClose, vehicle, onError }: Pro
                 <TableHead className="w-28 text-center">Trạng thái</TableHead>
                 <TableHead>Ghi chú</TableHead>
                 <TableHead className="w-20 text-center">File</TableHead>
+                <TableHead className="w-24 text-center">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {records.map((r, idx) => {
                 const isExpanded = expandedId === r.id;
+                const isEditing = editingId === r.id;
                 const images = imagesMap[r.id] ?? [];
                 const hasFiles = (r.images && r.images.length > 0) || images.length > 0;
                 const totalFiles = images.length > 0 ? images.length : (r.images?.length ?? 0);
+                const canEdit = r.id === latestActiveId;
 
                 return (
                   <TableRow key={r.id}>
@@ -125,10 +178,28 @@ export function InsuranceHistoryModal({ isOpen, onClose, vehicle, onError }: Pro
                     </TableCell>
                     <TableCell className="text-neutral-500 dark:text-neutral-400 text-sm">{idx + 1}</TableCell>
                     <TableCell className="text-neutral-700 dark:text-neutral-300 text-sm">
-                      {new Date(r.purchase_date).toLocaleDateString('vi-VN')}
+                      {isEditing ? (
+                        <input
+                          type="date"
+                          value={editForm.purchase_date}
+                          onChange={(e) => setEditForm((f) => ({ ...f, purchase_date: e.target.value }))}
+                          className="px-2 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
+                        />
+                      ) : (
+                        new Date(r.purchase_date).toLocaleDateString('vi-VN')
+                      )}
                     </TableCell>
                     <TableCell className="text-neutral-700 dark:text-neutral-300 text-sm font-medium">
-                      {new Date(r.expiry_date).toLocaleDateString('vi-VN')}
+                      {isEditing ? (
+                        <input
+                          type="date"
+                          value={editForm.expiry_date}
+                          onChange={(e) => setEditForm((f) => ({ ...f, expiry_date: e.target.value }))}
+                          className="px-2 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100"
+                        />
+                      ) : (
+                        new Date(r.expiry_date).toLocaleDateString('vi-VN')
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <span className={cn('inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusClass(r.status))}>
@@ -136,7 +207,16 @@ export function InsuranceHistoryModal({ isOpen, onClose, vehicle, onError }: Pro
                       </span>
                     </TableCell>
                     <TableCell className="text-neutral-500 dark:text-neutral-400 text-sm max-w-48 truncate">
-                      {r.notes || '-'}
+                      {isEditing ? (
+                        <textarea
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                          rows={1}
+                          className="w-full px-2 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-neutral-100 resize-none"
+                        />
+                      ) : (
+                        r.notes || '-'
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       {hasFiles ? (
@@ -144,6 +224,40 @@ export function InsuranceHistoryModal({ isOpen, onClose, vehicle, onError }: Pro
                       ) : (
                         <span className="text-xs text-neutral-400">-</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {isEditing ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={submitEdit}
+                            disabled={saving}
+                            className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors disabled:opacity-50"
+                            title="Lưu"
+                          >
+                            {saving ? (
+                              <div className="w-4 h-4 border-2 border-green-300 border-t-green-600 rounded-full animate-spin" />
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            )}
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            disabled={saving}
+                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
+                            title="Hủy"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                      ) : canEdit ? (
+                        <button
+                          onClick={() => startEdit(r)}
+                          className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                          title="Sửa"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 );

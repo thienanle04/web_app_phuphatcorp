@@ -15,8 +15,7 @@ const schema = yup.object({
     .required('Tên đăng nhập là bắt buộc'),
   password: yup
     .string()
-    .required('Mật khẩu là bắt buộc')
-    .min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
+    .required('Mật khẩu là bắt buộc'),
 });
 
 type FormData = yup.InferType<typeof schema>;

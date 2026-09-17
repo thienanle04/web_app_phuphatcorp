@@ -251,6 +251,16 @@ Base URL: `/api`
 | POST | /auth/logout | No | — | `{ success, message }` + clear cookie |
 | GET | /auth/me | JWT | — | `{ success, message, data: user }` |
 
+### Data Scopes — /data-scopes
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | /data-scopes/me | JWT | Lấy tóm tắt phân quyền dữ liệu của user hiện tại |
+| GET | /data-scopes/features | data_scopes.view | Danh sách tính năng và ma trận scope vai trò |
+| PUT | /data-scopes/features/:code/roles/:roleId | data_scopes.manage | Cập nhật scope_type của vai trò cho tính năng |
+| GET | /data-scopes/user-entities | data_scopes.view | Danh sách gán entity cho user |
+| POST | /data-scopes/user-entities | data_scopes.manage | Gán entity cho user |
+| DELETE | /data-scopes/user-entities/:id | data_scopes.manage | Hủy gán entity cho user |
+
 ### Users — /users (ADMIN only)
 
 | Method | Path | Auth | Body | Response |
@@ -272,15 +282,18 @@ Base URL: `/api`
 | GET/POST/PUT/DELETE | /route-pricing/price-books | view/manage | Master bảng giá (tên tự do, unique active) |
 | GET/POST/PUT/DELETE | /route-pricing/routes | view/manage | Scoped `price_book_id`; `ward_code` XOR `location_text`; `note` |
 | GET/POST/PUT/DELETE | /route-pricing/groups | view/manage | Scoped `price_book_id`; `ward_codes[]` XOR `location_text` XOR residual |
-| GET/POST | /route-pricing/prices | view/manage | Absolute: `adjustment_period_id` + cascade kỳ sau; `pricing_mode` `by_weight`\|`by_trips`\|`by_truck`; truck tiers dùng `label` |
-| GET | /route-pricing/prices/matrix | view | Ma trận theo `price_book_id`: weight_tables[] + truck_tables[] + trips.rows |
-| PUT | /route-pricing/prices/groups/:routeGroupId/absolute | manage | Sửa giá gốc + recompute cascade |
+| GET/POST | /route-pricing/price-sets | view/manage | Catalog khung global. POST `{ name, pricing_mode, has_pallet, tiers[] }`. Unique tên và fingerprint khi active. |
+| PUT | /route-pricing/price-sets/:id | manage | `{ name }` luôn. `{ tiers, has_pallet }` chỉ khi chưa có nhóm gắn. |
+| POST | /route-pricing/price-sets/:id/tiers | manage | Append một bậc (kể cả bộ đang dùng). Không tự sinh giá. |
+| DELETE | /route-pricing/price-sets/:id | manage | Soft-deactive. 409 `PRICE_SET_IN_USE` nếu còn nhóm gắn. |
+| GET/POST | /route-pricing/prices | view/manage | Absolute: `adjustment_period_id` + `price_set_id` + cascade kỳ sau. Mode lấy từ bộ. Tiers `{ price_set_tier_id, price }` với `price > 0`. Ô không gửi = không insert. |
+| GET | /route-pricing/prices/matrix | view | Theo `price_book_id`. `set_tables[]` (một bảng / bộ). `weight_tables` / `truck_tables` là filter của `set_tables`. `trips.rows` luôn `[]`. Ô thiếu `null`. |
+| PUT | /route-pricing/prices/groups/:routeGroupId/absolute | manage | Sửa giá gốc + recompute cascade. Đổi `price_set_id` khi đã có version → 409 `PRICE_SET_LOCKED`. |
+| DELETE | /route-pricing/prices/groups/:routeGroupId | manage | Xóa mọi version, `price_set_id = NULL`. Không xóa nhóm tuyến. |
+| PUT | /route-pricing/prices/versions/:versionId/manual-adjust | manage | Sửa bậc đã có. `added_tiers` cho bậc bộ chưa có trên kỳ. Không xóa bậc đã có. Giá mới `> 0`. |
 | GET | /route-pricing/lookup | view | **Deferred** (501 LOOKUP_DEFERRED) — CR riêng sau |
 
-**FE:** Tab Kỳ điều chỉnh / Nhóm tuyến / Bảng giá. Bỏ nút Điều chỉnh % riêng. Không sửa kỳ — muốn đổi thì xóa rồi tạo lại.
-
-BA: `docs/ba/20260711_route-pricing-analysis.md`  
-UI: `docs/ui/20260731_route-pricing-adjustment-periods-cr-ui-spec.md`
+**FE:** Sidebar accordion **Quản lý giá cước vận tải**: `/route-pricing/periods`, `/sets`, `/routes` (tab Tuyến + Quản lý giá), `/matrix`. `/route-pricing` redirect theo `?tab=` cũ. Bộ giá tạo trước; form giá chỉ chọn bộ và nhập số. Bút chì điều chỉnh giá trên card kỳ. Không sửa kỳ — muốn đổi thì xóa rồi tạo lại.
 
 ### Dashboard — /dashboard
 
@@ -289,7 +302,7 @@ UI: `docs/ui/20260731_route-pricing-adjustment-periods-cr-ui-spec.md`
 | GET | /dashboard/overview | JWT + dashboard.view | KPI tháng/quý (`?period=month\|quarter`), tấn theo 6 tháng, cảnh báo hết hạn, dispatch hôm nay, job reconcile gần nhất |
 | GET | /dashboard/vehicle-maintenance | JWT + vehicle_data.view | Đăng kiểm/bảo hiểm theo bucket hạn, xe đến hạn thay nhớt, chi phí sửa chữa 12 tháng |
 | GET | /dashboard/accounting | JWT + accounting_data.view | Tổng matched/unmatched, theo tháng, batch gần đây, lịch sử reconcile job |
-| GET | /dashboard/operations | JWT + transport.view hoặc dispatch.view | Chuyến/tấn theo ngày & theo xe (`?date_from&date_to`, mặc định 30 ngày), hóa đơn tài xế |
+| GET | /dashboard/operations | JWT + dispatch.view | Chuyến/tấn theo ngày & theo xe (`?date_from&date_to`, mặc định 30 ngày), hóa đơn tài xế |
 | GET | /dashboard/fuel | JWT + fuel.view | Chi phí/lít 6 tháng, tiêu thụ theo xe, chênh lệch đồng hồ vs GPS |
 
 **FE:** Trang `/` (DashboardPage) — tabs trong 1 trang, filter theo permission. Files: `frontend/src/pages/dashboard/tabs/*.tsx`, `frontend/src/api/dashboardApi.ts`, `frontend/src/hooks/useDashboard.ts`.
@@ -300,7 +313,7 @@ UI: `docs/ui/20260731_route-pricing-adjustment-periods-cr-ui-spec.md`
 |--------|------|------|----------|
 | GET | /health | No | `{ status: 'ok', timestamp }` |
 
-Frontend route: `/route-pricing` (sidebar top-level **Giá theo tuyến**)
+Frontend: accordion **Quản lý giá cước vận tải** → `/route-pricing/periods|sets|routes|matrix`
 
 ### Dispatch Schedules — /dispatch-schedules
 
@@ -308,8 +321,36 @@ Frontend route: `/route-pricing` (sidebar top-level **Giá theo tuyến**)
 |--------|------|------|------------|----------|
 | GET | /dispatch-schedules | JWT | query: `date=YYYY-MM-DD` (required) | `{ success, data: { xe_nho: DispatchSchedule[], xe_lon: DispatchSchedule[], tuyen_ngoai: DispatchSchedule[] } }` |
 | POST | /dispatch-schedules | JWT | `{ ngay, loai_tuyen, loai_xe, xe_type, bien_so, tai_xe?, ma_chuyen?, diem_nhan, diem_tra, gio_nhan, ghi_chu?, vehicle_id?, trip_code_id? }` | `{ success, data: DispatchSchedule }` |
+| POST | /dispatch-schedules/batch | JWT | `{ items: CreateDispatchScheduleBatchItem[] }` — mỗi item có thêm `driver_id?` | `{ success, data: DispatchSchedule[] }` |
 | PUT | /dispatch-schedules/:id | JWT + dispatch.manage | `{ bien_so, tai_xe?, ma_chuyen?, diem_nhan, diem_tra, gio_nhan, ghi_chu?, vehicle_id?, trip_code_id? }` | `{ success, data: DispatchSchedule }` |
 | DELETE | /dispatch-schedules/:id | JWT + dispatch.manage | — | `{ success, message }` |
+
+### Drivers — /drivers
+
+| Method | Path | Auth | Body/Query | Response |
+|--------|------|------|------------|----------|
+| GET | /drivers/by-vehicle/:vehicleId | JWT | — | `{ success, data: VehicleDriver[] }` — Danh sách tài xế được gán cho xe (qua `driver_vehicles`) |
+
+### Invoice Tracking — /invoice-tracking
+
+| Method | Path | Auth | Body/Query | Response |
+|--------|------|------|------------|----------|
+| GET | /invoice-tracking | JWT + invoice_tracking.view | query: `status`, `date_from`, `date_to`, `search`, `ghi_chu`, `page`, `limit` | `{ success, data: { items: InvoiceTrackingTicket[], pagination } }` |
+| GET | /invoice-tracking/statistics | JWT + invoice_tracking.view | query: `date_from`, `date_to`, `bien_so`, `driver_id`, `tai_xe`, `ghi_chu` | `{ success, data: InvoiceTrackingStatisticsResult }` — Thống kê theo tài xế |
+| GET | /invoice-tracking/:id | JWT + invoice_tracking.view | — | `{ success, data: InvoiceTrackingTicket }` |
+| GET | /invoice-tracking/:id/history | JWT + invoice_tracking.view | — | `{ success, data: InvoiceTrackingHistoryItem[] }` — Lịch sử thao tác |
+| GET | /invoice-tracking/:id/copyable-tickets | JWT + invoice_tracking.view | — | `{ success, data: CopyableTicket[] }` — Danh sách chuyến cùng ngày để sao chép |
+| GET | /invoice-tracking/files/:filename | No (Public) | — | Serve tệp từ MinIO bucket (redirect 302 sang presigned URL 24h) |
+| POST | /invoice-tracking/:id/share | JWT + invoice_tracking.view | — | `{ success, data: { share_token } }` — Tạo / lấy mã chia sẻ công khai |
+| POST | /invoice-tracking/:id/copy-documents | JWT + invoice_tracking.view | `{ source_ticket_id, driver_note? }` | `{ success, data: InvoiceTrackingTicket }` — Sao chép chứng từ không nhân bản tệp |
+| POST | /invoice-tracking/:id/documents | JWT + invoice_tracking.view | `multipart/form-data` (files, driver_note) | `{ success, data: InvoiceTrackingTicket }` — Tải tệp lên MinIO |
+| PUT | /invoice-tracking/:id/review | JWT + invoice_tracking.manage | `{ action: 'finish' \| 'request_supplement', supplement_note? }` | `{ success, data: InvoiceTrackingTicket }` |
+
+### Public Endpoints — /public
+
+| Method | Path | Auth | Body/Query | Response |
+|--------|------|------|------------|----------|
+| GET | /public/invoice-tracking/:token | No (Public) | — | `{ success, data: PublicInvoiceTicket }` — Xem thông tin & chứng từ ticket qua liên kết chia sẻ |
 
 ### Customers — /customers
 

@@ -195,8 +195,8 @@ export function RiceDeliveryDataPage() {
 
       if (masterResult.totalFetched === 0) {
         setErrorMessage(
-          `Không tìm thấy lịch đi hàng nào trong khoảng ${formatDate(parsed.dateRange.from)} – ${formatDate(parsed.dateRange.to)}. ` +
-          `Vui lòng upload lịch đi hàng trước tại mục "Lịch đi hàng".`
+          `Không tìm thấy hóa đơn tài xế nào trong khoảng ${formatDate(parsed.dateRange.from)} – ${formatDate(parsed.dateRange.to)}. ` +
+          `Vui lòng upload hóa đơn tài xế trước tại mục "Hóa đơn tài xế".`
         );
         setPageState('error');
         return;
@@ -248,7 +248,7 @@ export function RiceDeliveryDataPage() {
 
   const spinnerMap: Record<string, string> = {
     parsing: 'Đang đọc file dữ liệu...',
-    fetching_master: 'Đang tải lịch đi hàng từ hệ thống...',
+    fetching_master: 'Đang tải hóa đơn tài xế từ hệ thống...',
     filtering: 'Đang lọc và so khớp biển số...',
   };
   const isSpinner = pageState in spinnerMap;
@@ -265,7 +265,7 @@ export function RiceDeliveryDataPage() {
             Xử lý Data Gạo
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Upload file <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-xs">data_gao.xlsx</code> để lọc ra những xe có biển số + ngày chạy nằm trong lịch đi hàng.
+            Upload file <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-xs">data_gao.xlsx</code> để lọc ra những xe có biển số + ngày chạy nằm trong hóa đơn tài xế.
           </p>
         </div>
 
@@ -273,8 +273,8 @@ export function RiceDeliveryDataPage() {
         <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
           <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            Hệ thống sẽ tự động đọc <strong>lịch đi hàng</strong> từ DB (theo khoảng ngày trong file upload) và so khớp biển số.
-            Đảm bảo đã upload lịch đi hàng đầy đủ tại <strong>Dữ liệu xe &gt; Lịch đi hàng</strong>.
+            Hệ thống sẽ tự động đọc <strong>hóa đơn tài xế</strong> từ DB (theo khoảng ngày trong file upload) và so khớp biển số.
+            Đảm bảo đã upload hóa đơn tài xế đầy đủ tại <strong>Dữ liệu xe &gt; Hóa đơn tài xế</strong>.
           </p>
         </div>
 
@@ -441,7 +441,7 @@ export function RiceDeliveryDataPage() {
                     </span>
                   )}
                   <span>
-                    📋 Lịch đi hàng đã tải:{' '}
+                    📋 Hóa đơn tài xế đã tải:{' '}
                     <strong className="text-neutral-700 dark:text-neutral-300">
                       {masterCount.toLocaleString()} xe/ngày
                     </strong>
@@ -526,12 +526,12 @@ export function RiceDeliveryDataPage() {
                   <div className="p-6">
                     {filterResult.unknownPlates.length === 0 ? (
                       <p className="text-center text-sm text-neutral-400 dark:text-neutral-500 py-6">
-                        Tất cả biển số đều có trong lịch đi hàng. ✅
+                        Tất cả biển số đều có trong hóa đơn tài xế. ✅
                       </p>
                     ) : (
                       <>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-                          Những biển số này xuất hiện trong file data gạo nhưng <strong>không có trong lịch đi hàng</strong> của bất kỳ ngày nào trong khoảng{' '}
+                          Những biển số này xuất hiện trong file data gạo nhưng <strong>không có trong hóa đơn tài xế</strong> của bất kỳ ngày nào trong khoảng{' '}
                           {dateRange ? `${formatDate(dateRange.from)} – ${formatDate(dateRange.to)}` : ''}.
                           Cần kiểm tra lại.
                         </p>

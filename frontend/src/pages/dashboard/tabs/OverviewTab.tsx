@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   Truck,
   ReceiptText,
-  Route,
   Droplets,
   AlertTriangle,
   CalendarRange,
@@ -73,12 +72,6 @@ export function OverviewTab() {
       value: kpis.invoice_count.toLocaleString('vi-VN'),
     },
     {
-      icon: Route,
-      color: 'purple',
-      label: t('dashboard.kpi.tripCount'),
-      value: kpis.trip_count.toLocaleString('vi-VN'),
-    },
-    {
       icon: Droplets,
       color: 'orange',
       label: t('dashboard.kpi.fuelCost'),
@@ -89,7 +82,6 @@ export function OverviewTab() {
   const colorClasses: Record<string, string> = {
     blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
     green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
-    purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
     orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
   };
 
@@ -147,7 +139,7 @@ export function OverviewTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {kpiCards.map(({ icon: Icon, color, label, value }) => (
           <Card key={label}>
             <CardContent className="flex items-center gap-4">

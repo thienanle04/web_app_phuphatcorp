@@ -326,6 +326,7 @@ export function InsurancePage() {
           onClose={() => setModal(null)}
           vehicle={modal.vehicle}
           onError={(msg) => showToast(msg, 'error')}
+          onSuccess={(msg) => showToast(msg)}
         />
       )}
     </div>

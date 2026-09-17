@@ -71,7 +71,7 @@ export function ReconcileJobPage() {
   const triggerReconcile = useTriggerReconcile();
   const { hasPermission, user } = useAuth();
 
-  const canManage = hasPermission('accounting_data.manage') || user?.role === 'ADMIN';
+  const canManage = hasPermission('jobs.manage') || user?.role === 'ADMIN';
 
   const [editing, setEditing] = useState(false);
   const [formName, setFormName] = useState('');

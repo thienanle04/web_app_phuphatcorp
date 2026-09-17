@@ -6,7 +6,9 @@
     "userSettings": "Thiết lập người dùng",
     "userManagement": "Quản lý người dùng",
     "roleManagement": "Quản lý vai trò",
-    "permissionManagement": "Quản lý quyền"
+    "permissionManagement": "Quản lý quyền",
+    "dataScopeManagement": "Phạm vi dữ liệu",
+    "workflowManagement": "Cấu hình quy trình"
   },
   "users": {
     "title": "Quản lý người dùng",
@@ -97,23 +99,63 @@
     "saveError": "Không thể lưu quyền. Vui lòng thử lại.",
     "loadError": "Không thể tải ma trận quyền",
     "adminReadonly": "Vai trò ADMIN luôn có toàn bộ quyền",
+    "groups": {
+      "dashboard": "Dashboard",
+      "route_pricing": "Quản lý giá cước vận tải",
+      "delivery_data": "Xử lý Data Giao Hàng",
+      "vehicle_data": "Quản lý dữ liệu xe",
+      "dispatch": "Điều hành vận tải",
+      "accounting_data": "Quản lý dữ liệu kế toán",
+      "user_settings": "Thiết lập người dùng",
+      "catalog": "Quản lý danh mục",
+      "jobs": "Quản lý Job"
+    },
+    "subMenus": {
+      "dashboard": "Dashboard",
+      "route_pricing": "Kỳ điều chỉnh, Bộ giá, Quản lý tuyến, Bảng giá",
+      "delivery_5_houses": "Xử lý 5 nhà",
+      "delivery_rice": "Xử lý gạo",
+      "driver_invoices": "Hoá đơn tài xế / Thống kê",
+      "inspections_oil_insurance_repairs": "Đăng kiểm, Thay nhớt, Bảo hiểm, Sửa xe",
+      "fuel": "Dữ liệu dầu & Thống kê",
+      "schedule": "Lịch điều phối xe",
+      "invoice_tracking": "Theo dõi hóa đơn",
+      "accounting": "Điều chỉnh trọng lượng, Khách hàng, Import, Đối chiếu",
+      "users": "Quản lý người dùng",
+      "roles": "Quản lý vai trò",
+      "permissions": "Quản lý quyền",
+      "data_scopes": "Phạm vi dữ liệu",
+      "workflows": "Cấu hình quy trình",
+      "logs": "Nhật ký hệ thống",
+      "catalog": "Phương tiện, Khách hàng nội thành, Nhà cung cấp, Mặt hàng KM, Điểm giao",
+      "jobs": "Cấu hình Job & Lịch sử"
+    },
     "modules": {
       "dashboard": "Dashboard",
       "delivery_data": "Xử lý Data Giao Hàng",
-      "transport": "Quản lý dữ liệu xe",
+      "vehicle_data": "Quản lý dữ liệu xe",
+      "fuel": "Quản lý dữ liệu dầu",
       "dispatch": "Điều hành vận tải",
       "accounting_data": "Quản lý dữ liệu kế toán",
       "users": "Người dùng",
       "roles": "Vai trò",
       "permissions": "Quyền hạn",
-      "catalog": "Quản lý danh mục"
+      "catalog": "Quản lý danh mục",
+      "jobs": "Quản lý Job",
+      "logs": "Nhật ký hệ thống",
+      "route_pricing": "Quản lý giá cước vận tải",
+      "data_scopes": "Phạm vi dữ liệu",
+      "workflows": "Cấu hình quy trình",
+      "invoice_tracking": "Theo dõi hóa đơn"
     },
     "permCodes": {
       "dashboard_view": "Xem Dashboard",
       "delivery_data_view": "Xem dữ liệu giao hàng",
       "delivery_data_manage": "Quản lý dữ liệu giao hàng",
-      "transport_view": "Xem dữ liệu vận tải",
-      "transport_manage": "Quản lý dữ liệu vận tải",
+      "vehicle_data_view": "Xem dữ liệu xe",
+      "vehicle_data_manage": "Quản lý dữ liệu xe",
+      "fuel_view": "Xem dữ liệu dầu",
+      "fuel_manage": "Quản lý dữ liệu dầu",
       "dispatch_view": "Xem bảng điều phối",
       "dispatch_manage": "Điều phối xe",
       "accounting_data_view": "Xem dữ liệu kế toán",
@@ -124,7 +166,18 @@
       "roles_manage": "Quản lý vai trò",
       "permissions_manage": "Quản lý quyền",
       "catalog_view": "Xem danh mục",
-      "catalog_manage": "Quản lý danh mục"
+      "catalog_manage": "Quản lý danh mục",
+      "jobs_view": "Xem cấu hình Job",
+      "jobs_manage": "Quản lý cấu hình Job",
+      "logs_view": "Xem nhật ký hệ thống",
+      "route_pricing_view": "Xem giá cước vận tải",
+      "route_pricing_manage": "Quản lý giá cước vận tải",
+      "data_scopes_view": "Xem cấu hình phạm vi dữ liệu",
+      "data_scopes_manage": "Quản lý phạm vi dữ liệu",
+      "workflows_view": "Xem cấu hình quy trình",
+      "workflows_manage": "Quản lý cấu hình quy trình",
+      "invoice_tracking_view": "Xem theo dõi hóa đơn",
+      "invoice_tracking_manage": "Quản lý theo dõi hóa đơn"
     }
   },
   "createUser": {
@@ -208,6 +261,10 @@
       "bocXep": "Bốc xếp",
       "nhaCungCap": "Nhà cung cấp",
       "actions": "Hành động"
+    },
+    "actions": {
+      "edit": "Sửa",
+      "delete": "Xóa"
     },
     "bocXep": {
       "true": "Có",
@@ -410,6 +467,9 @@
       "tableXeLon": "Lịch xe lớn",
       "tableTuyenNgoai": "Lịch tuyến ngoài",
       "addTrip": "Thêm chuyến",
+      "importExcel": "Import Excel",
+      "importSuccess": "Import thành công {count} chuyến xe",
+      "importError": "Import thất bại. Vui lòng thử lại",
       "emptyState": "Chưa có chuyến xe nào cho ngày này",
       "emptyStateSub": "Nhấn 'Tạo chuyến' để thêm chuyến mới",
       "emptyStateTuyenNgoai": "Chưa có lịch tuyến ngoài nào",
@@ -417,19 +477,19 @@
       "loadError": "Không tải được dữ liệu",
       "retry": "Thử lại",
       "columns": {
+        "bienSo": "Biển số",
         "diemNhan": "Điểm nhận",
-        "diemTra": "Điểm trả",
+        "tan": "Tấn",
+        "can": "CAN",
         "loaiXe": "Loại xe",
-        "gioNhan": "Giờ nhận",
         "ghiChu": "Ghi chú"
       }
     },
     "createModal": {
       "title": "Tạo chuyến xe",
-      "step1Title": "Bước 1/4 — Loại tuyến",
-      "step2Title": "Bước 2/4 — Loại xe sở hữu",
-      "step3Title": "Bước 3/4 — Cỡ xe",
-      "step4Title": "Bước 4/4 — Thông tin chuyến xe",
+      "step1Title": "Bước 1/3 — Loại tuyến",
+      "step2Title": "Bước 2/3 — Cỡ xe",
+      "step3Title": "Bước 3/3 — Thông tin chuyến xe",
       "tuyenCoDinh": "Tuyến cố định",
       "tuyenNgoai": "Tuyến ngoài",
       "xeNha": "Xe nhà",
@@ -440,8 +500,17 @@
       "submit": "Tạo chuyến",
       "submitting": "Đang tạo...",
       "diemNhan": "Điểm nhận",
-      "diemTra": "Điểm trả",
-      "gioNhan": "Giờ nhận",
+      "diemNhanPlaceholder": "Chọn điểm nhận",
+      "tan": "Tấn",
+      "can": "CAN",
+      "bienSo": "Biển số",
+      "bienSoPlaceholder": "Chọn biển số xe",
+      "bienSoInputPlaceholder": "Nhập biển số xe",
+      "taiXe": "Tài xế",
+      "taiXePlaceholder": "Tự động điền khi chọn xe",
+      "nhapTai": "Nhập tay",
+      "tripNumber": "Chuyến",
+      "addTrip": "Thêm chuyến khác",
       "ghiChu": "Ghi chú",
       "ghiChuPlaceholder": "Ghi chú thêm...",
       "createSuccess": "Tạo chuyến thành công",
@@ -455,6 +524,25 @@
       "deleteSuccess": "Đã xóa chuyến xe",
       "deleteError": "Xóa thất bại. Vui lòng thử lại."
     },
+    "importModal": {
+      "title": "Import Excel Lịch Điều Phối",
+      "dropzone": "Kéo thả file .xlsx hoặc click để chọn",
+      "accepts": "Chỉ chấp nhận file .xlsx hoặc .xls (Tối đa 10MB)",
+      "fileSelected": "Đã chọn file: {fileName}",
+      "previewTitle": "Xem trước dữ liệu",
+      "validRows": "{count} chuyến hợp lệ",
+      "errorRows": "{count} dòng lỗi",
+      "errorMissingPlate": "Thiếu biển số xe (bắt buộc)",
+      "targetTab": "Loại tuyến",
+      "targetLoaiXe": "Cỡ xe",
+      "targetDate": "Ngày điều phối",
+      "cancel": "Hủy",
+      "submit": "Xác nhận Import",
+      "submitting": "Đang import...",
+      "noValidData": "Không có dòng dữ liệu hợp lệ nào để import",
+      "autoDetectedDriver": "Tự động nhận diện từ danh mục",
+      "externalVehicle": "Xe ngoài danh mục"
+    },
     "editModal": {
       "title": "Sửa chuyến xe",
       "submit": "Lưu thay đổi",
@@ -464,16 +552,17 @@
     },
     "validation": {
       "diemNhanRequired": "Điểm nhận là bắt buộc",
-      "diemTraRequired": "Điểm trả là bắt buộc",
-      "gioNhanRequired": "Giờ nhận là bắt buộc"
+      "bienSoRequired": "Biển số là bắt buộc"
     }
   },
   "catalog": {
     "menuTitle": "Quản lý danh mục",
     "vehicles": "Danh mục xe",
+    "drivers": "Danh mục tài xế",
     "innerCityCustomers": "Danh mục KH nội thành",
     "suppliers": "Danh mục NCC",
-    "promoItems": "Danh mục hàng KM"
+    "promoItems": "Danh mục hàng KM",
+    "deliveryPoints": "Danh mục điểm nhận hàng"
   },
   "jobs": {
     "menuTitle": "Quản lý Job"
@@ -650,13 +739,21 @@
     }
   },
   "routePricing": {
+    "nav": {
+      "title": "Quản lý giá cước vận tải",
+      "periods": "Kỳ điều chỉnh",
+      "sets": "Bộ giá",
+      "routes": "Quản lý tuyến",
+      "matrix": "Bảng giá"
+    },
     "page": {
-      "title": "Giá theo tuyến",
-      "subtitle": "Quản lý kỳ điều chỉnh, nhóm tuyến và giá theo từng bảng giá"
+      "title": "Quản lý giá cước vận tải",
+      "subtitle": "Kỳ điều chỉnh, bộ giá, tuyến và bảng giá cước"
     },
     "tab": {
       "periods": "Kỳ điều chỉnh",
-      "groups": "Nhóm tuyến",
+      "sets": "Bộ giá",
+      "groups": "Tuyến",
       "manage": "Quản lý giá",
       "matrix": "Ma trận giá"
     },
@@ -685,15 +782,390 @@
       "cancel": "Hủy",
       "save": "Lưu"
     },
+    "manage": {
+      "adjustPrice": "Điều chỉnh giá",
+      "adjustPricePeriod": "Điều chỉnh giá — {date}",
+      "adjustHint": "Chỉ sửa đơn giá. Các kỳ sau sẽ được tính lại theo % của từng kỳ (làm tròn nghìn).",
+      "saveAdjust": "Lưu",
+      "confirmTitle": "Xác nhận điều chỉnh giá",
+      "confirmChanges": "Các ô thay đổi",
+      "confirmLaterPeriods": "Các kỳ sau sẽ được tính lại theo %",
+      "confirmNoLater": "Không có kỳ sau để cascade.",
+      "confirmLoseMark": "sẽ mất dấu đã điều chỉnh trên ô vừa sửa",
+      "confirmAdd": "thêm",
+      "confirmSubmit": "Xác nhận",
+      "palletAdjustedToZero": "Pallet được điều chỉnh về 0",
+      "manualMarkTitle": "Đã điều chỉnh",
+      "priceZeroDisplay": "-"
+    },
+    "validation": {
+      "priceRequired": "Nhập đơn giá",
+      "priceMin0": "Giá phải ≥ 0",
+      "priceInvalid": "Giá không hợp lệ"
+    },
     "message": {
       "success": {
         "createBook": "Đã tạo bảng giá",
         "renameBook": "Đã đổi tên bảng giá",
-        "deleteBook": "Đã xóa bảng giá"
+        "deleteBook": "Đã xóa bảng giá",
+        "manualAdjust": "Đã điều chỉnh giá",
+        "createSet": "Đã tạo bộ giá",
+        "renameSet": "Đã đổi tên bộ giá",
+        "addTier": "Đã thêm bậc",
+        "deleteSet": "Đã ngừng dùng bộ giá",
+        "deletePrices": "Đã xóa giá",
+        "savePrice": "Đã lưu bảng giá gốc"
       },
       "error": {
-        "deleteBook": "Không xóa được bảng giá"
+        "deleteBook": "Không xóa được bảng giá",
+        "manualAdjust": "Không điều chỉnh được giá",
+        "generic": "Lỗi hệ thống, vui lòng thử lại"
       }
+    },
+    "mode": {
+      "by_weight": "Theo trọng lượng",
+      "by_trips": "Theo số chuyến/xe/ngày",
+      "by_truck": "Theo loại xe"
+    },
+    "priceSet": {
+      "title": "Bộ giá",
+      "subtitle": "Catalog khung dùng chung. Không chứa số tiền.",
+      "create": "Tạo bộ giá",
+      "empty": "Chưa có bộ giá",
+      "loading": "Đang tải…",
+      "loadError": "Không tải được danh sách bộ giá",
+      "retry": "Thử lại",
+      "name": "Tên *",
+      "namePlaceholder": "VD: Tấn chuẩn + Pallet…",
+      "nameRequired": "Nhập tên bộ giá",
+      "duplicate": "Tên bộ giá đã tồn tại",
+      "subset": "Khung này đã nằm trong bộ giá khác. Dùng bộ đủ và để trống bậc không cần.",
+      "hasPallet": "Có giá pallet",
+      "hint": "Bộ giá chỉ là khung. Số tiền nhập ở từng nhóm.",
+      "save": "Lưu bộ giá",
+      "saveName": "Lưu tên",
+      "saving": "Đang lưu…",
+      "rename": "Đổi tên",
+      "addTier": "Thêm bậc",
+      "addTierHint": "Nhóm đang dùng bộ này chưa có giá cho bậc mới cho đến khi được nhập.",
+      "delete": "Ngừng dùng",
+      "deleteInUse": "Đang có nhóm sử dụng",
+      "confirmDelete": "Ngừng dùng bộ giá “{name}”?",
+      "discard": "Bỏ thay đổi?",
+      "switchMode": "Đổi chế độ sẽ xóa các bậc đang nhập. Tiếp tục?",
+      "editStructure": "Sửa bộ giá",
+      "colName": "Tên",
+      "colMode": "Chế độ",
+      "colPallet": "Pallet",
+      "colTiers": "Bậc",
+      "colActions": "Hành động",
+      "palletYes": "Có",
+      "palletNo": "Không",
+      "mode": "Chế độ *",
+      "tiers": "Bậc *",
+      "tier": "Bậc",
+      "tierLabel": "Nhãn",
+      "tierLabelRequired": "Nhập nhãn bậc",
+      "tierRangeRequired": "Khoảng bậc không hợp lệ",
+      "rangeFrom": "Từ",
+      "rangeTo": "Đến",
+      "rangeFromTon": "Từ (tấn)",
+      "rangeToTon": "Đến (tấn)",
+      "rangeFromGte": "Từ (≥)",
+      "rangeToLte": "đến (≤)",
+      "rangeToInf": "đến (∞)",
+      "unit": "Đơn vị",
+      "unitTrip": "Chuyến",
+      "unitTon": "Tấn",
+      "minTon": "Tối thiểu",
+      "truckLabel": "Nhãn loại xe",
+      "truckPlaceholder": "vd. Truck 0,5mt…",
+      "truckHint": "Nhãn bậc copy từ Excel (loại / tải xe, ví dụ Truck 0,5mt hoặc 8 < Truck ≤16). Không dùng tấn hàng trên phiếu.",
+      "removeTier": "Xóa bậc"
+    },
+    "price": {
+      "pickSet": "Bộ giá *",
+      "pickSetPlaceholder": "Chọn bộ giá…",
+      "pickSetRequired": "Chọn bộ giá",
+      "blankHint": "Để trống bậc nhóm không dùng. Không nhập 0.",
+      "atLeastOne": "Nhập ít nhất một bậc",
+      "pricePositive": "Giá phải lớn hơn 0",
+      "setLocked": "Muốn đổi bộ giá, xóa giá rồi nhập lại.",
+      "setLabel": "Bộ giá",
+      "confirmRecascade": "Các kỳ sau sẽ được tính lại. Chỉnh tay trên kỳ sau sẽ mất.",
+      "delete": "Xóa giá",
+      "confirmDelete": "Xóa hết giá của nhóm này ở mọi kỳ? Nhóm tuyến vẫn còn. Không hoàn tác từ giao diện.",
+      "periodNoRemoveTier": "Muốn bỏ bậc hoặc pallet đã có, sửa giá gốc và để trống. Bậc hoặc pallet chưa có giá: để trống nếu nhóm vẫn không dùng, hoặc nhập số để áp dụng từ kỳ này.",
+      "createTitle": "Thêm bảng giá gốc",
+      "editTitle": "Sửa bảng giá gốc",
+      "period": "Kỳ gốc *",
+      "periodPlaceholder": "Chọn kỳ gốc",
+      "periodEmpty": "Chưa có kỳ — vào tab Kỳ điều chỉnh để tạo",
+      "periodRequired": "Chọn kỳ gốc",
+      "noPrice": "Chưa có bảng giá gốc cho nhóm này",
+      "pallet": "Giá Pallet (chuyến)",
+      "amount": "Đơn giá",
+      "unitTrip": "vnđ/chuyến",
+      "unitTon": "vnđ/tấn"
+    },
+    "matrix": {
+      "emptyBook": "Chưa có giá trong bảng giá này",
+      "emptyCell": "-",
+      "loadError": "Không tải được ma trận",
+      "noPeriods": "Chưa có kỳ điều chỉnh — vào tab Kỳ điều chỉnh để tạo.",
+      "fromPeriod": "Từ kỳ",
+      "fromPeriodHint": "Hiện giá từ kỳ đã chọn đến kỳ hiện tại. Mặc định chỉ kỳ hiện tại."
+    }
+  },
+  "bangKeTho": {
+    "title": "Lên bảng kê thô 5 nhà",
+    "subtitle": "Lưu file đã xử lý 5 nhà để đồng nghiệp tải đúng đợt.",
+    "subtitleHint": "Module từng nhà sẽ bổ sung sau — hiện tại chỉ lưu file gốc.",
+    "nav": "Bảng kê thô 5 nhà",
+    "dropzone": "Kéo thả file .xlsx vào đây, hoặc bấm để chọn",
+    "dropzoneHint": "Tối đa 10 MB. Cần sheet “Processed”.",
+    "chooseFile": "Chọn file Excel",
+    "selectedFile": "File đã chọn",
+    "clearFile": "Hủy chọn",
+    "saveFile": "Lưu file",
+    "saving": "Đang lưu…",
+    "overwriting": "Đang ghi đè…",
+    "searchPlaceholder": "Tìm theo tên file…",
+    "col": {
+      "filename": "Tên file",
+      "uploadedBy": "Người upload",
+      "uploadedAt": "Thời điểm",
+      "ndMcc": "ND-MCC",
+      "clv": "CLV",
+      "calofic": "Calofic",
+      "actions": "Thao tác"
+    },
+    "house": {
+      "pending": "Chưa xử lý",
+      "ready": "Sẵn sàng",
+      "failed": "Lỗi"
+    },
+    "action": {
+      "downloadInput": "Tải file gốc",
+      "downloadOutput": "Tải {filename}",
+      "delete": "Xóa đợt"
+    },
+    "empty": "Chưa có file bảng kê thô.",
+    "emptyHintManage": "Upload file đã xử lý 5 nhà để bắt đầu.",
+    "emptySearch": "Không tìm thấy đợt nào khớp “{q}”.",
+    "error": "Không tải được danh sách.",
+    "retry": "Thử lại",
+    "message": {
+      "success": {
+        "save": "Đã lưu file bảng kê thô",
+        "overwrite": "Đã ghi đè file",
+        "delete": "Đã xóa đợt"
+      },
+      "error": {
+        "save": "Không lưu được file. Thử lại.",
+        "download": "Không tìm thấy file",
+        "forbidden": "Bạn không có quyền thực hiện thao tác này",
+        "type": "Chỉ chấp nhận file .xlsx",
+        "size": "File quá lớn (tối đa 10 MB)"
+      }
+    },
+    "overwrite": {
+      "title": "File đã tồn tại",
+      "body": "Đã có đợt “{filename}”. Ghi đè sẽ xóa file gốc hiện tại và mọi bảng kê nhà (kể cả đã xử lý).",
+      "confirm": "Ghi đè file",
+      "cancel": "Hủy"
+    },
+    "delete": {
+      "title": "Xóa đợt",
+      "body": "Xóa “{filename}”? File gốc và bảng kê nhà sẽ không khôi phục được.",
+      "confirm": "Xóa đợt",
+      "cancel": "Hủy"
+    }
+  },
+  "invoice_tracking": {
+    "tabs": {
+      "list": "Danh sách ticket",
+      "statistics": "Thống kê"
+    },
+    "stats": {
+      "title": "Thống kê hóa đơn theo tài xế",
+      "kpi": {
+        "total": "Tổng số ticket",
+        "created": "Tạo mới",
+        "pendingReview": "Chờ duyệt",
+        "requestSupplement": "Yêu cầu bổ sung",
+        "completed": "Hoàn thành",
+        "completionRate": "Tỷ lệ hoàn thành"
+      },
+      "table": {
+        "stt": "STT",
+        "driver": "Tài xế",
+        "vehicles": "Xe phụ trách",
+        "created": "Tạo mới",
+        "pending": "Chờ duyệt",
+        "supplement": "Y/C bổ sung",
+        "completed": "Hoàn thành",
+        "total": "Tổng cộng",
+        "rate": "Tỷ lệ HT",
+        "grandTotal": "TỔNG CỘNG"
+      },
+      "filters": {
+        "dateFrom": "Từ ngày",
+        "dateTo": "Đến ngày",
+        "plate": "Biển số xe",
+        "platePlaceholder": "Nhập biển số...",
+        "driver": "Tên tài xế",
+        "driverPlaceholder": "Nhập tên tài xế...",
+        "note": "Ghi chú",
+        "notePlaceholder": "Nhập nội dung ghi chú...",
+        "clear": "Xóa bộ lọc"
+      },
+      "empty": "Không có dữ liệu thống kê cho bộ lọc này."
+    },
+    "copy": {
+      "button": "Sao chép từ chuyến khác",
+      "title": "Sao chép chứng từ cùng ngày",
+      "searchPlaceholder": "Tìm theo biển số xe, tài xế, điểm nhận...",
+      "selectTrip": "Chọn chuyến xe để lấy chứng từ:",
+      "empty": "Chưa có chuyến xe nào khác cùng ngày đã tải lên chứng từ.",
+      "copiedFrom": "Sao chép từ xe {{plate}}",
+      "confirmSubmit": "Xác nhận sao chép",
+      "driverNoteLabel": "Ghi chú tài xế (tùy chọn)",
+      "driverNotePlaceholder": "Ví dụ: Đi chung điểm nhận hàng với xe...",
+      "successMessage": "Đã sao chép chứng từ thành công!"
+    },
+    "page": {
+      "title": "Theo dõi hóa đơn",
+      "empty": "Chưa có ticket nào",
+      "error": "Không thể tải danh sách ticket",
+      "retry": "Thử lại"
+    },
+    "filter": {
+      "searchPlaceholder": "Tìm theo biển số, tài xế, điểm nhận, ghi chú...",
+      "statusAll": "Tất cả trạng thái",
+      "statusCreated": "Tạo mới",
+      "statusPendingReview": "Chờ duyệt",
+      "statusCompleted": "Hoàn thành",
+      "statusRequestSupplement": "Yêu cầu bổ sung"
+    },
+    "table": {
+      "stt": "STT",
+      "date": "Ngày",
+      "bienSo": "Biển số",
+      "taiXe": "Tài xế",
+      "maChuyen": "Mã chuyến",
+      "diemNhan": "Điểm nhận",
+      "diemTra": "Điểm trả",
+      "ghiChu": "Ghi chú",
+      "status": "Trạng thái",
+      "actions": "Thao tác"
+    },
+    "detail": {
+      "title": "Chi tiết ticket",
+      "tripInfo": "Thông tin chuyến xe",
+      "statusHistory": "Trạng thái & Lịch sử",
+      "documents": "Chứng từ",
+      "downloadAll": "Tải tất cả",
+      "driverNote": "Ghi chú tài xế",
+      "supplementNote": "Yêu cầu bổ sung",
+      "reviewedAt": "Duyệt lúc",
+      "completedAt": "Hoàn thành lúc",
+      "noDocuments": "Chưa có chứng từ",
+      "noNotes": "Không có ghi chú"
+    },
+    "action": {
+      "upload": "Upload chứng từ",
+      "finish": "Hoàn thành",
+      "requestSupplement": "Yêu cầu bổ sung",
+      "view": "Xem",
+      "share": "Chia sẻ",
+      "copied": "Đã chép link!",
+      "cancel": "Hủy",
+      "submit": "Gửi",
+      "confirm": "Xác nhận",
+      "retry": "Thử lại"
+    },
+    "upload": {
+      "title": "Upload chứng từ",
+      "dropzone": "Kéo thả file hoặc click chọn",
+      "supported": "Hỗ trợ: JPG, PNG, PDF",
+      "max": "Tối đa: 10 files, 5MB/file",
+      "noteLabel": "Ghi chú",
+      "notePlaceholder": "Nhập ghi chú (tùy chọn)...",
+      "submit": "Gửi chứng từ",
+      "errorSize": "File vượt quá 5MB",
+      "errorType": "Chỉ chấp nhận JPG, PNG, PDF",
+      "errorCount": "Tối đa 10 files mỗi lần upload"
+    },
+    "supplement": {
+      "title": "Yêu cầu bổ sung chứng từ",
+      "noteLabel": "Ghi chú bổ sung (bắt buộc)",
+      "notePlaceholder": "Nhập lý do yêu cầu bổ sung...",
+      "noteRequired": "Ghi chú bổ sung là bắt buộc (tối thiểu 5 ký tự)",
+      "submit": "Gửi yêu cầu"
+    },
+    "confirmFinish": {
+      "title": "Xác nhận hoàn thành",
+      "message": "Bạn có chắc muốn đánh dấu ticket này là \"Hoàn thành\"?",
+      "warning": "Hành động này không thể hoàn tác."
+    },
+    "message": {
+      "successUpload": "Đã upload chứng từ thành công",
+      "successFinish": "Đã hoàn thành ticket",
+      "successSupplement": "Đã gửi yêu cầu bổ sung",
+      "errorUpload": "Upload thất bại, vui lòng thử lại",
+      "errorReview": "Không thể duyệt ticket này",
+      "errorWrongStatus": "Ticket không ở trạng thái phù hợp",
+      "errorServer": "Lỗi hệ thống, vui lòng thử lại"
+    },
+    "status": {
+      "created": "Tạo mới",
+      "pending_review": "Chờ duyệt",
+      "completed": "Hoàn thành",
+      "request_supplement": "Yêu cầu bổ sung"
+    }
+  },
+  "data_scopes": {
+    "title": "Quản lý phạm vi dữ liệu",
+    "tabs": {
+      "matrix": "Ma trận vai trò",
+      "user_entities": "Gán đối tượng người dùng"
+    },
+    "types": {
+      "all": "Tất cả dữ liệu",
+      "owner": "Chính chủ tạo",
+      "entity": "Theo đối tượng gán",
+      "none": "Bị khóa"
+    },
+    "entities": {
+      "driver": "Tài xế",
+      "vehicle": "Xe",
+      "customer": "Khách hàng"
+    },
+    "actions": {
+      "save_changes": "Lưu cấu hình",
+      "assign_entity": "Gán đối tượng",
+      "reset": "Hoàn tác"
+    },
+    "messages": {
+      "save_success": "Đã lưu cấu hình phạm vi dữ liệu",
+      "assign_success": "Đã gán đối tượng cho người dùng thành công",
+      "delete_assign_success": "Đã hủy gán đối tượng",
+      "delete_confirm": "Bạn có chắc muốn xóa phân quyền đối tượng này không?",
+      "empty_matrix": "Chưa có tính năng nào được đăng ký cấu hình phân quyền dữ liệu",
+      "empty_user_entities": "Chưa có phân quyền đối tượng nào được thiết lập",
+      "empty_user_entities_hint": "Bấm nút \"Gán đối tượng\" để chỉ định dữ liệu cho người dùng cụ thể."
+    }
+  },
+  "workflows": {
+    "title": "Cấu hình quy trình",
+    "status": {
+      "active": "Đang áp dụng",
+      "inactive": "Tạm dừng"
+    },
+    "actions": {
+      "configure": "Cấu hình bước",
+      "save": "Lưu cấu hình quy trình"
     }
   }
 }

@@ -6,7 +6,9 @@
     "userSettings": "User Settings",
     "userManagement": "User Management",
     "roleManagement": "Role Management",
-    "permissionManagement": "Permission Management"
+    "permissionManagement": "Permission Management",
+    "dataScopeManagement": "Data Scopes",
+    "workflowManagement": "Workflows"
   },
   "users": {
     "title": "User Management",
@@ -97,23 +99,63 @@
     "saveError": "Failed to save permissions. Please try again.",
     "loadError": "Failed to load permission matrix",
     "adminReadonly": "ADMIN role always has all permissions",
+    "groups": {
+      "dashboard": "Dashboard",
+      "route_pricing": "Freight rate management",
+      "delivery_data": "Delivery Data Processing",
+      "vehicle_data": "Vehicle Data",
+      "dispatch": "Transport Operations",
+      "accounting_data": "Accounting Data",
+      "user_settings": "User Settings",
+      "catalog": "Catalog Management",
+      "jobs": "Job Management"
+    },
+    "subMenus": {
+      "dashboard": "Dashboard",
+      "route_pricing": "Adjustment periods, Price sets, Routes, Price table",
+      "delivery_5_houses": "Process 5 Houses",
+      "delivery_rice": "Process Rice",
+      "driver_invoices": "Driver Invoices / Stats",
+      "inspections_oil_insurance_repairs": "Inspections, Oil, Insurance, Repairs",
+      "fuel": "Fuel Data & Stats",
+      "schedule": "Dispatch Schedule",
+      "invoice_tracking": "Invoice Tracking",
+      "accounting": "Weight Adjustment, Customers, Import, Invoice Matching",
+      "users": "User Management",
+      "roles": "Role Management",
+      "permissions": "Permission Management",
+      "data_scopes": "Data Scopes",
+      "workflows": "Workflows",
+      "logs": "System Audit Logs",
+      "catalog": "Vehicles, Inner-City Customers, Suppliers, Promo Items, Delivery Points",
+      "jobs": "Job Config & History"
+    },
     "modules": {
       "dashboard": "Dashboard",
       "delivery_data": "Delivery Data Processing",
-      "transport": "Vehicle Data",
+      "vehicle_data": "Vehicle Data",
+      "fuel": "Fuel Data",
       "dispatch": "Transport Operations",
       "accounting_data": "Accounting Data",
       "users": "Users",
       "roles": "Roles",
       "permissions": "Permissions",
-      "catalog": "Catalog Management"
+      "catalog": "Catalog Management",
+      "jobs": "Job Management",
+      "logs": "System Audit Logs",
+      "route_pricing": "Freight rate management",
+      "data_scopes": "Data Scopes",
+      "workflows": "Workflows",
+      "invoice_tracking": "Invoice Tracking"
     },
     "permCodes": {
       "dashboard_view": "View Dashboard",
       "delivery_data_view": "View Delivery Data",
       "delivery_data_manage": "Manage Delivery Data",
-      "transport_view": "View Transport Data",
-      "transport_manage": "Manage Transport Data",
+      "vehicle_data_view": "View Vehicle Data",
+      "vehicle_data_manage": "Manage Vehicle Data",
+      "fuel_view": "View Fuel Data",
+      "fuel_manage": "Manage Fuel Data",
       "dispatch_view": "View Dispatch Board",
       "dispatch_manage": "Manage Dispatch",
       "accounting_data_view": "View Accounting Data",
@@ -124,7 +166,18 @@
       "roles_manage": "Manage Roles",
       "permissions_manage": "Manage Permissions",
       "catalog_view": "View Catalog",
-      "catalog_manage": "Manage Catalog"
+      "catalog_manage": "Manage Catalog",
+      "jobs_view": "View Jobs Config",
+      "jobs_manage": "Manage Jobs Config",
+      "logs_view": "View System Audit Logs",
+      "route_pricing_view": "View freight rates",
+      "route_pricing_manage": "Manage freight rates",
+      "data_scopes_view": "View Data Scopes Config",
+      "data_scopes_manage": "Manage Data Scopes",
+      "workflows_view": "View Workflows",
+      "workflows_manage": "Manage Workflows",
+      "invoice_tracking_view": "View Invoice Tracking",
+      "invoice_tracking_manage": "Manage Invoice Tracking"
     }
   },
   "createUser": {
@@ -206,7 +259,12 @@
       "tuyenCu": "Route (Old)",
       "diaChiGiaoHang": "Delivery Address",
       "bocXep": "Loading",
+      "nhaCungCap": "Supplier",
       "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
     },
     "bocXep": {
       "true": "Yes",
@@ -408,6 +466,9 @@
       "tableXeLon": "Large Vehicles",
       "tableTuyenNgoai": "Outside Routes",
       "addTrip": "Add Trip",
+      "importExcel": "Import Excel",
+      "importSuccess": "Successfully imported {count} trips",
+      "importError": "Import failed. Please try again",
       "emptyState": "No trips scheduled for this date",
       "emptyStateSub": "Click 'Create Trip' to add a new trip",
       "emptyStateTuyenNgoai": "No outside route trips scheduled",
@@ -415,19 +476,19 @@
       "loadError": "Failed to load schedule",
       "retry": "Retry",
       "columns": {
+        "bienSo": "Plate No.",
         "diemNhan": "Pickup",
-        "diemTra": "Dropoff",
+        "tan": "Tons",
+        "can": "CAN",
         "loaiXe": "Vehicle Type",
-        "gioNhan": "Time",
         "ghiChu": "Note"
       }
     },
     "createModal": {
       "title": "Create Trip",
-      "step1Title": "Step 1/4 — Route Type",
-      "step2Title": "Step 2/4 — Vehicle Ownership",
-      "step3Title": "Step 3/4 — Vehicle Size",
-      "step4Title": "Step 4/4 — Trip Details",
+      "step1Title": "Step 1/3 — Route Type",
+      "step2Title": "Step 2/3 — Vehicle Size",
+      "step3Title": "Step 3/3 — Trip Details",
       "tuyenCoDinh": "Fixed Route",
       "tuyenNgoai": "Outside Route",
       "xeNha": "Company Vehicle",
@@ -438,8 +499,17 @@
       "submit": "Create Trip",
       "submitting": "Creating...",
       "diemNhan": "Pickup Point",
-      "diemTra": "Dropoff Point",
-      "gioNhan": "Pickup Time",
+      "diemNhanPlaceholder": "Select pickup point",
+      "tan": "Tons",
+      "can": "CAN",
+      "bienSo": "Plate Number",
+      "bienSoPlaceholder": "Select plate number",
+      "bienSoInputPlaceholder": "Enter plate number",
+      "taiXe": "Driver",
+      "taiXePlaceholder": "Auto-filled when vehicle selected",
+      "nhapTai": "Manual entry",
+      "tripNumber": "Trip",
+      "addTrip": "Add another trip",
       "ghiChu": "Note",
       "ghiChuPlaceholder": "Additional notes...",
       "createSuccess": "Trip created successfully",
@@ -453,6 +523,25 @@
       "deleteSuccess": "Trip deleted",
       "deleteError": "Failed to delete. Please try again."
     },
+    "importModal": {
+      "title": "Import Dispatch Schedule Excel",
+      "dropzone": "Drag & drop .xlsx file or click to select",
+      "accepts": "Accepts .xlsx or .xls files only (Max 10MB)",
+      "fileSelected": "Selected file: {fileName}",
+      "previewTitle": "Data Preview",
+      "validRows": "{count} valid trips",
+      "errorRows": "{count} error rows",
+      "errorMissingPlate": "Missing plate number (required)",
+      "targetTab": "Route Type",
+      "targetLoaiXe": "Vehicle Size",
+      "targetDate": "Dispatch Date",
+      "cancel": "Cancel",
+      "submit": "Confirm Import",
+      "submitting": "Importing...",
+      "noValidData": "No valid data rows to import",
+      "autoDetectedDriver": "Auto-matched from catalog",
+      "externalVehicle": "External vehicle"
+    },
     "editModal": {
       "title": "Edit Trip",
       "submit": "Save Changes",
@@ -462,16 +551,17 @@
     },
     "validation": {
       "diemNhanRequired": "Pickup point is required",
-      "diemTraRequired": "Dropoff point is required",
-      "gioNhanRequired": "Pickup time is required"
+      "bienSoRequired": "Plate number is required"
     }
   },
   "catalog": {
     "menuTitle": "Catalog Management",
     "vehicles": "Vehicle Catalog",
+    "drivers": "Driver Catalog",
     "innerCityCustomers": "Inner City Customers",
     "suppliers": "Suppliers",
-    "promoItems": "Promo Items"
+    "promoItems": "Promo Items",
+    "deliveryPoints": "Delivery Points"
   },
   "jobs": {
     "menuTitle": "Job Management"
@@ -604,13 +694,21 @@
     }
   },
   "routePricing": {
+    "nav": {
+      "title": "Freight rate management",
+      "periods": "Adjustment periods",
+      "sets": "Price sets",
+      "routes": "Route management",
+      "matrix": "Price table"
+    },
     "page": {
-      "title": "Route pricing",
-      "subtitle": "Manage adjustment periods, route groups, and prices per price book"
+      "title": "Freight rate management",
+      "subtitle": "Adjustment periods, price sets, routes, and freight tables"
     },
     "tab": {
       "periods": "Adjustment periods",
-      "groups": "Route groups",
+      "sets": "Price sets",
+      "groups": "Routes",
       "manage": "Manage prices",
       "matrix": "Price matrix"
     },
@@ -639,15 +737,390 @@
       "cancel": "Cancel",
       "save": "Save"
     },
+    "manage": {
+      "adjustPrice": "Adjust price",
+      "adjustPricePeriod": "Adjust price — {date}",
+      "adjustHint": "Only unit prices. Later periods are recalculated with each period’s % (rounded to thousands).",
+      "saveAdjust": "Save",
+      "confirmTitle": "Confirm price adjustment",
+      "confirmChanges": "Changed cells",
+      "confirmLaterPeriods": "Later periods will be recalculated by %",
+      "confirmNoLater": "No later periods to cascade.",
+      "confirmLoseMark": "will lose the manual-adjust mark on changed cells",
+      "confirmAdd": "add",
+      "confirmSubmit": "Confirm",
+      "palletAdjustedToZero": "Pallet adjusted to 0",
+      "manualMarkTitle": "Manually adjusted",
+      "priceZeroDisplay": "-"
+    },
+    "validation": {
+      "priceRequired": "Enter a unit price",
+      "priceMin0": "Price must be ≥ 0",
+      "priceInvalid": "Invalid price"
+    },
     "message": {
       "success": {
         "createBook": "Price book created",
         "renameBook": "Price book renamed",
-        "deleteBook": "Price book deleted"
+        "deleteBook": "Price book deleted",
+        "manualAdjust": "Price adjusted",
+        "createSet": "Price set created",
+        "renameSet": "Price set renamed",
+        "addTier": "Tier added",
+        "deleteSet": "Price set deactivated",
+        "deletePrices": "Prices deleted",
+        "savePrice": "Base price saved"
       },
       "error": {
-        "deleteBook": "Could not delete the price book"
+        "deleteBook": "Could not delete the price book",
+        "manualAdjust": "Could not adjust price",
+        "generic": "System error, please try again"
       }
+    },
+    "mode": {
+      "by_weight": "By weight",
+      "by_trips": "By trips per vehicle per day",
+      "by_truck": "By truck type"
+    },
+    "priceSet": {
+      "title": "Price sets",
+      "subtitle": "Shared frames. No amounts stored here.",
+      "create": "Create price set",
+      "empty": "No price sets yet",
+      "loading": "Loading…",
+      "loadError": "Could not load price sets",
+      "retry": "Try again",
+      "name": "Name *",
+      "namePlaceholder": "e.g. Standard tons + pallet…",
+      "nameRequired": "Enter a price set name",
+      "duplicate": "A price set with this name already exists",
+      "subset": "This frame is already covered by another set. Use the full set and leave unused tiers blank.",
+      "hasPallet": "Has pallet price",
+      "hint": "A price set is only a frame. Amounts are entered per group.",
+      "save": "Save price set",
+      "saveName": "Save name",
+      "saving": "Saving…",
+      "rename": "Rename",
+      "addTier": "Add tier",
+      "addTierHint": "Groups using this set have no price for the new tier until it is entered.",
+      "delete": "Deactivate",
+      "deleteInUse": "Groups are using this set",
+      "confirmDelete": "Deactivate price set “{name}”?",
+      "discard": "Discard changes?",
+      "switchMode": "Changing mode clears the tiers you entered. Continue?",
+      "editStructure": "Edit price set",
+      "colName": "Name",
+      "colMode": "Mode",
+      "colPallet": "Pallet",
+      "colTiers": "Tiers",
+      "colActions": "Actions",
+      "palletYes": "Yes",
+      "palletNo": "No",
+      "mode": "Mode *",
+      "tiers": "Tiers *",
+      "tier": "Tier",
+      "tierLabel": "Label",
+      "tierLabelRequired": "Enter a tier label",
+      "tierRangeRequired": "Invalid tier range",
+      "rangeFrom": "From",
+      "rangeTo": "To",
+      "rangeFromTon": "From (tons)",
+      "rangeToTon": "To (tons)",
+      "rangeFromGte": "From (≥)",
+      "rangeToLte": "to (≤)",
+      "rangeToInf": "to (∞)",
+      "unit": "Unit",
+      "unitTrip": "Trip",
+      "unitTon": "Ton",
+      "minTon": "Minimum",
+      "truckLabel": "Truck type label",
+      "truckPlaceholder": "e.g. Truck 0.5mt…",
+      "truckHint": "Copy the tier label from Excel (type / capacity, e.g. Truck 0.5mt or 8 < Truck ≤16). Cargo tons on the ticket are not used.",
+      "removeTier": "Remove tier"
+    },
+    "price": {
+      "pickSet": "Price set *",
+      "pickSetPlaceholder": "Select a price set…",
+      "pickSetRequired": "Select a price set",
+      "blankHint": "Leave unused tiers blank. Do not enter 0.",
+      "atLeastOne": "Enter at least one tier",
+      "pricePositive": "Price must be greater than 0",
+      "setLocked": "To change the price set, delete prices and enter them again.",
+      "setLabel": "Price set",
+      "confirmRecascade": "Later periods will be recalculated. Manual edits on later periods will be lost.",
+      "delete": "Delete prices",
+      "confirmDelete": "Delete all prices for this group in every period? The route group stays. This cannot be undone in the UI.",
+      "periodNoRemoveTier": "To drop a tier or pallet that already has a price, edit the base price and leave it blank. For a tier or pallet with no price, leave it blank if the group still does not use it, or enter a price to apply it from this period.",
+      "createTitle": "Add base price",
+      "editTitle": "Edit base price",
+      "period": "Base period *",
+      "periodPlaceholder": "Select base period",
+      "periodEmpty": "No periods yet — create one in the periods tab",
+      "periodRequired": "Select a base period",
+      "noPrice": "This group has no base price yet",
+      "pallet": "Pallet price (per trip)",
+      "amount": "Unit price",
+      "unitTrip": "VND/trip",
+      "unitTon": "VND/ton"
+    },
+    "matrix": {
+      "emptyBook": "No prices in this price book",
+      "emptyCell": "-",
+      "loadError": "Could not load the matrix",
+      "noPeriods": "No adjustment periods yet — create one in the periods tab.",
+      "fromPeriod": "From period",
+      "fromPeriodHint": "Shows prices from the selected period through the current one. Defaults to the current period."
+    }
+  },
+  "bangKeTho": {
+    "title": "Draft statements (5 houses)",
+    "subtitle": "Store processed 5-house workbooks so others can download the right batch.",
+    "subtitleHint": "Per-house modules come later — this screen only stores the source file.",
+    "nav": "Draft statements",
+    "dropzone": "Drop an .xlsx file here, or click to choose",
+    "dropzoneHint": "Max 10 MB. The workbook must include a “Processed” sheet.",
+    "chooseFile": "Choose Excel file",
+    "selectedFile": "Selected file",
+    "clearFile": "Clear",
+    "saveFile": "Save file",
+    "saving": "Saving…",
+    "overwriting": "Overwriting…",
+    "searchPlaceholder": "Search by file name…",
+    "col": {
+      "filename": "File name",
+      "uploadedBy": "Uploaded by",
+      "uploadedAt": "Uploaded at",
+      "ndMcc": "ND-MCC",
+      "clv": "CLV",
+      "calofic": "Calofic",
+      "actions": "Actions"
+    },
+    "house": {
+      "pending": "Not processed",
+      "ready": "Ready",
+      "failed": "Failed"
+    },
+    "action": {
+      "downloadInput": "Download source file",
+      "downloadOutput": "Download {filename}",
+      "delete": "Delete batch"
+    },
+    "empty": "No draft statement files yet.",
+    "emptyHintManage": "Upload a processed 5-house workbook to start.",
+    "emptySearch": "No batches match “{q}”.",
+    "error": "Could not load the list.",
+    "retry": "Retry",
+    "message": {
+      "success": {
+        "save": "Draft statement file saved",
+        "overwrite": "File overwritten",
+        "delete": "Batch deleted"
+      },
+      "error": {
+        "save": "Could not save the file. Try again.",
+        "download": "File not found",
+        "forbidden": "You do not have permission for this action",
+        "type": "Only .xlsx files are accepted",
+        "size": "File is too large (max 10 MB)"
+      }
+    },
+    "overwrite": {
+      "title": "File already exists",
+      "body": "A batch named “{filename}” already exists. Overwriting deletes the current source file and every house output (including processed ones).",
+      "confirm": "Overwrite file",
+      "cancel": "Cancel"
+    },
+    "delete": {
+      "title": "Delete batch",
+      "body": "Delete “{filename}”? The source file and house outputs cannot be restored.",
+      "confirm": "Delete batch",
+      "cancel": "Cancel"
+    }
+  },
+  "data_scopes": {
+    "title": "Data Scope Management",
+    "tabs": {
+      "matrix": "Role Matrix",
+      "user_entities": "User Entity Assignments"
+    },
+    "types": {
+      "all": "All Data",
+      "owner": "Owner Only",
+      "entity": "By Assigned Entities",
+      "none": "Locked"
+    },
+    "entities": {
+      "driver": "Driver",
+      "vehicle": "Vehicle",
+      "customer": "Customer"
+    },
+    "actions": {
+      "save_changes": "Save Changes",
+      "assign_entity": "Assign Entity",
+      "reset": "Reset"
+    },
+    "messages": {
+      "save_success": "Data scope configuration saved successfully",
+      "assign_success": "Entities assigned to user successfully",
+      "delete_assign_success": "Entity assignment removed",
+      "delete_confirm": "Are you sure you want to remove this entity assignment?",
+      "empty_matrix": "No features have been registered for data scope configuration",
+      "empty_user_entities": "No user entity assignments have been set up yet",
+      "empty_user_entities_hint": "Click \"Assign Entity\" to grant specific data access to users."
+    }
+  },
+  "invoice_tracking": {
+    "tabs": {
+      "list": "Ticket List",
+      "statistics": "Statistics"
+    },
+    "stats": {
+      "title": "Invoice Tracking Statistics by Driver",
+      "kpi": {
+        "total": "Total Tickets",
+        "created": "Created",
+        "pendingReview": "Pending Review",
+        "requestSupplement": "Supplement Requested",
+        "completed": "Completed",
+        "completionRate": "Completion Rate"
+      },
+      "table": {
+        "stt": "#",
+        "driver": "Driver",
+        "vehicles": "Assigned Vehicles",
+        "created": "Created",
+        "pending": "Pending",
+        "supplement": "Supp. Req.",
+        "completed": "Completed",
+        "total": "Total",
+        "rate": "Comp. Rate",
+        "grandTotal": "GRAND TOTAL"
+      },
+      "filters": {
+        "dateFrom": "From Date",
+        "dateTo": "To Date",
+        "plate": "License Plate",
+        "platePlaceholder": "Enter license plate...",
+        "driver": "Driver Name",
+        "driverPlaceholder": "Enter driver name...",
+        "note": "Notes",
+        "notePlaceholder": "Enter note content...",
+        "clear": "Clear Filters"
+      },
+      "empty": "No statistics found for this filter."
+    },
+    "copy": {
+      "button": "Copy from another trip",
+      "title": "Copy documents from same-day trip",
+      "searchPlaceholder": "Search by license plate, driver, destination...",
+      "selectTrip": "Select trip to copy documents from:",
+      "empty": "No other trips on the same day have uploaded documents yet.",
+      "copiedFrom": "Copied from vehicle {{plate}}",
+      "confirmSubmit": "Confirm copy",
+      "driverNoteLabel": "Driver note (optional)",
+      "driverNotePlaceholder": "e.g. Shared pick-up point with vehicle...",
+      "successMessage": "Successfully copied documents from vehicle {{plate}}!"
+    },
+    "page": {
+      "title": "Invoice Tracking",
+      "empty": "No tickets found",
+      "error": "Failed to load ticket list",
+      "retry": "Retry"
+    },
+    "filter": {
+      "searchPlaceholder": "Search by license plate, driver, pick-up, notes...",
+      "statusAll": "All statuses",
+      "statusCreated": "Created",
+      "statusPendingReview": "Pending Review",
+      "statusCompleted": "Completed",
+      "statusRequestSupplement": "Supplement Requested"
+    },
+    "table": {
+      "stt": "#",
+      "date": "Date",
+      "bienSo": "License Plate",
+      "taiXe": "Driver",
+      "maChuyen": "Trip Code",
+      "diemNhan": "Pick-up",
+      "diemTra": "Drop-off",
+      "ghiChu": "Notes",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "detail": {
+      "title": "Ticket Details",
+      "tripInfo": "Trip Information",
+      "statusHistory": "Status & History",
+      "documents": "Documents",
+      "downloadAll": "Download All",
+      "driverNote": "Driver Note",
+      "supplementNote": "Supplement Request",
+      "reviewedAt": "Reviewed at",
+      "completedAt": "Completed at",
+      "noDocuments": "No documents uploaded",
+      "noNotes": "No notes"
+    },
+    "action": {
+      "upload": "Upload Documents",
+      "finish": "Finish",
+      "requestSupplement": "Request Supplement",
+      "view": "View",
+      "share": "Share",
+      "copied": "Link Copied!",
+      "cancel": "Cancel",
+      "submit": "Submit",
+      "confirm": "Confirm",
+      "retry": "Retry"
+    },
+    "upload": {
+      "title": "Upload Documents",
+      "dropzone": "Drag and drop files here, or click to browse",
+      "supported": "Supported formats: JPG, PNG, PDF",
+      "max": "Up to 10 files, max 5MB/file",
+      "noteLabel": "Note",
+      "notePlaceholder": "Enter note (optional)...",
+      "submit": "Submit Documents",
+      "errorSize": "File exceeds 5MB",
+      "errorType": "Only JPG, PNG, and PDF are allowed",
+      "errorCount": "Maximum 10 files per upload"
+    },
+    "supplement": {
+      "title": "Request Additional Documents",
+      "noteLabel": "Supplement note (required)",
+      "notePlaceholder": "Enter reason for requesting additional documents...",
+      "noteRequired": "Supplement note is required (min 5 characters)",
+      "submit": "Send Request"
+    },
+    "confirmFinish": {
+      "title": "Confirm Completion",
+      "message": "Are you sure you want to mark this ticket as Completed?",
+      "warning": "This action cannot be undone."
+    },
+    "message": {
+      "successUpload": "Documents uploaded successfully",
+      "successFinish": "Ticket marked as completed",
+      "successSupplement": "Supplement request submitted",
+      "errorUpload": "Upload failed. Please try again",
+      "errorReview": "Unable to review this ticket",
+      "errorWrongStatus": "Ticket is not in a valid status",
+      "errorServer": "System error. Please try again"
+    },
+    "status": {
+      "created": "Created",
+      "pending_review": "Pending Review",
+      "completed": "Completed",
+      "request_supplement": "Supplement Requested"
+    }
+  },
+  "workflows": {
+    "title": "Workflow Configuration",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "actions": {
+      "configure": "Configure Steps",
+      "save": "Save Workflow Configuration"
     }
   }
 }

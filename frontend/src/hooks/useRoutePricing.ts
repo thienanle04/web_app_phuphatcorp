@@ -1,9 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  type PriceTierInput,
-  type PricingMode,
-  routePricingApi,
-} from '../api/routePricingApi';
+import { type PriceSetTierInput, routePricingApi } from '../api/routePricingApi';
 
 export function useProvinces() {
   return useQuery({
@@ -60,6 +56,13 @@ export function usePriceVersions(configId?: number) {
     queryKey: ['route-pricing', 'price-versions', configId],
     queryFn: () => routePricingApi.listVersions(configId!),
     enabled: Boolean(configId && configId > 0),
+  });
+}
+
+export function usePriceSets() {
+  return useQuery({
+    queryKey: ['route-pricing', 'price-sets'],
+    queryFn: () => routePricingApi.listPriceSets(),
   });
 }
 
@@ -122,9 +125,9 @@ export function useRoutePricingMutations(priceBookId?: number) {
       mutationFn: (body: {
         route_group_id: number;
         adjustment_period_id: number;
-        pricing_mode: PricingMode;
-        pallet_trip_price: number;
-        tiers: PriceTierInput[];
+        price_set_id: number;
+        pallet_trip_price?: number | null;
+        tiers: { price_set_tier_id: number; price: number }[];
       }) => routePricingApi.createPrice(body),
       onSuccess: invalidate,
     }),
@@ -134,10 +137,55 @@ export function useRoutePricingMutations(priceBookId?: number) {
         ...body
       }: {
         routeGroupId: number;
-        pricing_mode: PricingMode;
-        pallet_trip_price: number;
-        tiers: PriceTierInput[];
+        price_set_id?: number;
+        pallet_trip_price?: number | null;
+        tiers: { price_set_tier_id: number; price: number }[];
       }) => routePricingApi.updateAbsolutePrice(routeGroupId, body),
+      onSuccess: invalidate,
+    }),
+    deleteGroupPrices: useMutation({
+      mutationFn: (routeGroupId: number) => routePricingApi.deleteGroupPrices(routeGroupId),
+      onSuccess: invalidate,
+    }),
+    createPriceSet: useMutation({
+      mutationFn: routePricingApi.createPriceSet,
+      onSuccess: invalidate,
+    }),
+    renamePriceSet: useMutation({
+      mutationFn: ({ id, name }: { id: number; name: string }) =>
+        routePricingApi.renamePriceSet(id, name),
+      onSuccess: invalidate,
+    }),
+    replacePriceSet: useMutation({
+      mutationFn: ({
+        id,
+        ...body
+      }: {
+        id: number;
+        has_pallet: boolean;
+        tiers: PriceSetTierInput[];
+      }) => routePricingApi.replacePriceSet(id, body),
+      onSuccess: invalidate,
+    }),
+    addPriceSetTier: useMutation({
+      mutationFn: ({ id, ...body }: { id: number } & PriceSetTierInput) =>
+        routePricingApi.addPriceSetTier(id, body),
+      onSuccess: invalidate,
+    }),
+    deactivatePriceSet: useMutation({
+      mutationFn: (id: number) => routePricingApi.deactivatePriceSet(id),
+      onSuccess: invalidate,
+    }),
+    manualAdjustVersion: useMutation({
+      mutationFn: ({
+        versionId,
+        ...body
+      }: {
+        versionId: number;
+        pallet_trip_price?: number | null;
+        tiers: { id: number; price: number }[];
+        added_tiers?: { price_set_tier_id: number; price: number }[];
+      }) => routePricingApi.manualAdjustVersion(versionId, body),
       onSuccess: invalidate,
     }),
     createPeriod: useMutation({

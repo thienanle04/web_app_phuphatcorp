@@ -7,6 +7,7 @@ export interface Vehicle {
   vehicle_type: string;
   status: 'active' | 'deactive';
   oil_change_interval_km: number;
+  driver_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -20,11 +21,6 @@ export interface VehicleData {
 export interface VehicleUpdateData {
   driver_name: string;
   vehicle_type?: string;
-}
-
-export interface VehicleData {
-  driver_name: string;
-  plate_number: string;
 }
 
 export interface VehicleListResponse {

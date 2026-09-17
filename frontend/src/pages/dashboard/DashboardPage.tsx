@@ -20,8 +20,7 @@ export function DashboardPage() {
     overview: hasPermission('dashboard.view') || user?.role === 'ADMIN',
     vehicles: hasPermission('vehicle_data.view') || user?.role === 'ADMIN',
     accounting: hasPermission('accounting_data.view') || user?.role === 'ADMIN',
-    operations:
-      hasAnyPermission(['transport.view', 'dispatch.view']) || user?.role === 'ADMIN',
+    operations: hasPermission('dispatch.view') || user?.role === 'ADMIN',
     fuel: hasPermission('fuel.view') || user?.role === 'ADMIN',
   };
 

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from './layouts/AuthLayout';
 import { MainLayout } from './layouts/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -13,14 +13,16 @@ import { SchedulePage } from './pages/dispatch/SchedulePage';
 import { WeightAdjustmentPage } from './pages/admin/accounting-data/WeightAdjustmentPage';
 import { CustomersPage } from './pages/admin/accounting-data/CustomersPage';
 import { DriverInvoicesPage } from './pages/admin/accounting-data/DriverInvoicesPage';
-import { DeliverySchedulePage } from './pages/admin/vehicle-data/DeliverySchedulePage';
 import { RiceDeliveryDataPage } from './pages/admin/RiceDeliveryDataPage';
 import { DeliveryImportPage } from './pages/admin/accounting-data/DeliveryImportPage';
 import { InvoiceMatchingPage } from './pages/admin/accounting-data/InvoiceMatchingPage';
+import { BangKeThoPage } from './pages/admin/accounting-data/BangKeThoPage';
 import { VehicleCatalogPage } from './pages/admin/catalog/VehicleCatalogPage';
 import { VehicleDetailPage } from './pages/admin/catalog/VehicleDetailPage';
 import { InnerCityCustomerPage } from './pages/admin/catalog/InnerCityCustomerPage';
 import { PromoItemCatalogPage } from './pages/admin/catalog/PromoItemCatalogPage';
+import { DeliveryPointCatalogPage } from './pages/admin/catalog/DeliveryPointCatalogPage';
+import { DriverCatalogPage } from './pages/admin/catalog/DriverCatalogPage';
 import { SupplierCatalogPage } from './pages/admin/catalog/SupplierCatalogPage';
 import { ReconcileJobPage } from './pages/admin/jobs/ReconcileJobPage';
 import { AuditLogPage } from './pages/admin/AuditLogPage';
@@ -31,6 +33,28 @@ import { OilChangePage } from './pages/admin/vehicle-data/OilChangePage';
 import { InsurancePage } from './pages/admin/vehicle-data/InsurancePage';
 import { RepairPage } from './pages/admin/vehicle-data/RepairPage';
 import { RoutePricingPage } from './pages/route-pricing/RoutePricingPage';
+import InvoiceTrackingPage from './pages/invoice-tracking/InvoiceTrackingPage';
+import PublicTicketViewPage from './pages/invoice-tracking/PublicTicketViewPage';
+import { DataScopeManagementPage } from './pages/admin/DataScopeManagementPage';
+import { WorkflowManagementPage } from './pages/admin/WorkflowManagementPage';
+
+function RoutePricingRedirect() {
+  const [params] = useSearchParams();
+  const tab = params.get('tab');
+  const next = new URLSearchParams(params);
+  next.delete('tab');
+  const qs = next.toString();
+  const suffix = qs ? `?${qs}` : '';
+  const path =
+    tab === 'sets'
+      ? '/route-pricing/sets'
+      : tab === 'prices'
+        ? '/route-pricing/matrix'
+        : tab === 'groups' || tab === 'manage'
+          ? '/route-pricing/routes'
+          : '/route-pricing/periods';
+  return <Navigate to={`${path}${suffix}`} replace />;
+}
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -46,6 +70,7 @@ export function Router() {
     <BrowserRouter>
       <Routes>
         {/* Public routes */}
+        <Route path="/shared/invoice-tracking/:token" element={<PublicTicketViewPage />} />
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -61,12 +86,13 @@ export function Router() {
             <Route path="/users" element={<UserManagementPage />} />
             <Route path="/roles" element={<RoleManagementPage />} />
             <Route path="/permissions" element={<PermissionManagementPage />} />
+            <Route path="/settings/data-scopes" element={<DataScopeManagementPage />} />
+            <Route path="/settings/workflows" element={<WorkflowManagementPage />} />
             <Route path="/logs" element={<AuditLogPage />} />
             {/* Delivery Data */}
             <Route path="/delivery-data/5-houses" element={<DeliveryDataPage />} />
             <Route path="/delivery-data/rice" element={<RiceDeliveryDataPage />} />
             {/* Vehicle Data */}
-            <Route path="/vehicle-data/delivery-schedule" element={<DeliverySchedulePage />} />
             <Route path="/vehicle-data/driver-invoices" element={<DriverInvoicesPage />} />
             <Route path="/vehicle-data/inspections" element={<InspectionPage />} />
             <Route path="/vehicle-data/oil-changes" element={<OilChangePage />} />
@@ -74,11 +100,13 @@ export function Router() {
             <Route path="/vehicle-data/repairs" element={<RepairPage />} />
             {/* Dispatch */}
             <Route path="/dispatch/schedule" element={<SchedulePage />} />
+            <Route path="/invoice-tracking" element={<InvoiceTrackingPage />} />
             {/* Accounting Data */}
             <Route path="/accounting-data/weight-adjustments" element={<WeightAdjustmentPage />} />
             <Route path="/accounting-data/customers" element={<CustomersPage />} />
             <Route path="/accounting-data/delivery-import" element={<DeliveryImportPage />} />
             <Route path="/accounting-data/invoice-matching" element={<InvoiceMatchingPage />} />
+            <Route path="/accounting-data/bang-ke-tho" element={<BangKeThoPage />} />
             {/* Jobs */}
             <Route path="/accounting-data/reconcile-jobs" element={<Navigate to="/jobs/reconcile" replace />} />
             <Route path="/jobs/reconcile" element={<ReconcileJobPage />} />
@@ -91,7 +119,13 @@ export function Router() {
             <Route path="/catalog/inner-city-customers" element={<InnerCityCustomerPage />} />
             <Route path="/catalog/suppliers" element={<SupplierCatalogPage />} />
             <Route path="/catalog/promo-items" element={<PromoItemCatalogPage />} />
-            <Route path="/route-pricing" element={<RoutePricingPage />} />
+            <Route path="/catalog/delivery-points" element={<DeliveryPointCatalogPage />} />
+            <Route path="/catalog/drivers" element={<DriverCatalogPage />} />
+            <Route path="/route-pricing" element={<RoutePricingRedirect />} />
+            <Route path="/route-pricing/periods" element={<RoutePricingPage />} />
+            <Route path="/route-pricing/sets" element={<RoutePricingPage />} />
+            <Route path="/route-pricing/routes" element={<RoutePricingPage />} />
+            <Route path="/route-pricing/matrix" element={<RoutePricingPage />} />
           </Route>
         </Route>
 

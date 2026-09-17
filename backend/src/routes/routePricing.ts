@@ -12,6 +12,12 @@ import {
   priceBookDeleteSchema,
   priceBookUpdateSchema,
   priceCreateSchema,
+  priceDeleteGroupSchema,
+  priceManualAdjustSchema,
+  priceSetAddTierSchema,
+  priceSetCreateSchema,
+  priceSetDeleteSchema,
+  priceSetUpdateSchema,
   priceUpdateAbsoluteSchema,
   pricesListSchema,
   pricesMatrixSchema,
@@ -158,6 +164,48 @@ router.put(
   requirePermission('route_pricing.manage'),
   ...validate(priceUpdateAbsoluteSchema),
   routePricingController.updateAbsolutePrice,
+);
+router.delete(
+  '/prices/groups/:routeGroupId',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceDeleteGroupSchema),
+  routePricingController.deleteGroupPrices,
+);
+router.put(
+  '/prices/versions/:versionId/manual-adjust',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceManualAdjustSchema),
+  routePricingController.manualAdjustVersion,
+);
+
+router.get(
+  '/price-sets',
+  requirePermission('route_pricing.view'),
+  routePricingController.listPriceSets,
+);
+router.post(
+  '/price-sets',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceSetCreateSchema),
+  routePricingController.createPriceSet,
+);
+router.put(
+  '/price-sets/:id',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceSetUpdateSchema),
+  routePricingController.updatePriceSet,
+);
+router.post(
+  '/price-sets/:id/tiers',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceSetAddTierSchema),
+  routePricingController.addPriceSetTier,
+);
+router.delete(
+  '/price-sets/:id',
+  requirePermission('route_pricing.manage'),
+  ...validate(priceSetDeleteSchema),
+  routePricingController.deletePriceSet,
 );
 
 router.get(

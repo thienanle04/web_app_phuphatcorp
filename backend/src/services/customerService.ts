@@ -74,7 +74,26 @@ export const customerService = {
     return result.rows[0] || null;
   },
 
+  async findActiveByDiemTraHang(diemTraHang: string, excludeId?: number): Promise<Customer | null> {
+    const conditions = [`diem_tra_hang = $1`, `status = 'active'`];
+    const params: (string | number)[] = [diemTraHang];
+    if (excludeId) {
+      conditions.push(`id != $2`);
+      params.push(excludeId);
+    }
+    const result = await pool.query(
+      `SELECT ${SELECT_COLS} FROM customers c WHERE ${conditions.join(' AND ')}`,
+      params,
+    );
+    return result.rows[0] || null;
+  },
+
   async create(data: CustomerData): Promise<Customer> {
+    const existing = await this.findActiveByDiemTraHang(data.diem_tra_hang);
+    if (existing) {
+      throw { code: 'DUPLICATE_DIEM_TRA_HANG', diem_tra_hang: data.diem_tra_hang };
+    }
+
     const result = await pool.query(
       `INSERT INTO customers c
          (diem_tra_hang, ten_khach_hang, tuyen_phuong, tuyen_cu, dia_chi_giao_hang,
@@ -99,6 +118,11 @@ export const customerService = {
     const existing = await this.findById(id);
     if (!existing || existing.status !== 'active') {
       throw { code: 'NOT_FOUND' };
+    }
+
+    const conflict = await this.findActiveByDiemTraHang(data.diem_tra_hang, id);
+    if (conflict) {
+      throw { code: 'DUPLICATE_DIEM_TRA_HANG', diem_tra_hang: data.diem_tra_hang };
     }
 
     const result = await pool.query(
@@ -136,6 +160,44 @@ export const customerService = {
   },
 
   async uploadMany(rows: CustomerData[]): Promise<{ inserted: number }> {
+    const errors: { row: number; diem_tra_hang: string; message: string }[] = [];
+    const seen = new Set<string>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const key = row.diem_tra_hang.trim().toLowerCase();
+      if (seen.has(key)) {
+        errors.push({
+          row: i + 2,
+          diem_tra_hang: row.diem_tra_hang,
+          message: 'Trùng điểm trả hàng trong file',
+        });
+      } else {
+        seen.add(key);
+      }
+    }
+
+    const res = await pool.query(
+      `SELECT diem_tra_hang FROM customers WHERE status = 'active' AND diem_tra_hang = ANY($1)`,
+      [rows.map((r) => r.diem_tra_hang)],
+    );
+    const existingSet = new Set(res.rows.map((r: { diem_tra_hang: string }) => r.diem_tra_hang.toLowerCase()));
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (existingSet.has(row.diem_tra_hang.trim().toLowerCase())) {
+        errors.push({
+          row: i + 2,
+          diem_tra_hang: row.diem_tra_hang,
+          message: 'Điểm trả hàng đã tồn tại trên hệ thống',
+        });
+      }
+    }
+
+    if (errors.length > 0) {
+      throw { code: 'UPLOAD_ERRORS', errors };
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

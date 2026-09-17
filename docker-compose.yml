@@ -50,7 +50,8 @@ services:
         sleep 2;
       done;
       mc mb --ignore-existing local/phuphatcorp-inspections-staging;
-      echo 'MinIO bucket ready.';
+      mc mb --ignore-existing local/phuphatcorp-bang-ke-tho;
+      echo 'MinIO buckets ready.';
       "
 
 volumes:

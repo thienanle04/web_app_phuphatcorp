@@ -8,6 +8,7 @@ export interface Vehicle {
   vehicle_type: string;
   status: 'active' | 'deactive';
   oil_change_interval_km: number;
+  driver_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -67,17 +68,17 @@ export const vehicleService = {
     const conditions: string[] = [];
 
     if (status === 'active') {
-      conditions.push("status = 'active'");
+      conditions.push("v.status = 'active'");
     } else if (status === 'inactive') {
-      conditions.push("status = 'deactive'");
+      conditions.push("v.status = 'deactive'");
     } else if (status === 'all') {
       // no status filter
     } else {
-      conditions.push("status = 'active'");
+      conditions.push("v.status = 'active'");
     }
 
     if (vehicle_type === 'Xe nhà' || vehicle_type === 'Xe ngoài') {
-      conditions.push(`vehicle_type = '${vehicle_type}'`);
+      conditions.push(`v.vehicle_type = '${vehicle_type}'`);
     }
 
     if (conditions.length > 0) {
@@ -89,8 +90,8 @@ export const vehicleService = {
       const q = `%${search}%`;
       params.push(q, q);
       const and = countWhereClause ? ' AND ' : 'WHERE ';
-      whereClause += `${and}(plate_number ILIKE $${params.length - 1} OR driver_name ILIKE $${params.length})`;
-      countWhereClause += `${and}(plate_number ILIKE $1 OR driver_name ILIKE $2)`;
+      whereClause += `${and}(v.plate_number ILIKE $${params.length - 1} OR v.driver_name ILIKE $${params.length})`;
+      countWhereClause += `${and}(v.plate_number ILIKE $1 OR v.driver_name ILIKE $2)`;
     }
 
     const countParams: unknown[] = [];
@@ -99,15 +100,29 @@ export const vehicleService = {
       countParams.push(q, q);
     }
     const countResult = await pool.query<{ count: string }>(
-      `SELECT COUNT(*) as count FROM vehicles ${countWhereClause}`,
+      `SELECT COUNT(*) as count FROM vehicles v ${countWhereClause}`,
       countParams,
     );
     const total = parseInt(countResult.rows[0].count, 10);
 
     params.push(limit, offset);
     const dataResult = await pool.query<Vehicle>(
-      `SELECT ${SELECT_COLS} FROM vehicles ${whereClause}
-       ORDER BY plate_number ASC
+      `SELECT 
+        v.id, 
+        v.plate_number, 
+        v.driver_name, 
+        v.vehicle_type, 
+        v.status, 
+        v.oil_change_interval_km, 
+        v.created_at, 
+        v.updated_at,
+        COUNT(DISTINCT dv.driver_id)::int as driver_count
+       FROM vehicles v
+       LEFT JOIN driver_vehicles dv ON dv.vehicle_id = v.id
+       LEFT JOIN drivers d ON d.id = dv.driver_id AND d.status = 'active'
+       ${whereClause}
+       GROUP BY v.id
+       ORDER BY v.plate_number ASC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );

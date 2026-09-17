@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, FileSpreadsheet, ChevronDown, ChevronRight, Truck, ShieldCheck, ShieldQuestion, CalendarDays, X, MapPin, Building2, Pencil, AlertTriangle, Ban } from 'lucide-react';
+import { CheckCircle2, XCircle, FileSpreadsheet, ChevronDown, ChevronRight, Truck, ShieldCheck, ShieldQuestion, CalendarDays, X, MapPin, Building2, Pencil, AlertTriangle, Ban, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -50,6 +50,7 @@ export function InvoiceMatchingPage() {
     { value: 'không có', label: 'Không có' },
     { value: 'xe không chạy', label: 'Xe không chạy' },
     { value: 'data sai', label: 'Data sai' },
+    { value: 'data khác', label: 'Data khác' },
   ];
 
   const handleFilterChange = (key: keyof AccountantInvoiceFilters, value: string) => {
@@ -221,6 +222,11 @@ export function InvoiceMatchingPage() {
                               {invoice.trang_thai === 'data sai' && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
                                   <AlertTriangle className="w-3 h-3" />Data sai
+                                </span>
+                              )}
+                              {invoice.trang_thai === 'data khác' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
+                                  <HelpCircle className="w-3 h-3" />Data khác
                                 </span>
                               )}
                             </td>
@@ -604,6 +610,7 @@ function EditInvoiceModal({ invoice, onClose, onSuccess }: { invoice: Accountant
     { value: 'không có', label: 'Không có' },
     { value: 'xe không chạy', label: 'Xe không chạy' },
     { value: 'data sai', label: 'Data sai' },
+    { value: 'data khác', label: 'Data khác' },
   ];
 
   const handleSubmit = async () => {

@@ -6,9 +6,12 @@ export interface DispatchSchedule {
   loai_tuyen: 'Tuyến cố định' | 'Tuyến ngoài';
   loai_xe: 'Xe lớn' | 'Xe nhỏ';
   xe_type: 'Xe nhà' | 'Xe ngoài';
+  bien_so: string;
+  tai_xe: string | null;
+  vehicle_id: number | null;
   diem_nhan: string;
-  diem_tra: string;
-  gio_nhan: string;
+  tan: string | null;
+  can: string | null;
   ghi_chu: string | null;
   created_at: string;
 }
@@ -25,15 +28,29 @@ export interface CreateDispatchScheduleRequest {
   loai_xe: 'Xe lớn' | 'Xe nhỏ';
   xe_type: 'Xe nhà' | 'Xe ngoài';
   diem_nhan: string;
-  diem_tra: string;
-  gio_nhan: string;
+  tan?: string | null;
+  can?: string | null;
+  ghi_chu?: string | null;
+}
+
+export interface CreateDispatchScheduleBatchItem {
+  ngay: string;
+  loai_tuyen: 'Tuyến cố định' | 'Tuyến ngoài';
+  loai_xe: 'Xe lớn' | 'Xe nhỏ';
+  bien_so: string;
+  tai_xe?: string | null;
+  vehicle_id?: number | null;
+  driver_id?: number | null;
+  diem_nhan: string;
+  tan?: string | null;
+  can?: string | null;
   ghi_chu?: string | null;
 }
 
 export interface UpdateDispatchScheduleRequest {
   diem_nhan: string;
-  diem_tra: string;
-  gio_nhan: string;
+  tan?: string | null;
+  can?: string | null;
   ghi_chu?: string | null;
 }
 
@@ -49,6 +66,14 @@ export const dispatchApi = {
     const res = await axiosClient.post<{ success: boolean; data: DispatchSchedule }>(
       '/dispatch-schedules',
       data,
+    );
+    return res.data.data;
+  },
+
+  batchCreate: async (items: CreateDispatchScheduleBatchItem[]): Promise<DispatchSchedule[]> => {
+    const res = await axiosClient.post<{ success: boolean; data: DispatchSchedule[] }>(
+      '/dispatch-schedules/batch',
+      { items },
     );
     return res.data.data;
   },

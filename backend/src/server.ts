@@ -22,6 +22,9 @@ async function main(): Promise<void> {
   await storageService.ensureBucket().catch((err) => {
     console.warn('[MinIO] Bucket init failed (uploads may not work):', err instanceof Error ? err.message : err);
   });
+  await storageService.ensureBucket(env.minio.bangKeBucket).catch((err) => {
+    console.warn('[MinIO] Bang-ke bucket init failed:', err instanceof Error ? err.message : err);
+  });
 
   app.listen(env.port, () => {
     console.log(`[Server] Running on http://localhost:${env.port}`);

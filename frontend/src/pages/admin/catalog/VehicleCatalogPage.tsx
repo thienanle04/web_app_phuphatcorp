@@ -166,6 +166,7 @@ export function VehicleCatalogPage() {
                     <TableHead className="w-48">Biển số</TableHead>
                     <TableHead>Tên tài xế</TableHead>
                     <TableHead className="w-28 text-center">Phân loại</TableHead>
+                    <TableHead className="w-28 text-center">Số tài xế</TableHead>
                     <TableHead className="w-28 text-center">Trạng thái</TableHead>
                     <TableHead className="w-44">Ngày tạo</TableHead>
                     <TableHead className="w-20 text-center">Thao tác</TableHead>
@@ -190,6 +191,15 @@ export function VehicleCatalogPage() {
                       </TableCell>
                       <TableCell className="text-center text-sm text-neutral-600 dark:text-neutral-400">
                         {vehicle.vehicle_type}
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          (vehicle.driver_count ?? 0) > 0
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'
+                        }`}>
+                          {vehicle.driver_count ?? 0}
+                        </span>
                       </TableCell>
                       <TableCell className="text-center">
                         {vehicle.status === 'active' ? (

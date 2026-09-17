@@ -35,24 +35,48 @@ export const dispatchCreateSchema: ValidationChain[] = [
     .isIn(['Xe nhà', 'Xe ngoài'])
     .withMessage("Loại sở hữu phải là 'Xe nhà' hoặc 'Xe ngoài'"),
   body('diem_nhan').notEmpty().withMessage('Điểm nhận là bắt buộc'),
-  body('diem_tra').notEmpty().withMessage('Điểm trả là bắt buộc'),
-  body('gio_nhan')
-    .notEmpty()
-    .withMessage('Giờ nhận là bắt buộc')
-    .matches(/^\d{2}:\d{2}(:\d{2})?$/)
-    .withMessage('Giờ nhận phải có định dạng HH:MM'),
+  body('tan').optional({ nullable: true }).isString(),
+  body('can').optional({ nullable: true }).isString(),
   body('ghi_chu').optional({ nullable: true }).isString(),
+];
+
+export const dispatchBatchCreateSchema: ValidationChain[] = [
+  body('items')
+    .isArray({ min: 1 })
+    .withMessage('items phải là array có ít nhất 1 phần tử'),
+  body('items.*.ngay')
+    .notEmpty()
+    .withMessage('Ngày là bắt buộc')
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('Ngày phải có định dạng YYYY-MM-DD'),
+  body('items.*.loai_tuyen')
+    .notEmpty()
+    .withMessage('Loại tuyến là bắt buộc')
+    .isIn(['Tuyến cố định', 'Tuyến ngoài'])
+    .withMessage("Loại tuyến phải là 'Tuyến cố định' hoặc 'Tuyến ngoài'"),
+  body('items.*.loai_xe')
+    .notEmpty()
+    .withMessage('Loại xe là bắt buộc')
+    .isIn(['Xe lớn', 'Xe nhỏ'])
+    .withMessage("Loại xe phải là 'Xe lớn' hoặc 'Xe nhỏ'"),
+  body('items.*.bien_so')
+    .notEmpty()
+    .withMessage('Biển số là bắt buộc')
+    .isString(),
+  body('items.*.tai_xe').optional({ nullable: true }).isString(),
+  body('items.*.vehicle_id').optional({ nullable: true }).isInt({ min: 1 }),
+  body('items.*.driver_id').optional({ nullable: true }).isInt({ min: 1 }),
+  body('items.*.diem_nhan').notEmpty().withMessage('Điểm nhận là bắt buộc'),
+  body('items.*.tan').optional({ nullable: true }).isString(),
+  body('items.*.can').optional({ nullable: true }).isString(),
+  body('items.*.ghi_chu').optional({ nullable: true }).isString(),
 ];
 
 export const dispatchUpdateSchema: ValidationChain[] = [
   param('id').isInt({ min: 1 }).withMessage('ID không hợp lệ'),
   body('diem_nhan').notEmpty().withMessage('Điểm nhận là bắt buộc'),
-  body('diem_tra').notEmpty().withMessage('Điểm trả là bắt buộc'),
-  body('gio_nhan')
-    .notEmpty()
-    .withMessage('Giờ nhận là bắt buộc')
-    .matches(/^\d{2}:\d{2}(:\d{2})?$/)
-    .withMessage('Giờ nhận phải có định dạng HH:MM'),
+  body('tan').optional({ nullable: true }).isString(),
+  body('can').optional({ nullable: true }).isString(),
   body('ghi_chu').optional({ nullable: true }).isString(),
 ];
 
@@ -86,6 +110,29 @@ export const dispatchScheduleController = {
         entityLabel: `Dispatch #${schedule.id}`,
         ipAddress: req.ip,
       });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Unknown error';
+      sendError(res, 'Không thể tạo chuyến xe', 500, error);
+    }
+  },
+
+  async batchCreate(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.userId ?? null;
+      const { items } = req.body;
+      const schedules = await dispatchScheduleService.createBatch(items, userId);
+      sendSuccess(res, schedules, `Tạo ${schedules.length} chuyến xe thành công`, 201);
+      for (const schedule of schedules) {
+        auditService.logAudit({
+          userId: req.user!.userId,
+          username: req.user!.email,
+          action: 'CREATE',
+          entityType: 'dispatch_schedule',
+          entityId: schedule.id,
+          entityLabel: `Dispatch #${schedule.id}`,
+          ipAddress: req.ip,
+        });
+      }
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Unknown error';
       sendError(res, 'Không thể tạo chuyến xe', 500, error);

@@ -1,7 +1,6 @@
 export interface OverviewKpis {
   delivered_tons: number;
   invoice_count: number;
-  trip_count: number;
   fuel_cost: number;
 }
 
@@ -119,24 +118,9 @@ export interface AccountingData {
   job_logs: ReconcileLogRow[];
 }
 
-export interface OperationsDailyRow {
-  date: string;
-  trips: number;
-  tons: number;
-}
-
-export interface OperationsVehicleRow {
-  so_xe: string;
-  trips: number;
-  tons: number;
-}
-
 export interface OperationsData {
   date_from: string;
   date_to: string;
-  summary: { total_trips: number; total_tons: number; vehicle_count: number };
-  daily: OperationsDailyRow[];
-  by_vehicle: OperationsVehicleRow[];
   driver_invoices: { record_count: number; invoice_count: number };
 }
 

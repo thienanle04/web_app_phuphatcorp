@@ -60,7 +60,7 @@ export const authController = {
       const refreshToken = generateRefreshToken(user);
       setRefreshCookie(res, refreshToken);
 
-      sendSuccess(res, { user, accessToken }, 'Registration successful', 201);
+      sendSuccess(res, { user, accessToken, refreshToken }, 'Registration successful', 201);
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Unknown error';
       sendError(res, 'Registration failed', 500, error);
@@ -94,7 +94,7 @@ export const authController = {
       const refreshToken = generateRefreshToken(userPublic);
       setRefreshCookie(res, refreshToken);
 
-      sendSuccess(res, { user: userPublic, accessToken }, 'Login successful');
+      sendSuccess(res, { user: userPublic, accessToken, refreshToken }, 'Login successful');
 
       auditService.logAudit({
         userId: userPublic.id,
@@ -112,7 +112,8 @@ export const authController = {
 
   async refresh(req: Request, res: Response): Promise<void> {
     try {
-      const refreshToken = req.cookies.refreshToken;
+      const refreshToken =
+        req.cookies?.refreshToken || req.body?.refreshToken || (req.headers['x-refresh-token'] as string);
       if (!refreshToken) {
         sendError(res, 'Refresh token required', 401);
         return;
@@ -143,7 +144,11 @@ export const authController = {
       const newRefreshToken = generateRefreshToken(user);
       setRefreshCookie(res, newRefreshToken);
 
-      sendSuccess(res, { accessToken: newAccessToken }, 'Token refreshed');
+      sendSuccess(
+        res,
+        { accessToken: newAccessToken, refreshToken: newRefreshToken },
+        'Token refreshed',
+      );
     } catch {
       sendError(res, 'Invalid refresh token', 403);
     }
