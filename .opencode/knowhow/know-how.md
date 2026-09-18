@@ -207,7 +207,7 @@ VITE_API_URL=http://localhost:3021/api
 | tuyen_cu | VARCHAR(255) | NULL |
 | dia_chi_giao_hang | TEXT | NULL |
 | diem_giao_hang_tinh_phi | VARCHAR(255) | NULL |
-| boc_xep | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| boc_xep | BOOLEAN | NOT NULL, DEFAULT TRUE. UI và import không còn ghi. |
 | status | VARCHAR(20) | NOT NULL, DEFAULT 'active' |
 | created_by | INTEGER | FK → users(id), NULL |
 | updated_by | INTEGER | FK → users(id), NULL |
@@ -217,6 +217,22 @@ VITE_API_URL=http://localhost:3021/api
 **Indexes:** `idx_customers_diem_tra_hang`, `idx_customers_status`
 **Soft delete:** `status = 'deactive'` (không xóa cứng)
 **Migration:** `012_create_customers.sql`, `043_add_diem_giao_hang_tinh_phi_to_customers.sql`
+
+### customer_surcharge_rules
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | SERIAL | PRIMARY KEY |
+| ten_khach_hang | VARCHAR(255) | NOT NULL |
+| customer_id | INTEGER | NULL, FK → customers(id). NULL = mặc định đại lý |
+| fee_type | VARCHAR(30) | boc_xep, phu_phi_giao_hang, chuyen_tai |
+| zone | VARCHAR(20) | NULL, noi_thanh, tinh |
+| vehicle_class | VARCHAR(20) | NULL, le_2_5, gt_8_16, gt_16_23, pallet |
+| amount | INTEGER | NOT NULL, ≥ 0 |
+| pricing_unit | VARCHAR(10) | tan hoặc chuyen, server gán |
+| start_date | DATE | NOT NULL |
+| end_date | DATE | NULL = đang mở |
+
+**Migration:** `056_customer_surcharge_rules.sql`
 
 ### customer_suppliers (junction N-N: customers ↔ suppliers)
 | Column | Type | Constraints |
@@ -292,8 +308,14 @@ Base URL: `/api`
 | DELETE | /route-pricing/prices/groups/:routeGroupId | manage | Xóa mọi version, `price_set_id = NULL`. Không xóa nhóm tuyến. |
 | PUT | /route-pricing/prices/versions/:versionId/manual-adjust | manage | Sửa bậc đã có. `added_tiers` cho bậc bộ chưa có trên kỳ. Không xóa bậc đã có. Giá mới `> 0`. |
 | GET | /route-pricing/lookup | view | **Deferred** (501 LOOKUP_DEFERRED) — CR riêng sau |
+| GET/POST | /route-pricing/surcharges | view/manage | Phụ phí khách. POST tạo một hoặc nhiều bản ghi mở (`ten_khach_hangs` hoặc `ten_khach_hang`). |
+| GET | /route-pricing/surcharges/customer-options | view | Tên đại lý và điểm có địa chỉ, kèm tên và mã nhà cung cấp lúc đọc |
+| POST | /route-pricing/surcharges/lookup | view | Tra cứu, không ghi. `supplier_code` tùy chọn khi trùng địa chỉ. Trả điểm + 3 phí |
+| POST | /route-pricing/surcharges/:id/replace | manage | Đóng dòng cũ, mở dòng mới |
+| POST | /route-pricing/surcharges/:id/stop | manage | Đặt end_date. Không xóa bản ghi. |
+| DELETE | /route-pricing/surcharges/:id | manage | Xóa cứng. Ghi audit khi thành công. Không mở lại bản ghi cũ. |
 
-**FE:** Sidebar accordion **Quản lý giá cước vận tải**: `/route-pricing/periods`, `/sets`, `/routes` (tab Tuyến + Quản lý giá), `/matrix`. `/route-pricing` redirect theo `?tab=` cũ. Bộ giá tạo trước; form giá chỉ chọn bộ và nhập số. Bút chì điều chỉnh giá trên card kỳ. Không sửa kỳ — muốn đổi thì xóa rồi tạo lại.
+**FE:** Sidebar accordion **Quản lý giá cước vận tải**: `/route-pricing/periods`, `/sets`, `/routes` (tab Tuyến + Quản lý giá), `/matrix`, `/surcharges`. `/route-pricing` redirect theo `?tab=` cũ. Bộ giá tạo trước; form giá chỉ chọn bộ và nhập số. Bút chì điều chỉnh giá trên card kỳ. Không sửa kỳ — muốn đổi thì xóa rồi tạo lại. Phụ phí giao hàng là trang riêng, không chọn bảng giá.
 
 ### Dashboard — /dashboard
 

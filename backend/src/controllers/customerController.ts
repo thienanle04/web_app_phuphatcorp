@@ -24,7 +24,7 @@ export const customerCreateSchema: ValidationChain[] = [
     .optional({ nullable: true })
     .isLength({ max: 255 }).withMessage('Điểm giao hàng tính phí tối đa 255 ký tự'),
   body('boc_xep')
-    .isBoolean().withMessage('Bốc xếp phải là boolean'),
+    .optional({ nullable: true }),
   body('supplier_code')
     .optional({ nullable: true })
     .isLength({ max: 20 }).withMessage('Mã nhà cung cấp tối đa 20 ký tự'),
@@ -48,7 +48,7 @@ export const customerUploadSchema: ValidationChain[] = [
     .notEmpty().withMessage('Tên khách hàng là bắt buộc')
     .isLength({ max: 500 }).withMessage('Tên khách hàng tối đa 500 ký tự'),
   body('rows.*.boc_xep')
-    .isBoolean().withMessage('Bốc xếp phải là boolean'),
+    .optional({ nullable: true }),
   body('rows.*.supplier_code')
     .optional({ nullable: true })
     .isLength({ max: 20 }).withMessage('Mã nhà cung cấp tối đa 20 ký tự'),

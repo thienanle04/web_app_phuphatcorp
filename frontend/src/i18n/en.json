@@ -699,7 +699,8 @@
       "periods": "Adjustment periods",
       "sets": "Price sets",
       "routes": "Route management",
-      "matrix": "Price table"
+      "matrix": "Price table",
+      "surcharges": "Delivery surcharges"
     },
     "page": {
       "title": "Freight rate management",
@@ -1121,6 +1122,162 @@
     "actions": {
       "configure": "Configure Steps",
       "save": "Save Workflow Configuration"
+    }
+  },
+  "customerSurcharges": {
+    "page": {
+      "title": "Delivery surcharges",
+      "subtitle": "Customer rates. Not part of the route price table."
+    },
+    "action": {
+      "add": "Add surcharge",
+      "lookup": "Look up",
+      "replace": "Change rate",
+      "stop": "Stop rate",
+      "delete": "Delete surcharge",
+      "expandPoint": "Expand delivery point column",
+      "collapsePoint": "Collapse delivery point column",
+      "clearSearch": "Clear typed text",
+      "removeName": "Remove {name}",
+      "clearFilters": "Clear filters",
+      "save": "Save surcharge",
+      "cancel": "Cancel",
+      "stay": "Stay",
+      "discard": "Discard",
+      "retry": "Try again"
+    },
+    "empty": "No surcharges yet",
+    "emptySearch": "No matches",
+    "emptyFiltered": "No rows match these filters",
+    "error": "Could not load data",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "stopping": "Stopping…",
+    "deleting": "Deleting…",
+    "lookingUp": "Looking up…",
+    "field": {
+      "customer": "Customer name",
+      "scope": "Scope",
+      "point": "Delivery point",
+      "branch": "Branch",
+      "supplier": "NCC",
+      "supplierCode": "Supplier code",
+      "feeType": "Fee type",
+      "zone": "Zone",
+      "vehicleClass": "Vehicle class",
+      "amount": "Rate (VND)",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "address": "Delivery address",
+      "onDate": "Date",
+      "status": "Status",
+      "source": "Source",
+      "result": "Result"
+    },
+    "scope": {
+      "dealer": "Whole system",
+      "point": "Specific branch",
+      "dealerShort": "Whole system",
+      "pointShort": "Branch"
+    },
+    "fee": {
+      "boc_xep": "Loading",
+      "phu_phi_giao_hang": "Delivery surcharge",
+      "chuyen_tai": "Transshipment"
+    },
+    "zone": {
+      "any": "Any zone",
+      "all": "All zones",
+      "noi_thanh": "Inner city",
+      "tinh": "Province"
+    },
+    "vehicle": {
+      "any": "Any class",
+      "all": "All classes",
+      "le_2_5": "≤2.5 tons",
+      "gt_8_16": ">8-16 tons",
+      "gt_16_23": ">16-23 tons",
+      "pallet": "Pallet"
+    },
+    "unit": {
+      "tan": "VND/ton",
+      "chuyen": "VND/trip"
+    },
+    "column": {
+      "amount": "Rate",
+      "from": "Effective from",
+      "to": "To"
+    },
+    "status": {
+      "open": "Open",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "customerInactive": "Inactive",
+    "hint": {
+      "rateOnly": "Lookup returns the rate. It does not multiply by tonnage.",
+      "replaceDate": "The new date must be after the current start date."
+    },
+    "lookup": {
+      "noPoint": "No matching drop point",
+      "ambiguousPoint": "Duplicate drop points, none selected",
+      "ambiguousNeedCode": "Same address. Enter a supplier code to tell them apart",
+      "ambiguousSameCode": "Two points share this address and supplier code",
+      "matched": "Matched",
+      "noRule": "No rule",
+      "ambiguous": "Several rules match",
+      "pointLabel": "Drop point",
+      "routeLabel": "Ward route",
+      "feePointLabel": "Fee delivery point",
+      "freeText": "Type the text on the trip. Do not pick from a list."
+    },
+    "message": {
+      "success": {
+        "create": "Surcharge added",
+        "createMany": "Added {n} surcharges",
+        "replace": "Rate changed",
+        "stop": "Surcharge stopped",
+        "delete": "Surcharge deleted"
+      },
+      "createFailed": "Could not save",
+      "error": {
+        "generic": "System error, try again"
+      }
+    },
+    "confirm": {
+      "discard": "Discard changes?",
+      "stopTitle": "Stop this surcharge?",
+      "stopBody": "After this date the rule no longer applies. If it is a drop-point rate, later dates use the customer rate when one exists.",
+      "deleteOpen": "Delete this surcharge?",
+      "deleteOpenBody": "After deletion, lookup will no longer return this surcharge.",
+      "deleteOpenHasHistory": "Delete the current surcharge?",
+      "deleteOpenHasHistoryBody": "The previous surcharge stays closed. After its end date, lookup will not return this surcharge.",
+      "deletePointFallback": "If the drop point has no current surcharge of this type, lookup uses the customer rate.",
+      "deleteClosed": "Delete this stopped surcharge?",
+      "deleteClosedBody": "Lookup on the dates this surcharge matched will no longer return this amount."
+    },
+    "validation": {
+      "required": "This field is required",
+      "amount": "Enter an integer from 0",
+      "point": "Choose a branch with an address",
+      "replaceDate": "Choose a date after the current start date",
+      "stopDate": "The end date cannot be before the start date",
+      "customer": "Choose a customer from the list",
+      "zone": "Choose a zone",
+      "vehicle": "Choose a vehicle class"
+    },
+    "reason": {
+      "openExists": "An open surcharge already uses these conditions",
+      "overlap": "The start date overlaps a stopped surcharge",
+      "ambiguous": "This matches another surcharge, so the rate is unclear",
+      "unknownName": "This name is no longer an active customer"
+    },
+    "placeholder": {
+      "customer": "Choose a customer…",
+      "search": "Search customers…",
+      "point": "Choose a branch…",
+      "supplierCode": "e.g. 2000000007…",
+      "address": "Paste the delivery address…"
     }
   }
 }

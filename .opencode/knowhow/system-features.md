@@ -648,7 +648,7 @@ customers (
 - BR-003: Create → 409 nếu diem_tra_hang đã tồn tại (active record)
 - BR-004: Update → 409 nếu diem_tra_hang conflict với record khác
 - BR-005: Upload fail-fast — nếu bất kỳ dòng nào lỗi → không insert gì cả, trả 422 + error list
-- BR-006: Cột boc_xep trong Excel: "Không"/"Khong" (case-insensitive) → false; rỗng/other → true
+- BR-006: `boc_xep` không còn được form hoặc upload ghi. Cột DB giữ default. Cờ trên UI đã bỏ. Có bốc xếp chỉ biết qua lookup phụ phí.
 - BR-007: Excel column order (positional, col index từ 0): col0=Điểm trả hàng, col1=Tuyến-phường, col2=Tuyến-cũ, col3=bỏ qua, col4=Tên khách hàng, col5=Địa chỉ giao hàng, col6=Bốc xếp
 - BR-008: fetchAll → chỉ trả active records
 - BR-009: Liên kết N-N với `suppliers` qua junction table `customer_suppliers`, tự động populate khi import `delivery_data` (match `ten_kh` → `ten_khach_hang`, `ma_ncc` → `supplier_code`)
@@ -1151,6 +1151,17 @@ frontend/src/pages/route-pricing/priceDisplay.ts
 
 **Access:** `route_pricing.view` (xem) / `route_pricing.manage` (CRUD).  
 **BA / UI (hiện tại):** `docs/ba/20260917_route-pricing-price-sets-analysis.md`, `docs/ui/20260917_route-pricing-price-sets-ui-spec.md`. Spec 2026-07-11 và 2026-09-15 là lịch sử; phần giá `0` / tự thêm bậc đã bị bộ giá thay.
+
+### 11.2 Phụ phí giao hàng (`/route-pricing/surcharges`)
+
+**Mục đích:** Biểu phí theo khách: bốc xếp (đồng/tấn), phụ phí giao hàng và chuyển tải (đồng/chuyến). Không thuộc bảng giá tuyến, không ăn kỳ %. Chưa gắn xử lý data giao hàng.
+
+**Data model:** `customer_surcharge_rules` — tên khách, `customer_id` null = mặc định đại lý, loại phí, vùng, khung xe, số nguyên ≥ 0, `start_date` / `end_date`. Migration `056_customer_surcharge_rules.sql`.
+
+**Business rules:** Xem `docs/ba/20260917_customer-surcharges-analysis.md`. Điểm trả thắng đại lý nếu còn rule hiệu lực đúng ngày của loại phí đó. Không khớp rule thì `rate` null, không trả 0. Nhà cung cấp không nằm trên rule. Form và bảng hiện tên nhà cung cấp lúc đọc. Tra cứu có `supplier_code` tùy chọn để tách điểm cùng địa chỉ. Tạo một lần được nhiều tên đại lý, một transaction, cùng bộ số. Xóa cứng từng bản ghi, không mở lại bản ghi cũ; audit chỉ khi xóa thành công. Tra cứu POST `/api/route-pricing/surcharges/lookup` (quyền view). `GET /route-pricing/lookup` vẫn 501.
+
+**Access:** `route_pricing.view` / `route_pricing.manage`. Menu accordion Quản lý giá cước vận tải.  
+**BA / UI:** `docs/ba/20260917_customer-surcharges-analysis.md`, `docs/ui/20260917_customer-surcharges-ui-spec.md`.
 
 ---
 

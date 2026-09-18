@@ -1,4 +1,4 @@
-import { Pencil, Trash2, Check, X } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Pagination } from '../ui/Pagination';
 import { DataGrid, DataGridTip, formatDataGridValue } from '../ui/DataGrid';
 import type { DataGridColumn } from '../ui/DataGrid';
@@ -72,28 +72,6 @@ export function CustomersTable({
       minWidth: 256,
       className: 'text-neutral-700 dark:text-neutral-300',
       accessor: (row) => row.ten_khach_hang,
-    },
-    {
-      id: 'bocXep',
-      header: t('customers.columns.bocXep'),
-      width: 80,
-      align: 'center',
-      truncate: false,
-      cell: (row) => (
-        <span className="flex h-full items-center justify-center">
-          {row.boc_xep ? (
-            <Check
-              className="size-[16px] text-green-600 dark:text-green-400"
-              aria-label={t('customers.bocXep.true')}
-            />
-          ) : (
-            <X
-              className="size-[16px] text-neutral-400 dark:text-neutral-500"
-              aria-label={t('customers.bocXep.false')}
-            />
-          )}
-        </span>
-      ),
     },
     {
       id: 'nhaCungCap',

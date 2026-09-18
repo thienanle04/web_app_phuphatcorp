@@ -33,6 +33,7 @@ import { OilChangePage } from './pages/admin/vehicle-data/OilChangePage';
 import { InsurancePage } from './pages/admin/vehicle-data/InsurancePage';
 import { RepairPage } from './pages/admin/vehicle-data/RepairPage';
 import { RoutePricingPage } from './pages/route-pricing/RoutePricingPage';
+import { CustomerSurchargesPage } from './pages/route-pricing/CustomerSurchargesPage';
 import InvoiceTrackingPage from './pages/invoice-tracking/InvoiceTrackingPage';
 import PublicTicketViewPage from './pages/invoice-tracking/PublicTicketViewPage';
 import { DataScopeManagementPage } from './pages/admin/DataScopeManagementPage';
@@ -126,6 +127,7 @@ export function Router() {
             <Route path="/route-pricing/sets" element={<RoutePricingPage />} />
             <Route path="/route-pricing/routes" element={<RoutePricingPage />} />
             <Route path="/route-pricing/matrix" element={<RoutePricingPage />} />
+            <Route path="/route-pricing/surcharges" element={<CustomerSurchargesPage />} />
           </Route>
         </Route>
 

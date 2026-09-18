@@ -1,4 +1,4 @@
-# Task List: Tính giá theo tuyến đường (Route Pricing)
+﻿# Task List: Tính giá theo tuyến đường (Route Pricing)
 
 **Ngày:** 2026-07-11  
 **Cập nhật:** 2026-07-13  
@@ -79,7 +79,7 @@
 
 ## Coding Standards
 
-Đọc `.cursor/knowhow/` trước khi code. Response `{ success, message, data }`. Soft-delete `status` active/deactive. UI copy tiếng Việt; docs thuật ngữ lẫn Anh/Việt OK.
+Đọc `.agents/knowhow/` trước khi code. Response `{ success, message, data }`. Soft-delete `status` active/deactive. UI copy tiếng Việt; docs thuật ngữ lẫn Anh/Việt OK.
 
 ---
 

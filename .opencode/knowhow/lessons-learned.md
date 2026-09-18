@@ -21,6 +21,30 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Files:** `scripts/fSheetPriceSet.ts`, các `scripts/seed-*-f.ts`, `scripts/sql/cascade_route_pricing_versions.sql`.
 
 ---
+## Bug: Nút xóa phụ phí bị mất do lọt ra ngoài vùng hiển thị trong bảng phụ phí
+- **Ngày:** 2026-09-18
+- **Severity:** Medium
+- **Feature liên quan:** Phụ phí giao hàng (`CustomerSurchargesPage.tsx`)
+- **Triệu chứng:** Người dùng vào trang Phụ phí giao hàng thì không thấy nút Xóa phụ phí trên các dòng đang mở, chỉ thấy nút Đổi giá và Ngừng áp dụng.
+- **Root cause:** Cột `actions` trong `DataGrid` được cấu hình `width: 112`. Các ô dữ liệu `<td>` có padding ngang `px-3` (24px) và `overflow-hidden`. Trong khi đó, dòng phụ phí đang áp dụng chứa 3 nút thao tác (Đổi giá, Ngừng, Xóa) với mỗi nút kích thước `size-8` (32px) và khoảng cách `gap-0.5`, tổng chiều rộng ~100px. Chiều rộng lọt lòng chỉ còn 112 - 24 = 88px (< 100px), khiến nút Xóa nằm ở cuối cùng bị tràn ra ngoài và bị `overflow-hidden` cắt mất.
+- **Fix:** Tăng độ rộng cột `actions` từ 112 lên 140px, bổ sung `shrink-0` cho các wrapper `DataGridTip` và phần tử `button` để chống co giãn flexbox.
+- **File sửa:** `frontend/src/pages/route-pricing/CustomerSurchargesPage.tsx`
+- **Cần chú ý:** Khi định nghĩa cột `actions` có N nút thao tác trong `DataGrid`, cần tính toán: `width >= (N * button_width) + ((N - 1) * gap) + cell_padding (24px) + margin`. Với 3 nút 32px thì tối thiểu cần 128px - 140px.
+
+
+---
+## Bug: Phụ phí lệch 1 ngày khi chọn ngày bắt đầu
+- **Ngày:** 2026-09-17
+- **Severity:** High
+- **Feature liên quan:** Phụ phí giao hàng (`customerSurchargeService`)
+- **Triệu chứng:** Chọn ngày bắt đầu 16/9 bị báo chồng ngày; chọn 17/9 thì tạo được nhưng màn hình hiện 16/9.
+- **Root cause:** `pg` parse cột `DATE` thành `Date` lúc 00:00 local. `iso()` gọi `toISOString().slice(0, 10)` nên ở UTC+7 ngày lịch `2026-09-17` thành `2026-09-16`. Cùng phép map dùng cho kiểm tra chồng kỳ, nên kỳ kết thúc 17/9 bị coi là kết thúc 16/9.
+- **Fix:** So sánh/hiển thị bằng ngày lịch local (`getFullYear/getMonth/getDate`), và SELECT `start_date::text` / `end_date::text`. Không dùng `toISOString()` cho `DATE`.
+- **File sửa:** `backend/src/services/customerSurchargeService.ts`
+- **Regression test:** `backend/src/__tests__/customerSurchargeService.test.ts` — `customer surcharge calendar dates`
+- **Cần chú ý:** Dữ liệu đã lưu vẫn đúng; chỉ lớp đọc bị lệch. Rule tạo lúc bug còn hiệu lực có thể chồng kỳ thật (ví dụ cùng combo, kỳ cũ kết thúc 17/9 và kỳ mới bắt đầu 17/9).
+
+---
 ## Feature: "Download All" Attached Documents in TicketDetailModal
 - **Ngày:** 2026-09-13
 - **Feature:** Theo dõi hóa đơn (`TicketDetailModal`)

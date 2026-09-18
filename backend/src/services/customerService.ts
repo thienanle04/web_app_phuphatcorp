@@ -28,7 +28,7 @@ export interface CustomerData {
   tuyen_cu?: string | null;
   dia_chi_giao_hang?: string | null;
   diem_giao_hang_tinh_phi?: string | null;
-  boc_xep: boolean;
+  boc_xep?: boolean;
   supplier_code?: string | null;
 }
 
@@ -97,8 +97,8 @@ export const customerService = {
     const result = await pool.query(
       `INSERT INTO customers c
          (diem_tra_hang, ten_khach_hang, tuyen_phuong, tuyen_cu, dia_chi_giao_hang,
-          diem_giao_hang_tinh_phi, boc_xep, supplier_code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          diem_giao_hang_tinh_phi, supplier_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING ${SELECT_COLS}`,
       [
         data.diem_tra_hang,
@@ -107,7 +107,6 @@ export const customerService = {
         data.tuyen_cu ?? null,
         data.dia_chi_giao_hang ?? null,
         normalizeOptionalText(data.diem_giao_hang_tinh_phi),
-        data.boc_xep,
         data.supplier_code ?? null,
       ],
     );
@@ -129,8 +128,8 @@ export const customerService = {
       `UPDATE customers c
        SET diem_tra_hang = $1, ten_khach_hang = $2, tuyen_phuong = $3,
            tuyen_cu = $4, dia_chi_giao_hang = $5, diem_giao_hang_tinh_phi = $6,
-           boc_xep = $7, supplier_code = $8
-       WHERE id = $9
+           supplier_code = $7
+       WHERE id = $8
        RETURNING ${SELECT_COLS}`,
       [
         data.diem_tra_hang,
@@ -139,7 +138,6 @@ export const customerService = {
         data.tuyen_cu ?? null,
         data.dia_chi_giao_hang ?? null,
         normalizeOptionalText(data.diem_giao_hang_tinh_phi),
-        data.boc_xep,
         data.supplier_code ?? null,
         id,
       ],
@@ -205,8 +203,8 @@ export const customerService = {
         await client.query(
           `INSERT INTO customers c
              (diem_tra_hang, ten_khach_hang, tuyen_phuong, tuyen_cu, dia_chi_giao_hang,
-              diem_giao_hang_tinh_phi, boc_xep, supplier_code)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              diem_giao_hang_tinh_phi, supplier_code)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             row.diem_tra_hang,
             row.ten_khach_hang,
@@ -214,7 +212,6 @@ export const customerService = {
             row.tuyen_cu ?? null,
             row.dia_chi_giao_hang ?? null,
             normalizeOptionalText(row.diem_giao_hang_tinh_phi),
-            row.boc_xep,
             row.supplier_code ?? null,
           ],
         );

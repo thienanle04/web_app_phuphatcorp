@@ -28,7 +28,7 @@ export interface CustomerData {
   tuyen_cu?: string | null;
   dia_chi_giao_hang?: string | null;
   diem_giao_hang_tinh_phi?: string | null;
-  boc_xep: boolean;
+  boc_xep?: boolean;
   supplier_code?: string | null;
 }
 
@@ -39,7 +39,7 @@ export interface UploadCustomerRow {
   tuyen_cu?: string | null;
   dia_chi_giao_hang?: string | null;
   diem_giao_hang_tinh_phi?: string | null;
-  boc_xep: boolean;
+  boc_xep?: boolean;
   supplier_code?: string | null;
 }
 

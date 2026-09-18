@@ -1,9 +1,9 @@
-# Task List: Route pricing — mode `by_truck`
+﻿# Task List: Route pricing — mode `by_truck`
 
 **Ngày:** 2026-09-12  
 **BA Doc:** `docs/ba/20260912_route-pricing-by-truck-analysis.md`  
 **UI Spec:** `docs/ui/20260912_route-pricing-by-truck-ui-spec.md`  
-**Knowhow:** `.opencode/knowhow/know-how.md`, `.opencode/knowhow/system-features.md` (mirror `.cursor/knowhow` nếu có)
+**Knowhow:** `.opencode/knowhow/know-how.md`, `.opencode/knowhow/system-features.md` (mirror `.agents/knowhow` nếu có)
 
 ---
 
@@ -42,7 +42,7 @@ Phase 9–10: Cập nhật know-how.md + system-features.md (`pricing_mode`, c�
 
 ## Coding Standards
 
-Đọc `.cursor/knowhow/coding-convention.md` (hoặc `.opencode/knowhow`) trước khi code. Envelope `{ success, message, data }`. Migration `IF NOT EXISTS` / `IF EXISTS`. FE: không tự invent layout — UI Spec.
+Đọc `.agents/knowhow/coding-convention.md` (hoặc `.opencode/knowhow`) trước khi code. Envelope `{ success, message, data }`. Migration `IF NOT EXISTS` / `IF EXISTS`. FE: không tự invent layout — UI Spec.
 
 ## ⚠️ Lưu ý kỹ thuật
 

@@ -89,7 +89,7 @@ docs/
 └── tasks/
     └── 20260331_delivery-data-processing-tasks.md
 
-.claude/knowhow/
+.opencode/knowhow/
 ├── system-features.md                        ← Complete system documentation
 ├── know-how.md
 ├── decisions.md
@@ -627,7 +627,7 @@ Table           │
 ## 📝 Related Documentation
 
 **In Repository:**
-- `.claude/knowhow/system-features.md` - Complete system documentation (section 5.0)
+- `.opencode/knowhow/system-features.md` - Complete system documentation (section 5.0)
 - `docs/ba/20260331_delivery-data-processing-analysis.md` - BA analysis with flowchart
 - `docs/ui/20260409_delivery-data-weight-verify-ui-spec.md` - UI specifications
 - `docs/tasks/20260331_delivery-data-processing-tasks.md` - Task breakdown

@@ -1,5 +1,14 @@
 import { Router } from 'express';
 import {
+  customerSurchargeController,
+  surchargeCreateSchema,
+  surchargeDeleteSchema,
+  surchargeListSchema,
+  surchargeLookupSchema,
+  surchargeReplaceSchema,
+  surchargeStopSchema,
+} from '../controllers/customerSurchargeController';
+import {
   geoWardsSchema,
   groupCreateSchema,
   groupDeleteSchema,
@@ -206,6 +215,48 @@ router.delete(
   requirePermission('route_pricing.manage'),
   ...validate(priceSetDeleteSchema),
   routePricingController.deletePriceSet,
+);
+
+router.get(
+  '/surcharges/customer-options',
+  requirePermission('route_pricing.view'),
+  customerSurchargeController.customerOptions,
+);
+router.post(
+  '/surcharges/lookup',
+  requirePermission('route_pricing.view'),
+  ...validate(surchargeLookupSchema),
+  customerSurchargeController.lookup,
+);
+router.get(
+  '/surcharges',
+  requirePermission('route_pricing.view'),
+  ...validate(surchargeListSchema),
+  customerSurchargeController.list,
+);
+router.post(
+  '/surcharges',
+  requirePermission('route_pricing.manage'),
+  ...validate(surchargeCreateSchema),
+  customerSurchargeController.create,
+);
+router.post(
+  '/surcharges/:id/replace',
+  requirePermission('route_pricing.manage'),
+  ...validate(surchargeReplaceSchema),
+  customerSurchargeController.replace,
+);
+router.post(
+  '/surcharges/:id/stop',
+  requirePermission('route_pricing.manage'),
+  ...validate(surchargeStopSchema),
+  customerSurchargeController.stop,
+);
+router.delete(
+  '/surcharges/:id',
+  requirePermission('route_pricing.manage'),
+  ...validate(surchargeDeleteSchema),
+  customerSurchargeController.remove,
 );
 
 router.get(

@@ -81,7 +81,6 @@ export function UploadCustomersModal({ isOpen, onClose, onSuccess }: Props) {
             'GHTP',
             'ghtp',
           );
-          const colBocXep = findCol('Bốc xếp', 'boc xep', 'bocxep');
           const colSupplier = findCol('Nhà cung cấp', 'nha cung cap', 'nhacungcap', 'Mã NCC', 'ma ncc', 'mancc');
 
           if (colDiem === -1 || colTen === -1) {
@@ -97,7 +96,6 @@ export function UploadCustomersModal({ isOpen, onClose, onSuccess }: Props) {
               return diem !== '' && diem !== 'null';
             })
             .map((row) => {
-              const bocXepRaw = colBocXep !== -1 ? String(row[colBocXep] ?? '').trim().toLowerCase() : '';
               return {
                 diem_tra_hang: String(row[colDiem] ?? '').trim(),
                 tuyen_phuong: colTuyen !== -1 && row[colTuyen] != null && String(row[colTuyen]).trim() !== '' ? String(row[colTuyen]).trim() : null,
@@ -105,7 +103,6 @@ export function UploadCustomersModal({ isOpen, onClose, onSuccess }: Props) {
                 ten_khach_hang: String(row[colTen] ?? '').trim(),
                 dia_chi_giao_hang: colDiaChi !== -1 && row[colDiaChi] != null && String(row[colDiaChi]).trim() !== '' ? String(row[colDiaChi]).trim() : null,
                 diem_giao_hang_tinh_phi: colDiemGhtp !== -1 && row[colDiemGhtp] != null && String(row[colDiemGhtp]).trim() !== '' && String(row[colDiemGhtp]).trim().toLowerCase() !== 'null' ? String(row[colDiemGhtp]).trim() : null,
-                boc_xep: bocXepRaw !== 'không' && bocXepRaw !== 'khong',
                 supplier_code: colSupplier !== -1 && row[colSupplier] != null && String(row[colSupplier]).trim() !== '' ? String(row[colSupplier]).trim() : null,
               };
             });

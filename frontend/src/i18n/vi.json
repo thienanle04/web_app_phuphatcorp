@@ -744,7 +744,8 @@
       "periods": "Kỳ điều chỉnh",
       "sets": "Bộ giá",
       "routes": "Quản lý tuyến",
-      "matrix": "Bảng giá"
+      "matrix": "Bảng giá",
+      "surcharges": "Phụ phí giao hàng"
     },
     "page": {
       "title": "Quản lý giá cước vận tải",
@@ -1166,6 +1167,162 @@
     "actions": {
       "configure": "Cấu hình bước",
       "save": "Lưu cấu hình quy trình"
+    }
+  },
+  "customerSurcharges": {
+    "page": {
+      "title": "Phụ phí giao hàng",
+      "subtitle": "Giá theo khách. Không nằm trên bảng giá tuyến."
+    },
+    "action": {
+      "add": "Thêm phụ phí",
+      "lookup": "Tra cứu",
+      "replace": "Đổi giá",
+      "stop": "Ngừng áp dụng",
+      "delete": "Xóa phụ phí",
+      "expandPoint": "Mở rộng xem Điểm trả hàng",
+      "collapsePoint": "Thu hẹp cột Điểm trả hàng",
+      "clearSearch": "Xóa chữ đã gõ",
+      "removeName": "Bỏ {name}",
+      "clearFilters": "Xóa lọc",
+      "save": "Lưu phụ phí",
+      "cancel": "Hủy",
+      "stay": "Ở lại",
+      "discard": "Bỏ",
+      "retry": "Thử lại"
+    },
+    "empty": "Chưa có phụ phí",
+    "emptySearch": "Không tìm thấy",
+    "emptyFiltered": "Không có dòng khớp bộ lọc",
+    "error": "Không thể tải dữ liệu",
+    "loading": "Đang tải…",
+    "saving": "Đang lưu…",
+    "stopping": "Đang ngừng…",
+    "deleting": "Đang xóa…",
+    "lookingUp": "Đang tra cứu…",
+    "field": {
+      "customer": "Tên khách hàng",
+      "scope": "Phạm vi",
+      "point": "Điểm trả hàng",
+      "branch": "Chi nhánh",
+      "supplier": "NCC",
+      "supplierCode": "Mã nhà cung cấp",
+      "feeType": "Loại phí",
+      "zone": "Vùng",
+      "vehicleClass": "Khung xe",
+      "amount": "Đơn giá (đồng)",
+      "startDate": "Ngày bắt đầu",
+      "endDate": "Ngày ngừng",
+      "address": "Địa chỉ giao hàng",
+      "onDate": "Ngày",
+      "status": "Trạng thái",
+      "source": "Nguồn",
+      "result": "Kết quả"
+    },
+    "scope": {
+      "dealer": "Toàn hệ thống",
+      "point": "Chi nhánh cụ thể",
+      "dealerShort": "Toàn hệ thống",
+      "pointShort": "Chi nhánh"
+    },
+    "fee": {
+      "boc_xep": "Bốc xếp",
+      "phu_phi_giao_hang": "Phụ phí giao hàng",
+      "chuyen_tai": "Chuyển tải"
+    },
+    "zone": {
+      "any": "Mọi vùng",
+      "all": "Tất cả vùng",
+      "noi_thanh": "Nội thành",
+      "tinh": "Tỉnh"
+    },
+    "vehicle": {
+      "any": "Mọi khung xe",
+      "all": "Tất cả khung xe",
+      "le_2_5": "≤2.5 tấn",
+      "gt_8_16": ">8-16 tấn",
+      "gt_16_23": ">16-23 tấn",
+      "pallet": "Pallet"
+    },
+    "unit": {
+      "tan": "đồng/tấn",
+      "chuyen": "đồng/chuyến"
+    },
+    "column": {
+      "amount": "Đơn giá",
+      "from": "Hiệu lực từ",
+      "to": "Đến"
+    },
+    "status": {
+      "open": "Đang mở",
+      "closed": "Đã đóng",
+      "all": "Tất cả"
+    },
+    "customerInactive": "Đã ngừng",
+    "hint": {
+      "rateOnly": "Tra cứu trả đơn giá, không nhân với số tấn.",
+      "replaceDate": "Ngày mới phải sau ngày bắt đầu hiện tại."
+    },
+    "lookup": {
+      "noPoint": "Không khớp điểm",
+      "ambiguousPoint": "Trùng điểm, không chọn",
+      "ambiguousNeedCode": "Trùng địa chỉ. Nhập mã nhà cung cấp để phân biệt",
+      "ambiguousSameCode": "Hai điểm cùng địa chỉ và cùng mã nhà cung cấp",
+      "matched": "Khớp",
+      "noRule": "Không có rule",
+      "ambiguous": "Nhiều rule cùng khớp",
+      "pointLabel": "Điểm trả hàng",
+      "routeLabel": "Tuyến - phường",
+      "feePointLabel": "Điểm giao hàng tính phí",
+      "freeText": "Nhập đúng chuỗi trên chuyến. Không cần chọn từ danh sách."
+    },
+    "message": {
+      "success": {
+        "create": "Đã thêm phụ phí",
+        "createMany": "Đã thêm {n} phụ phí",
+        "replace": "Đã đổi giá",
+        "stop": "Đã ngừng phụ phí",
+        "delete": "Đã xóa phụ phí"
+      },
+      "createFailed": "Không lưu được",
+      "error": {
+        "generic": "Lỗi hệ thống, vui lòng thử lại"
+      }
+    },
+    "confirm": {
+      "discard": "Bỏ thay đổi?",
+      "stopTitle": "Ngừng phụ phí này?",
+      "stopBody": "Sau ngày này rule không còn dùng. Nếu đây là giá riêng cửa hàng, các ngày sau lấy giá đại lý khi đại lý còn rule.",
+      "deleteOpen": "Xóa phụ phí này?",
+      "deleteOpenBody": "Sau khi xóa, tra cứu sẽ không còn phụ phí này.",
+      "deleteOpenHasHistory": "Xóa phụ phí đang áp dụng?",
+      "deleteOpenHasHistoryBody": "Phụ phí cũ không được mở lại. Sau ngày kết thúc của phụ phí cũ, tra cứu không còn phụ phí này.",
+      "deletePointFallback": "Nếu điểm không còn phụ phí đang áp dụng cùng loại, tra cứu lấy giá đại lý.",
+      "deleteClosed": "Xóa phụ phí đã ngừng?",
+      "deleteClosedBody": "Tra cứu các ngày mà phụ phí này đang khớp sẽ không còn ra số này."
+    },
+    "validation": {
+      "required": "Trường này là bắt buộc",
+      "amount": "Nhập số nguyên từ 0",
+      "point": "Chọn một chi nhánh có địa chỉ",
+      "replaceDate": "Chọn ngày sau ngày bắt đầu hiện tại",
+      "stopDate": "Ngày ngừng không được trước ngày bắt đầu",
+      "customer": "Chọn khách đang có trong danh sách",
+      "zone": "Chọn vùng",
+      "vehicle": "Chọn khung xe"
+    },
+    "reason": {
+      "openExists": "Đã có phụ phí đang mở cùng điều kiện",
+      "overlap": "Ngày bắt đầu chồng với phụ phí đã ngừng",
+      "ambiguous": "Trùng điều kiện với phụ phí khác, không biết lấy giá nào",
+      "unknownName": "Tên không còn trong khách đang hoạt động"
+    },
+    "placeholder": {
+      "customer": "Chọn khách…",
+      "search": "Tìm khách…",
+      "point": "Chọn chi nhánh…",
+      "supplierCode": "VD: 2000000007…",
+      "address": "Dán địa chỉ giao hàng…"
     }
   }
 }

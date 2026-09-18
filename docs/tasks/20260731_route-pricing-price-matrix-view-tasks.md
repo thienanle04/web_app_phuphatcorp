@@ -1,4 +1,4 @@
-# Task List: Tab Bảng giá (ma trận theo kỳ)
+﻿# Task List: Tab Bảng giá (ma trận theo kỳ)
 
 **Ngày:** 2026-07-31  
 **BA Doc:** `docs/ba/20260731_route-pricing-price-matrix-view-analysis.md`  
@@ -26,7 +26,7 @@
 | FE-03 | `PriceMatrixWeightTable` | Props: periods, columns, rows, schema_label. Thead 3 tầng; sticky STT+Tuyến; format số; null trống; pallet cuối. | L |
 | FE-04 | `PriceMatrixTripsTable` | Props: periods, rows. Cột STT\|Tuyến\|Số chuyến\|kỳ…; sticky; ẩn nếu rows=[]. | M |
 | FE-05 | `PriceMatrixTab` | Empty NCC / periods / no data; map `weight_tables`; section titles; gắn vào page khi `tab=prices`. | M |
-| FE-06 | Docs know-how | Cập nhật `.cursor/knowhow/know-how.md` + `system-features.md` (và `.opencode` mirror nếu đang sync): endpoint matrix + tab rename. | S |
+| FE-06 | Docs know-how | Cập nhật `.agents/knowhow/know-how.md` + `system-features.md` (và `.opencode` mirror nếu đang sync): endpoint matrix + tab rename. | S |
 
 ## Thứ tự thực hiện
 
@@ -39,7 +39,7 @@ QA: đối chiếu UI Spec + BA acceptance; regression tab Quản lý giá / K�
 
 ## Coding Standards
 
-Đọc `.cursor/knowhow/coding-convention.md` trước khi code. FE đọc UI Spec trước khi layout.
+Đọc `.agents/knowhow/coding-convention.md` trước khi code. FE đọc UI Spec trước khi layout.
 
 ## Lưu ý kỹ thuật
 

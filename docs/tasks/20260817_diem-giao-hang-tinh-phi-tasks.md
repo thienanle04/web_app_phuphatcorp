@@ -1,4 +1,4 @@
-# Change Plan: Thêm `diem_giao_hang_tinh_phi` (text) cho customers
+﻿# Change Plan: Thêm `diem_giao_hang_tinh_phi` (text) cho customers
 
 **Ngày:** 2026-08-17  
 **Impact:** MEDIUM (migration + additive API + UI)  
@@ -22,7 +22,7 @@
 | CR-07 | FE | List + search | Thứ tự: Tuyến-phường → GHTP → **Tên KH**; ẩn **Tuyến-cũ**; `null` → “—”; search gồm GHTP. | `frontend/src/pages/admin/accounting-data/CustomersPage.tsx` |
 | CR-08 | FE | Create / Edit form | Yup optional max 255; input sau địa chỉ; payload trim → null; edit prefill. | `CreateCustomerModal.tsx`, `EditCustomerModal.tsx` |
 | CR-09 | FE | Excel import | `findCol` alias; thiếu cột → null; template + column guide. | `frontend/src/components/admin/UploadCustomersModal.tsx` |
-| CR-10 | Docs | Knowhow | Schema `customers` + API body POST/PUT/upload. BR-T trên system-features §11.2. | `.cursor/knowhow/know-how.md`, `system-features.md` |
+| CR-10 | Docs | Knowhow | Schema `customers` + API body POST/PUT/upload. BR-T trên system-features §11.2. | `.agents/knowhow/know-how.md`, `system-features.md` |
 
 ---
 

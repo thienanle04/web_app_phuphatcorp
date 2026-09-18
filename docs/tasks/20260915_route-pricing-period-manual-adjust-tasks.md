@@ -1,4 +1,4 @@
-# Task List: Route pricing — sửa giá theo kỳ (manual adjust)
+﻿# Task List: Route pricing — sửa giá theo kỳ (manual adjust)
 
 **Ngày:** 2026-09-15  
 **BA Doc:** `docs/ba/20260915_route-pricing-period-manual-adjust-analysis.md`  
@@ -54,7 +54,7 @@ Phase 9–10: Cập nhật know-how.md + system-features.md (endpoint, cột fla
 
 ## Coding Standards
 
-Đọc `.cursor/knowhow/coding-convention.md` (hoặc `.opencode/knowhow`) trước khi code. Envelope `{ success, message, data }`. Migration idempotent. FE không tự invent layout — UI Spec. Graphify update sau khi sửa code.
+Đọc `.agents/knowhow/coding-convention.md` (hoặc `.opencode/knowhow`) trước khi code. Envelope `{ success, message, data }`. Migration idempotent. FE không tự invent layout — UI Spec. Graphify update sau khi sửa code.
 
 ## ⚠️ Lưu ý kỹ thuật
 

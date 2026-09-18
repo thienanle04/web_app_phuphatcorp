@@ -6,6 +6,7 @@ import {
   useMemo,
   useCallback,
   type CSSProperties,
+  type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Search, X } from 'lucide-react';
@@ -14,6 +15,7 @@ import { cn } from '../../utils/cn';
 export interface SearchableSelectOption {
   value: string;
   label: string;
+  content?: ReactNode;
 }
 
 interface SearchableSelectProps {
@@ -170,6 +172,7 @@ export function SearchableSelect({
           <li key={o.value || '__empty'}>
             <button
               type="button"
+              title={o.label}
               onClick={() => pick(o.value)}
               className={cn(
                 'w-full text-left px-3 py-2 text-sm transition-colors',
@@ -178,7 +181,7 @@ export function SearchableSelect({
                   : 'text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700/80',
               )}
             >
-              {o.label}
+              {o.content ?? o.label}
             </button>
           </li>
         ))}
@@ -215,9 +218,10 @@ export function SearchableSelect({
         >
           <span
             className={cn(
-              'flex-1 truncate text-sm',
+              'flex-1 min-w-0 truncate text-sm text-left',
               !selected && 'text-neutral-400',
             )}
+            title={selected?.label}
           >
             {selected?.label || placeholder}
           </span>

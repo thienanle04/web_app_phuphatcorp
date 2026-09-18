@@ -1,4 +1,4 @@
-# Task List: Lên bảng kê thô 5 nhà
+﻿# Task List: Lên bảng kê thô 5 nhà
 **Ngày:** 2026-09-13
 **BA Doc:** `docs/ba/20260913_bang-ke-tho-5-nha-analysis.md`
 **UI Spec:** `docs/ui/20260913_bang-ke-tho-5-nha-ui-spec.md`
@@ -84,7 +84,7 @@ Phase 9–10:  cập nhật know-how.md (schema + endpoints) + system-features.m
 
 ## Coding Standards
 
-Đọc `.cursor/knowhow/coding-convention.md` trước khi viết code.
+Đọc `.agents/knowhow/coding-convention.md` trước khi viết code.
 
 - Envelope `{ success, message, data }`
 - Files camelCase; tables snake_case

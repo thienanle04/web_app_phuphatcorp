@@ -19,6 +19,7 @@ import {
   Scale,
   FileSpreadsheet,
   ReceiptText,
+  Receipt,
   Upload,
   FileSearch,
   FolderOpen,
@@ -167,6 +168,7 @@ export function MainLayout() {
     { to: `/route-pricing/sets${priceBookQuery}`, icon: BookOpen, label: t('routePricing.nav.sets') },
     { to: `/route-pricing/routes${priceBookQuery}`, icon: MapPinned, label: t('routePricing.nav.routes') },
     { to: `/route-pricing/matrix${priceBookQuery}`, icon: FileSpreadsheet, label: t('routePricing.nav.matrix') },
+    { to: '/route-pricing/surcharges', icon: Receipt, label: t('routePricing.nav.surcharges') },
   ];
 
   const userSettingsSubItems = [
