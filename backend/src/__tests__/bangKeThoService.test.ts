@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { pool } from '../config/database';
-import { bangKeThoService } from '../services/bangKeThoService';
+import { bangKeThoService } from '../services/bangKeTho';
 import { storageService } from '../services/storageService';
 import {
   downloadFilename,
@@ -11,9 +11,9 @@ import {
 
 jest.mock('../services/storageService', () => ({
   storageService: {
-    putObject: jest.fn().mockResolvedValue(undefined),
-    deleteObject: jest.fn().mockResolvedValue(undefined),
-    getObjectStream: jest.fn(),
+    upload: jest.fn().mockResolvedValue({ filename: 'input.xlsx', objectKey: 'phuphatcorp-bang-ke-tho/batches/x/input.xlsx' }),
+    delete: jest.fn().mockResolvedValue(undefined),
+    getStream: jest.fn(),
   },
 }));
 
@@ -67,7 +67,7 @@ describe('bangKeThoService.createBatch', () => {
         overwrite: false,
       }),
     ).rejects.toMatchObject({ statusCode: 400, code: 'MISSING_PROCESSED_SHEET' });
-    expect(mockStorage.putObject).not.toHaveBeenCalled();
+    expect(mockStorage.upload).not.toHaveBeenCalled();
   });
 
   it('rejects non-xlsx name', async () => {
@@ -99,7 +99,7 @@ describe('bangKeThoService.createBatch', () => {
       statusCode: 409,
       code: 'BANG_KE_DUPLICATE',
     });
-    expect(mockStorage.putObject).not.toHaveBeenCalled();
+    expect(mockStorage.upload).not.toHaveBeenCalled();
   });
 
   it('overwrites by deleting old batch then inserting new', async () => {
@@ -140,8 +140,8 @@ describe('bangKeThoService.createBatch', () => {
       overwrite: true,
     });
 
-    expect(mockStorage.deleteObject).toHaveBeenCalled();
-    expect(mockStorage.putObject).toHaveBeenCalled();
+    expect(mockStorage.delete).toHaveBeenCalled();
+    expect(mockStorage.upload).toHaveBeenCalled();
     expect(result.houses).toHaveLength(3);
     expect(result.houses[0].status).toBe('pending');
   });

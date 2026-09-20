@@ -100,4 +100,51 @@ export const bangKeThoApi = {
     a.remove();
     window.URL.revokeObjectURL(url);
   },
+
+  processNdMcc: async (batchId: string): Promise<{
+    batch_id: string;
+    house_code: BangKeHouseCode;
+    status: BangKeHouseStatus;
+    download_filename: string;
+    generated_at: string;
+    stats: {
+      mcc_rows: number;
+      ndfc_rows: number;
+      mcc_invoices: number;
+      ndfc_invoices: number;
+    };
+  }> => {
+    const response = await axiosClient.post<{
+      data: {
+        batch_id: string;
+        house_code: BangKeHouseCode;
+        status: BangKeHouseStatus;
+        download_filename: string;
+        generated_at: string;
+        stats: {
+          mcc_rows: number;
+          ndfc_rows: number;
+          mcc_invoices: number;
+          ndfc_invoices: number;
+        };
+      };
+    }>(`/bang-ke-tho/batches/${batchId}/process-nd-mcc`);
+    return response.data.data;
+  },
+
+  downloadOutput: async (id: string, houseCode: string, fallbackName: string): Promise<void> => {
+    const response = await axiosClient.get(`/bang-ke-tho/batches/${id}/files/${houseCode}`, {
+      responseType: 'blob',
+    });
+    const header = response.headers['content-disposition'] as string | undefined;
+    const filename = filenameFromDisposition(header, fallbackName);
+    const url = window.URL.createObjectURL(response.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

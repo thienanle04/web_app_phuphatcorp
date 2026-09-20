@@ -9,7 +9,12 @@ import { BangKeThoDropzone } from '../../../components/bang-ke-tho/BangKeThoDrop
 import { BangKeThoTable } from '../../../components/bang-ke-tho/BangKeThoTable';
 import { BangKeThoOverwriteDialog } from '../../../components/bang-ke-tho/BangKeThoOverwriteDialog';
 import { BangKeThoDeleteDialog } from '../../../components/bang-ke-tho/BangKeThoDeleteDialog';
-import { useBangKeThoBatches, useDeleteBangKeTho, useUploadBangKeTho } from '../../../hooks/useBangKeTho';
+import {
+  useBangKeThoBatches,
+  useDeleteBangKeTho,
+  useUploadBangKeTho,
+  useProcessNdMcc,
+} from '../../../hooks/useBangKeTho';
 import { bangKeThoApi, type BangKeBatch } from '../../../api/bangKeThoApi';
 import { useAuth } from '../../../hooks/useAuth';
 import { useI18n } from '../../../i18n/useI18n';
@@ -66,11 +71,14 @@ export function BangKeThoPage() {
   const { data, isLoading, isError, refetch, isFetching } = useBangKeThoBatches(page, qParam);
   const uploadMutation = useUploadBangKeTho();
   const deleteMutation = useDeleteBangKeTho();
+  const processNdMccMutation = useProcessNdMcc();
 
   const [file, setFile] = useState<File | null>(null);
   const [overwriteOpen, setOverwriteOpen] = useState(false);
   const [deleteRow, setDeleteRow] = useState<BangKeBatch | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(() => new Set());
+  const [processingBatchIds, setProcessingBatchIds] = useState<Set<string>>(() => new Set());
+  const [downloadingOutputKeys, setDownloadingOutputKeys] = useState<Set<string>>(() => new Set());
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const showToast = (message: string, variant: 'success' | 'error') => {
@@ -110,13 +118,57 @@ export function BangKeThoPage() {
   };
 
   const handleDownload = async (row: BangKeBatch) => {
-    setDownloadingId(row.id);
+    setDownloadingIds((prev) => new Set(prev).add(row.id));
     try {
       await bangKeThoApi.downloadInput(row.id, row.original_filename);
     } catch {
       showToast(t('bangKeTho.message.error.download'), 'error');
     } finally {
-      setDownloadingId(null);
+      setDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
+    }
+  };
+
+  const handleProcessNdMcc = async (batchId: string) => {
+    if (processingBatchIds.has(batchId)) return;
+    setProcessingBatchIds((prev) => new Set(prev).add(batchId));
+    try {
+      const result = await processNdMccMutation.mutateAsync(batchId);
+      showToast(
+        t('bangKeTho.message.success.processNdMcc', { filename: result.download_filename }),
+        'success',
+      );
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 403) {
+        showToast(t('bangKeTho.message.error.forbidden'), 'error');
+        return;
+      }
+      showToast(apiMessage(err, t('bangKeTho.message.error.processNdMcc')), 'error');
+    } finally {
+      setProcessingBatchIds((prev) => {
+        const next = new Set(prev);
+        next.delete(batchId);
+        return next;
+      });
+    }
+  };
+
+  const handleDownloadOutput = async (batchId: string, houseCode: string, fallbackName: string) => {
+    const key = `${batchId}-${houseCode}`;
+    setDownloadingOutputKeys((prev) => new Set(prev).add(key));
+    try {
+      await bangKeThoApi.downloadOutput(batchId, houseCode, fallbackName);
+    } catch {
+      showToast(t('bangKeTho.message.error.download'), 'error');
+    } finally {
+      setDownloadingOutputKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -231,9 +283,13 @@ export function BangKeThoPage() {
                 <BangKeThoTable
                   rows={rows}
                   canManage={canManage}
-                  downloadingId={downloadingId}
+                  downloadingIds={downloadingIds}
+                  processingBatchIds={processingBatchIds}
+                  downloadingOutputKeys={downloadingOutputKeys}
                   onDownload={handleDownload}
                   onDelete={setDeleteRow}
+                  onProcessNdMcc={handleProcessNdMcc}
+                  onDownloadOutput={handleDownloadOutput}
                 />
               </div>
               <Pagination

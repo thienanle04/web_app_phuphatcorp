@@ -1324,5 +1324,77 @@
       "supplierCode": "VD: 2000000007…",
       "address": "Dán địa chỉ giao hàng…"
     }
+  },
+  "bangKeTho": {
+    "nav": "Lên bảng kê thô 5 nhà",
+    "title": "Lên bảng kê thô 5 nhà",
+    "subtitle": "Upload file đã qua bước xử lý dữ liệu và tải xuống bảng kê thô các nhà.",
+    "subtitleHint": "Hỗ trợ bóc tách và tạo 8 sheets bảng kê cho nhà ND-MCC.",
+    "searchPlaceholder": "Tìm theo tên file...",
+    "error": "Có lỗi khi tải danh sách đợt",
+    "retry": "Thử lại",
+    "empty": "Chưa có đợt bảng kê nào.",
+    "emptyHintManage": "Kéo thả hoặc chọn file Excel để bắt đầu.",
+    "emptySearch": "Không tìm thấy đợt nào khớp với \"{q}\"",
+    "chooseFile": "Chọn file",
+    "dropzone": "Kéo thả file .xlsx vào đây hoặc bấm để chọn",
+    "dropzoneHint": "Dung lượng tối đa 10 MB, phải chứa sheet \"Processed\"",
+    "selectedFile": "File đã chọn",
+    "clearFile": "Bỏ chọn",
+    "saveFile": "Lưu đợt bảng kê",
+    "col": {
+      "filename": "Tên file gốc",
+      "uploadedBy": "Người tải lên",
+      "uploadedAt": "Thời gian tải",
+      "ndMcc": "ND-MCC",
+      "clv": "CLV",
+      "calofic": "CALOFIC",
+      "actions": "Thao tác"
+    },
+    "house": {
+      "pending": "Chưa xử lý",
+      "ready": "Sẵn sàng",
+      "failed": "Lỗi",
+      "processing": "Đang xử lý…"
+    },
+    "action": {
+      "process": "Xử lý",
+      "retry": "Thử lại",
+      "processNdMcc": "Xử lý bảng kê ND-MCC",
+      "reprocessNdMcc": "Chạy lại bảng kê ND-MCC",
+      "retryNdMcc": "Thử lại xử lý ND-MCC",
+      "downloadNdMcc": "Tải bảng kê ND-MCC",
+      "downloadInput": "Tải file input gốc",
+      "delete": "Xóa đợt"
+    },
+    "overwrite": {
+      "title": "Trùng tên file",
+      "body": "Đã có đợt bảng kê \"{filename}\" trong hệ thống. Bạn có chắc chắn muốn ghi đè? Mọi bảng kê nhà đã sinh của đợt cũ sẽ bị xóa và thay thế.",
+      "cancel": "Hủy bỏ",
+      "confirm": "Ghi đè"
+    },
+    "delete": {
+      "title": "Xác nhận xóa đợt",
+      "body": "Bạn có chắc chắn muốn xóa đợt \"{filename}\"? Thao tác này sẽ xóa vĩnh viễn cả file input gốc và các file bảng kê nhà liên quan.",
+      "cancel": "Hủy bỏ",
+      "confirm": "Xác nhận xóa"
+    },
+    "message": {
+      "success": {
+        "save": "Đã lưu file bảng kê thô thành công",
+        "overwrite": "Đã ghi đè file bảng kê thô thành công",
+        "delete": "Đã xóa đợt bảng kê thành công",
+        "processNdMcc": "Xử lý bảng kê ND-MCC \"{filename}\" thành công"
+      },
+      "error": {
+        "type": "Chỉ chấp nhận file định dạng Excel (.xlsx)",
+        "size": "Dung lượng file vượt quá giới hạn 10 MB",
+        "save": "Không lưu được file bảng kê",
+        "delete": "Không xóa được đợt bảng kê",
+        "download": "Không tải được file",
+        "forbidden": "Bạn không có quyền thực hiện thao tác này",
+        "processNdMcc": "Xử lý bảng kê ND-MCC thất bại"
+      }
+    }
   }
 }

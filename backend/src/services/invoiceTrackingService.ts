@@ -6,6 +6,7 @@ import { workflowService } from './workflowService';
 import { UserTicketPermissions } from '../types/workflow';
 import { auditService } from './auditService';
 import { storageService } from './storageService';
+import { env } from '../config/env';
 
 const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9_\-\.]+$/;
 
@@ -423,7 +424,12 @@ export const invoiceTrackingService = {
           );
         }
 
-        const uploadRes = await storageService.upload(file.buffer, file.originalname, file.mimetype);
+        const uploadRes = await storageService.upload(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          env.minio.ticketAttachmentsBucket,
+        );
         processedDocuments.push({
           filename: uploadRes.filename,
           original_filename: file.originalname,
@@ -455,7 +461,12 @@ export const invoiceTrackingService = {
         }
 
         try {
-          const uploadRes = await storageService.upload(buf, doc.file_name || 'document.jpg', doc.mime_type);
+          const uploadRes = await storageService.upload(
+            buf,
+            doc.file_name || 'document.jpg',
+            doc.mime_type,
+            env.minio.ticketAttachmentsBucket,
+          );
           processedDocuments.push({
             filename: uploadRes.filename,
             original_filename: doc.file_name,
@@ -706,7 +717,7 @@ export const invoiceTrackingService = {
     if (!filename || typeof filename !== 'string' || !SAFE_FILENAME_REGEX.test(filename) || filename.includes('..')) {
       throw new InvoiceTrackingError('INVALID_FILENAME', 'Tên tệp không hợp lệ', 400);
     }
-    return storageService.getPublicUrl(filename);
+    return storageService.getPublicUrl(filename, env.minio.ticketAttachmentsBucket);
   },
 
   async review(

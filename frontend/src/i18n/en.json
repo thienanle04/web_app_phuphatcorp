@@ -1279,5 +1279,77 @@
       "supplierCode": "e.g. 2000000007…",
       "address": "Paste the delivery address…"
     }
+  },
+  "bangKeTho": {
+    "nav": "5-house raw statements",
+    "title": "5-house raw statements",
+    "subtitle": "Upload pre-processed files and download individual house raw statements.",
+    "subtitleHint": "Supports extraction and generation of 8 statement sheets for ND-MCC.",
+    "searchPlaceholder": "Search by filename...",
+    "error": "Error loading batch list",
+    "retry": "Retry",
+    "empty": "No batches found.",
+    "emptyHintManage": "Drag and drop or select an Excel file to get started.",
+    "emptySearch": "No batches matching \"{q}\"",
+    "chooseFile": "Choose file",
+    "dropzone": "Drag and drop .xlsx file here or click to select",
+    "dropzoneHint": "Max 10 MB, must contain sheet \"Processed\"",
+    "selectedFile": "Selected file",
+    "clearFile": "Clear",
+    "saveFile": "Save batch",
+    "col": {
+      "filename": "Original file",
+      "uploadedBy": "Uploaded by",
+      "uploadedAt": "Uploaded at",
+      "ndMcc": "ND-MCC",
+      "clv": "CLV",
+      "calofic": "CALOFIC",
+      "actions": "Actions"
+    },
+    "house": {
+      "pending": "Pending",
+      "ready": "Ready",
+      "failed": "Failed",
+      "processing": "Processing…"
+    },
+    "action": {
+      "process": "Process",
+      "retry": "Retry",
+      "processNdMcc": "Process ND-MCC statements",
+      "reprocessNdMcc": "Re-run ND-MCC statements",
+      "retryNdMcc": "Retry ND-MCC processing",
+      "downloadNdMcc": "Download ND-MCC statements",
+      "downloadInput": "Download original input",
+      "delete": "Delete batch"
+    },
+    "overwrite": {
+      "title": "Duplicate file",
+      "body": "A batch named \"{filename}\" already exists. Are you sure you want to overwrite? All previously generated outputs will be deleted and replaced.",
+      "cancel": "Cancel",
+      "confirm": "Overwrite"
+    },
+    "delete": {
+      "title": "Confirm batch deletion",
+      "body": "Are you sure you want to delete \"{filename}\"? This will permanently remove both the original input and generated house statements.",
+      "cancel": "Cancel",
+      "confirm": "Confirm delete"
+    },
+    "message": {
+      "success": {
+        "save": "Raw statement file saved successfully",
+        "overwrite": "Raw statement file overwritten successfully",
+        "delete": "Batch deleted successfully",
+        "processNdMcc": "Processed ND-MCC statement \"{filename}\" successfully"
+      },
+      "error": {
+        "type": "Only Excel files (.xlsx) are accepted",
+        "size": "File size exceeds 10 MB limit",
+        "save": "Failed to save statement file",
+        "delete": "Failed to delete batch",
+        "download": "Failed to download file",
+        "forbidden": "You do not have permission to perform this action",
+        "processNdMcc": "Failed to process ND-MCC statement"
+      }
+    }
   }
 }

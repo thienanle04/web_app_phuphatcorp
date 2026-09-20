@@ -58,6 +58,13 @@ router.post(
   bangKeThoController.createBatch,
 );
 
+router.post(
+  '/batches/:id/process-nd-mcc',
+  requirePermission('accounting_data.manage'),
+  ...validate(batchIdSchema),
+  bangKeThoController.processNdMcc,
+);
+
 router.get(
   '/batches/:id/files/input',
   requirePermission('accounting_data.view'),

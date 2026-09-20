@@ -32,4 +32,14 @@ export function useDeleteBangKeTho() {
   });
 }
 
+export function useProcessNdMcc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (batchId: string) => bangKeThoApi.processNdMcc(batchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [BANG_KE_KEY] });
+    },
+  });
+}
+
 export type { BangKeBatch };

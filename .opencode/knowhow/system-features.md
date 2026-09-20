@@ -794,6 +794,80 @@ frontend/src/components/accounting-data/InvoiceNumbersPopup.tsx
 
 ---
 
+### 11.4 Lên bảng kê thô 5 nhà & Xử lý ND-MCC (/accounting-data/bang-ke-tho)
+
+**Mục đích:** Lưu trữ các đợt file Excel sau bước xử lý dữ liệu giao hàng 5 nhà (chứa sheet `Processed`), tự động bóc tách và sinh bảng kê thô 8 sheets cho 2 nhà cung cấp ND-MCC (MCC `2000000007` & NDFC `2000000008`) kèm tra cứu khách hàng, giá cước và biểu phụ phí.
+
+**Data model:**
+- `bang_ke_tho_batches`: Quản lý đợt upload (file gốc lưu tại MinIO `batches/{batch_id}/input.xlsx`).
+- `bang_ke_tho_outputs`: Trạng thái bảng kê theo nhà (`nd_mcc`, `clv`, `calofic`). Trạng thái: `pending` | `ready` | `failed`. File output lưu tại `batches/{batch_id}/outputs/{house_code}.xlsx`.
+
+**Quy tắc sinh sheets ND-MCC:**
+- **Toàn vẹn Workbook Output:** File output chỉ giữ lại các sheets cơ sở (`NCC`, `Sheet1`, `Processed`, và sinh `Processed v2`) từ file input (tự động xóa bỏ các sheets không thuộc scope như `VFM`, `CLV`, `STHI`, `Process 1-8`, `Sheet31-8`, v.v.), và sinh thêm 8 sheets bảng kê nghiệp vụ ND-MCC (tổng cộng 12 sheets theo thứ tự chuẩn):
+1. `NCC`
+2. `Sheet1`
+3. `Processed`
+4. `Processed v2`: Nhân bản từ `Processed`, ép kiểu số (`number`) cho các cột text số lượng/trọng lượng (O, P, Q), hoán đổi cột `5 nhà` trước cột `CLF` (header màu xanh lá `#00B050`, chữ trắng in đậm), thêm cột `Gạo` sau `NDFC`, xác định lại `Khung giá` theo tải trọng thực của chuyến xe từ cột `5 nhà` (tô nền vàng `#FFE599` và gắn Cell Note lưu khung giá cũ khi thay đổi).
+5. `MCC (goc)`: Chi tiết từng dòng sản phẩm MCC (68 cột, công thức Excel chuẩn: Hóa đơn, Round MT, Tấn/Hóa đơn, Tấn/Chuyến, Đơn giá vận chuyển, Phụ phí, Thành tiền check, Thành tiền hóa đơn, 5 nhà).
+6. `MCC-clv`: Tổng hợp 1 dòng/hóa đơn nhánh kho Hiệp Phước (Slot `CALOFIC HP`).
+7. `MCC (uni)`: Tổng hợp 1 dòng/hóa đơn nhánh kho Unidepot (Slot `WH Unidepot`, Site `UNI-MCC`).
+8. `MCC (tt)`: Tổng hợp 1 dòng/hóa đơn nhánh tiếp thị / chuyển tải (Slot `UNI 1`).
+9. `NDFC (goc)`: Chi tiết từng dòng sản phẩm NDFC (68 cột).
+10. `NDFC-clv`: Tổng hợp nhánh kho Hiệp Phước (Slot `CALOFIC HP`).
+11. `NDFC (uni)`: Tổng hợp nhánh kho Unidepot (Slot `UNI 3`, Site `UNI-NDFC`).
+12. `NDFC (tt)`: Tổng hợp nhánh tiếp thị / chuyển tải (Slot `UNI 1`).
+
+- **Bố cục 2 Bảng trên cùng sheet (Table A & Table B):**
+  - **Bảng A (> 2.5 tấn):** Nhóm theo chuyến xe (`truckNo` + `invoiceDateIso`). Ngay sau mỗi chuyến xe có dòng `Tổng cộng` từng xe. Cuối Bảng A có dòng `TỔNG CỘNG A` với công thức chia đôi `=SUM(...)/2`.
+  - **Khoảng cách:** 6 dòng trống giữa Bảng A và Bảng B.
+  - **Bảng B (`≤2.5 tấn`):** Lặp lại dòng Header, danh sách hóa đơn liên tục và kết thúc bằng dòng `TỔNG CỘNG B` với công thức `=SUM(...)` tính trực tiếp.
+  - **Quy tắc Khung giá Pallet:** Các sub-sheet tóm tắt hiển thị text `'Pallet'` tại cột Khung giá (cột 11), cột Hóa đơn tự động sinh `(Pallet)`, đồng thời ô Khung giá được gắn Note lưu trữ khung giá gốc chi tiết ban đầu.
+
+**Lookup Rules:**
+- Khách hàng: Tra cứu `customers` theo cặp `(ten_khach_hang, dia_chi_giao_hang)` lấy `diem_tra_hang` (Đại lý), `tuyen_phuong` (Điểm giao hàng thực tế), `diem_giao_hang_tinh_phi` (Điểm tính phí). Sử dụng tiện ích `addressMatcher`:
+  - Chuẩn hóa khoảng trắng, dấu phân cách, bỏ tiền tố "thửa đất số ...".
+  - So khớp chuỗi con (`substring match`) và độ trùng lặp từ khóa (`token overlap >= 75%`).
+  - Đánh dấu Khớp một phần (Partial match): tô nền vàng `#FFF2CC` và gắn Note ghi rõ địa chỉ gốc từ DB trên ô `Địa chỉ giao hàng` của cả `Processed` và `Processed v2`.
+- Giá cước: Tra cứu `route_pricing` theo Điểm tính phí, Khung giá (`≤2.5 tấn`, `>8-16 tấn`, `>16-23 tấn`, `>23 tấn`), Ngày hóa đơn, ưu tiên Price Book theo nhà và slot. Để trống (`null`) nếu không tìm thấy.
+- Phụ phí: Tra cứu `customer_surcharge_rules` lấy phí bốc xếp, chuyển tải, ghép điểm. Để trống (`null`) nếu không tìm thấy.
+
+**API Endpoints:**
+```
+GET    /api/bang-ke-tho/batches                     → Danh sách đợt (accounting_data.view)
+POST   /api/bang-ke-tho/batches                     → Upload đợt mới (accounting_data.manage)
+GET    /api/bang-ke-tho/batches/:id/files/input     → Tải file input gốc (accounting_data.view)
+POST   /api/bang-ke-tho/batches/:id/process-nd-mcc  → Kích hoạt xử lý bảng kê ND-MCC (accounting_data.manage)
+GET    /api/bang-ke-tho/batches/:id/files/:houseCode→ Tải file output nhà (accounting_data.view)
+DELETE /api/bang-ke-tho/batches/:id                 → Xóa đợt (accounting_data.manage)
+```
+
+**Files:**
+```
+backend/src/constants/bangKeTho.ts
+backend/src/services/bangKeTho/index.ts
+backend/src/services/bangKeTho/ndMccEngine.ts
+backend/src/services/bangKeTho/pricingLookup.ts
+backend/src/services/bangKeTho/processedV2.ts
+backend/src/utils/addressMatcher.ts
+backend/src/utils/routeMatcher.ts
+backend/src/controllers/bangKeThoController.ts
+backend/src/routes/bangKeTho.ts
+backend/src/__tests__/bangKeThoNdMccEngine.test.ts
+backend/src/__tests__/bangKeThoProcessedV2.test.ts
+backend/src/__tests__/addressMatcher.test.ts
+backend/src/__tests__/bangKeThoService.test.ts
+frontend/src/api/bangKeThoApi.ts
+frontend/src/hooks/useBangKeTho.ts
+frontend/src/components/bang-ke-tho/BangKeThoHouseCell.tsx
+frontend/src/components/bang-ke-tho/BangKeThoTable.tsx
+frontend/src/pages/admin/accounting-data/BangKeThoPage.tsx
+```
+
+**Access:** Route `/accounting-data/bang-ke-tho`, sidebar menu "Dữ liệu kế toán" → "Lên bảng kê thô 5 nhà".  
+**Permissions:** `accounting_data.view` (xem/tải), `accounting_data.manage` (upload/xử lý/xóa).
+
+---
+
 - [ ] Trang Sổ kế toán (/accounting) — CRUD phiếu thu/chi, nhật ký chứng từ
 - [ ] Trang Báo cáo (/reports) — báo cáo tài chính, biểu đồ doanh thu
 - [ ] Trang Cài đặt (/settings) — quản lý tài khoản, đổi mật khẩu
@@ -900,7 +974,7 @@ frontend/src/pages/dispatch/SchedulePage.tsx
 - Tự động thực thi phân quyền dữ liệu (Data Scope).
 
 **Lưu trữ MinIO & Sao chép chứng từ cùng ngày (Zero Storage Duplication):**
-- Tệp chứng từ mới tải lên được lưu trực tiếp vào MinIO Object Storage (`phuphatcorp-inspections` bucket) thay vì lưu chuỗi Base64 dài trong PostgreSQL. Hỗ trợ tương thích ngược dữ liệu cũ.
+- Tệp chứng từ mới tải lên được lưu trực tiếp vào MinIO Object Storage theo cấu hình `MINIO_BUCKET_TICKET_ATTACHEMENTS` (ví dụ: `phuphatcorp-inspections/ticket_attachments` hoặc bucket riêng) thay vì lưu chuỗi Base64 dài trong PostgreSQL. Hỗ trợ tương thích ngược dữ liệu cũ.
 - Tài xế có thể sao chép bộ ảnh chứng từ từ chuyến xe khác cùng ngày (`CopyDocumentsModal`).
 - Cơ chế sao chép chỉ tạo tham chiếu (reference metadata), trỏ chung 1 object key trong MinIO, hoàn toàn không nhân bản file hay tốn dung lượng lưu trữ.
 - Hiển thị huy hiệu `🔗 Từ xe [Biển số]` trên hình ảnh và Lightbox Viewer để phân biệt nguồn gốc chứng từ.

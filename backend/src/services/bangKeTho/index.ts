@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import * as XLSX from 'xlsx';
-import { pool } from '../config/database';
-import { env } from '../config/env';
-import { storageService } from './storageService';
+import { pool } from '../../config/database';
+import { env } from '../../config/env';
+import { storageService } from '../storageService';
 import {
   HOUSE_CODES,
   MAX_FILE_BYTES,
@@ -14,7 +14,20 @@ import {
   outputObjectKey,
   truncateFilename,
   type HouseCode,
-} from '../constants/bangKeTho';
+} from '../../constants/bangKeTho';
+import { processNdMccWorkbook, type NdMccStats, type ProcessNdMccResult } from './ndMccEngine';
+
+export * from './ndMccEngine';
+export * from './pricingLookup';
+export * from './processedV2';
+
+async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
 
 export class BangKeError extends Error {
   constructor(
@@ -180,7 +193,7 @@ async function insertBatchWithOutputs(params: {
 
 async function removeMinioKeys(keys: string[]): Promise<void> {
   await Promise.all(
-    keys.map((key) => storageService.deleteObject(env.minio.bangKeBucket, key)),
+    keys.map((key) => storageService.delete(key, env.minio.bangKeBucket)),
   );
 }
 
@@ -235,12 +248,13 @@ export const bangKeThoService = {
       params.mimetype ||
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-    await storageService.putObject({
-      bucket: env.minio.bangKeBucket,
-      objectKey,
-      buffer: params.buffer,
+    await storageService.upload(
+      params.buffer,
+      originalFilename,
       mimetype,
-    });
+      env.minio.bangKeBucket,
+      objectKey,
+    );
 
     try {
       await insertBatchWithOutputs({
@@ -252,7 +266,7 @@ export const bangKeThoService = {
         userId: params.userId,
       });
     } catch (err) {
-      await storageService.deleteObject(env.minio.bangKeBucket, objectKey);
+      await storageService.delete(objectKey, env.minio.bangKeBucket);
       const pg = err as { code?: string };
       if (pg.code === '23505') {
         throw new BangKeError(
@@ -385,9 +399,9 @@ export const bangKeThoService = {
     if (!rows[0]) {
       throw new BangKeError('Không tìm thấy đợt', 404, 'NOT_FOUND');
     }
-    const { stream, stat } = await storageService.getObjectStream(
-      env.minio.bangKeBucket,
+    const { stream, stat } = await storageService.getStream(
       rows[0].input_object_key,
+      env.minio.bangKeBucket,
     );
     return {
       stream,
@@ -441,14 +455,115 @@ export const bangKeThoService = {
     if (!rows[0].object_key) {
       throw new BangKeError('Không tìm thấy file output', 404, 'NOT_FOUND');
     }
-    const { stream, stat } = await storageService.getObjectStream(
-      env.minio.bangKeBucket,
+    const { stream, stat } = await storageService.getStream(
       rows[0].object_key,
+      env.minio.bangKeBucket,
     );
     return {
       stream,
       stat,
       downloadFilename: rows[0].download_filename,
     };
+  },
+
+  async processNdMcc(
+    batchId: string,
+    _userId: number,
+  ): Promise<{
+    batch_id: string;
+    house_code: HouseCode;
+    status: 'ready';
+    download_filename: string;
+    generated_at: string;
+    stats: NdMccStats;
+  }> {
+    const { rows: batchRows } = await pool.query<{
+      id: string;
+      original_filename: string;
+      input_object_key: string;
+    }>(
+      `SELECT id, original_filename, input_object_key FROM bang_ke_tho_batches WHERE id = $1`,
+      [batchId],
+    );
+    if (!batchRows[0]) {
+      throw new BangKeError('Không tìm thấy đợt', 404, 'NOT_FOUND');
+    }
+
+    const inputKey = batchRows[0].input_object_key;
+    const houseCode: HouseCode = 'nd_mcc';
+    const outputKey = outputObjectKey(batchId, houseCode);
+    const targetFilename = downloadFilename(houseCode, batchRows[0].original_filename);
+
+    let inputBuffer: Buffer;
+    try {
+      const { stream } = await storageService.getStream(
+        inputKey,
+        env.minio.bangKeBucket,
+      );
+      inputBuffer = await streamToBuffer(stream);
+    } catch {
+      throw new BangKeError('Không đọc được file input từ lưu trữ', 500, 'STORAGE_READ_ERROR');
+    }
+
+    try {
+      const result = await processNdMccWorkbook(inputBuffer);
+
+      await storageService.upload(
+        result.buffer,
+        targetFilename,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        env.minio.bangKeBucket,
+        outputKey,
+      );
+
+      const { rows: updatedRows } = await pool.query<{
+        generated_at: string;
+        download_filename: string;
+      }>(
+        `
+        UPDATE bang_ke_tho_outputs
+        SET status = 'ready',
+            object_key = $1,
+            download_filename = $2,
+            error_message = NULL,
+            generated_at = NOW(),
+            updated_at = NOW()
+        WHERE batch_id = $3 AND house_code = $4
+        RETURNING generated_at, download_filename
+        `,
+        [outputKey, targetFilename, batchId, houseCode],
+      );
+
+      return {
+        batch_id: batchId,
+        house_code: houseCode,
+        status: 'ready',
+        download_filename: updatedRows[0]?.download_filename || targetFilename,
+        generated_at: updatedRows[0]?.generated_at || new Date().toISOString(),
+        stats: result.stats,
+      };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Lỗi xử lý file ND-MCC';
+      await pool.query(
+        `
+        UPDATE bang_ke_tho_outputs
+        SET status = 'failed',
+            error_message = $1,
+            generated_at = NOW(),
+            updated_at = NOW()
+        WHERE batch_id = $2 AND house_code = $3
+        `,
+        [errorMsg, batchId, houseCode],
+      );
+
+      if (errorMsg === 'MISSING_PROCESSED_SHEET') {
+        throw new BangKeError(
+          'Không tìm thấy sheet Processed trong file input của đợt',
+          400,
+          'MISSING_PROCESSED_SHEET',
+        );
+      }
+      throw new BangKeError(errorMsg, 500, 'PROCESS_ND_MCC_FAILED');
+    }
   },
 };
