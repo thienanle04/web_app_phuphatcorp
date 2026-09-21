@@ -1,6 +1,13 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 
-dotenv.config();
+const backendEnv = path.resolve(__dirname, '../../.env');
+if (fs.existsSync(backendEnv)) {
+  dotenv.config({ path: backendEnv });
+} else {
+  dotenv.config();
+}
 
 export const env = {
   port: process.env.PORT || 5000,

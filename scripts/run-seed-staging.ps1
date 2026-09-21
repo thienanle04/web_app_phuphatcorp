@@ -1,4 +1,4 @@
-# PowerShell script to safely run seed data (Customers, F-Sheets, Cascade) to Remote Staging.
+﻿# PowerShell script to safely run seed data (Customers, F-Sheets, Cascade) to Remote Staging.
 # Usage:
 #   .\scripts\run-seed-staging.ps1 -DryRun   # Preview data without writing to database
 #   .\scripts\run-seed-staging.ps1           # Backup staging DB + Apply all seed data + Cascade prices
@@ -11,9 +11,64 @@ param(
   [string]$BackupDir = "scripts\backups"
 )
 
+$defaultStagingEnv = "backend\.env.remote.staging"
+$defaultLocalEnv = "backend\.env"
+
+# 1. Phát hiện nếu cờ switch (--dry-run, --skip-backup) bị PowerShell gán nhầm vào $StagingEnv do positional parameter:
+if ($StagingEnv -match "^--?dry[-_]?run$" -or $StagingEnv -eq "dryrun" -or $StagingEnv -eq "dry-run") {
+  $DryRun = [switch]::new($true)
+  $StagingEnv = $defaultStagingEnv
+} elseif ($StagingEnv -match "^--?skip[-_]?backup$" -or $StagingEnv -eq "skipbackup" -or $StagingEnv -eq "skip-backup") {
+  $SkipBackup = [switch]::new($true)
+  $StagingEnv = $defaultStagingEnv
+}
+
+# 2. Nhận diện triệt để cờ DryRun, SkipBackup từ switch, $args hoặc biến môi trường
+$hasDryArg = $false
+$hasSkipBackupArg = $false
+
+foreach ($a in $args) {
+  if ($a -match "^--?dry[-_]?run$" -or $a -eq "dryrun" -or $a -eq "dry-run") {
+    $hasDryArg = $true
+  }
+  if ($a -match "^--?skip[-_]?backup$" -or $a -eq "skipbackup" -or $a -eq "skip-backup") {
+    $hasSkipBackupArg = $true
+  }
+}
+
+if ($DryRun -or $hasDryArg -or $env:DRY_RUN -eq "true" -or $env:DRY_RUN -eq "1" -or $env:npm_config_dry_run -eq "true") {
+  $DryRun = [switch]::new($true)
+}
+if ($SkipBackup -or $hasSkipBackupArg -or $env:SKIP_BACKUP -eq "true" -or $env:SKIP_BACKUP -eq "1") {
+  $SkipBackup = [switch]::new($true)
+}
+
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
+
+# 3. Chuẩn hóa đường dẫn tương đối theo RepoRoot
+if (-not (Test-Path $StagingEnv)) {
+  $cands = @(
+    (Join-Path $RepoRoot $StagingEnv),
+    (Join-Path $RepoRoot "backend\$StagingEnv"),
+    (Join-Path $RepoRoot "backend\.$StagingEnv")
+  )
+  foreach ($c in $cands) {
+    if (Test-Path $c) { $StagingEnv = $c; break }
+  }
+}
+
+if (-not (Test-Path $LocalEnv)) {
+  $cands = @(
+    (Join-Path $RepoRoot $LocalEnv),
+    (Join-Path $RepoRoot "backend\$LocalEnv"),
+    (Join-Path $RepoRoot "backend\.$LocalEnv")
+  )
+  foreach ($c in $cands) {
+    if (Test-Path $c) { $LocalEnv = $c; break }
+  }
+}
 
 function Read-DotEnv {
   param([string]$Path)
@@ -101,8 +156,26 @@ try {
   Write-Host " [2/3] BẮT ĐẦU CHẠY SEED DATA - CHẾ ĐỘ: $modeLabel" -ForegroundColor Cyan
   Write-Host "==========================================================" -ForegroundColor Cyan
 
-  # A. Customers T7
-  Write-Host "`n>>> [1/9] Chạy seed-customers-t7.ts..." -ForegroundColor Magenta
+  # 1/12: Import VN Provinces
+  Write-Host "`n>>> [1/12] Chạy backend/src/scripts/import-vn-provinces.ts..." -ForegroundColor Magenta
+  if ($DryRun) {
+    & npx tsx backend/src/scripts/import-vn-provinces.ts --dry-run
+  } else {
+    & npx tsx backend/src/scripts/import-vn-provinces.ts
+  }
+  if ($LASTEXITCODE -ne 0) { throw "import-vn-provinces.ts gặp lỗi!" }
+
+  # 2/12: Seed Adjustment Periods
+  Write-Host "`n>>> [2/12] Chạy scripts/seed-adjustment-periods.ts..." -ForegroundColor Magenta
+  if ($DryRun) {
+    & npx tsx scripts/seed-adjustment-periods.ts --dry-run
+  } else {
+    & npx tsx scripts/seed-adjustment-periods.ts
+  }
+  if ($LASTEXITCODE -ne 0) { throw "seed-adjustment-periods.ts gặp lỗi!" }
+
+  # 3/12: Customers T7
+  Write-Host "`n>>> [3/12] Chạy scripts/seed-customers-t7.ts..." -ForegroundColor Magenta
   if ($DryRun) {
     & npx tsx scripts/seed-customers-t7.ts --dry-run
   } else {
@@ -110,7 +183,7 @@ try {
   }
   if ($LASTEXITCODE -ne 0) { throw "seed-customers-t7.ts gặp lỗi!" }
 
-  # B. F-sheets
+  # 4-11/12: F-sheets
   $fSheets = @(
     "scripts/seed-clf-f.ts",
     "scripts/seed-clv-f.ts",
@@ -122,9 +195,9 @@ try {
     "scripts/seed-vp-uni-f.ts"
   )
 
-  $step = 2
+  $step = 4
   foreach ($sheet in $fSheets) {
-    Write-Host "`n>>> [$step/9] Chạy $sheet..." -ForegroundColor Magenta
+    Write-Host "`n>>> [$step/12] Chạy $sheet..." -ForegroundColor Magenta
     if ($DryRun) {
       & npx tsx $sheet --dry-run
     } else {
@@ -134,15 +207,15 @@ try {
     $step++
   }
 
-  # C. Cascade route pricing versions (chỉ chạy khi Apply)
+  # 12/12: Cascade route pricing versions (chỉ chạy khi Apply)
   if (-not $DryRun) {
     Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host " [3/3] CASCADE PHIÊN BẢN BẢNG GIÁ" -ForegroundColor Cyan
+    Write-Host " [12/12] CASCADE PHIÊN BẢN BẢNG GIÁ" -ForegroundColor Cyan
     Write-Host "==========================================================" -ForegroundColor Cyan
     & npx tsx scripts/cascade-route-pricing-versions.ts
     if ($LASTEXITCODE -ne 0) { throw "cascade-route-pricing-versions.ts gặp lỗi!" }
   } else {
-    Write-Host "`n>>> [Bỏ qua cascade trong chế độ Dry-run]" -ForegroundColor DarkGray
+    Write-Host "`n>>> [12/12] [Bỏ qua cascade trong chế độ Dry-run]" -ForegroundColor DarkGray
   }
 
   Write-Host ""
