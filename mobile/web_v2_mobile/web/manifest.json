@@ -1,11 +1,11 @@
 {
-    "name": "web_v2_mobile",
-    "short_name": "web_v2_mobile",
+    "name": "PhuPhatCorp Mobile",
+    "short_name": "PhuPhatCorp Mobile",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#ffffff",
-    "description": "A new Flutter project.",
+    "description": "PhuPhatCorp Mobile App",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
@@ -30,6 +30,29 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "screenshots/screenshot-1-dispatch.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Điều hành & Lịch đi hàng"
+        },
+        {
+            "src": "screenshots/screenshot-2-fleet.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Quản lý Đội xe & Bảo dưỡng"
+        },
+        {
+            "src": "screenshots/screenshot-3-accounting.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Đối soát Kế toán & Chứng từ"
         }
     ]
 }

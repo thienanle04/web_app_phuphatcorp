@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
@@ -16,39 +17,88 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _tabs = const [
-    DashboardHubTab(),
-    _ProfileTab(),
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = [
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
   ];
+
+  void _onTabTapped(int index) {
+    if (index == _currentIndex) {
+      // Tap active tab -> pop to root screen of this tab (1-tap home return)
+      _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
+    } else {
+      setState(() => _currentIndex = index);
+    }
+  }
+
+  Widget _buildTabNavigator(int index) {
+    return Navigator(
+      key: _navigatorKeys[index],
+      onGenerateRoute: (routeSettings) {
+        return MaterialPageRoute(
+          builder: (context) {
+            switch (index) {
+              case 0:
+                return const DashboardHubTab();
+              case 1:
+                return const _ProfileTab();
+              default:
+                return const SizedBox.shrink();
+            }
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: _tabs[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        backgroundColor: isDark ? AppColors.neutral900 : AppColors.white,
-        selectedItemColor: isDark ? AppColors.neutral100 : AppColors.neutral900,
-        unselectedItemColor: isDark ? AppColors.neutral500 : AppColors.neutral400,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded),
-            activeIcon: Icon(Icons.grid_view_rounded),
-            label: 'Trang chủ',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Tài khoản',
-          ),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final currentNavigator = _navigatorKeys[_currentIndex].currentState;
+        if (currentNavigator != null && currentNavigator.canPop()) {
+          currentNavigator.pop();
+        } else if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+        } else {
+          await SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildTabNavigator(0),
+            _buildTabNavigator(1),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: _onTabTapped,
+          backgroundColor: isDark ? AppColors.neutral900 : AppColors.white,
+          selectedItemColor: isDark ? AppColors.neutral100 : AppColors.neutral900,
+          unselectedItemColor: isDark ? AppColors.neutral500 : AppColors.neutral400,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+          type: BottomNavigationBarType.fixed,
+          elevation: 8,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.grid_view_rounded),
+              activeIcon: Icon(Icons.grid_view_rounded),
+              label: 'Trang chủ',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Tài khoản',
+            ),
+          ],
+        ),
       ),
     );
   }

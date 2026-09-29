@@ -112,7 +112,7 @@
     },
     "subMenus": {
       "dashboard": "Dashboard",
-      "route_pricing": "Adjustment periods, Price sets, Routes, Price table",
+      "route_pricing": "Adjustment periods, Price sets, Routes, Price table, Customer surcharges",
       "delivery_5_houses": "Process 5 Houses",
       "delivery_rice": "Process Rice",
       "driver_invoices": "Driver Invoices / Stats",
@@ -120,14 +120,14 @@
       "fuel": "Fuel Data & Stats",
       "schedule": "Dispatch Schedule",
       "invoice_tracking": "Invoice Tracking",
-      "accounting": "Weight Adjustment, Customers, Import, Invoice Matching",
+      "accounting": "Weight Adjustment, Customers, Import, Raw packing list, Invoice Matching",
       "users": "User Management",
       "roles": "Role Management",
       "permissions": "Permission Management",
       "data_scopes": "Data Scopes",
       "workflows": "Workflows",
       "logs": "System Audit Logs",
-      "catalog": "Vehicles, Inner-City Customers, Suppliers, Promo Items, Delivery Points",
+      "catalog": "Vehicles, Drivers, Inner-City Customers, Suppliers, Promo Items, Delivery Points",
       "jobs": "Job Config & History"
     },
     "modules": {

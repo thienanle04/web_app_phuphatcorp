@@ -38,6 +38,7 @@ import {
   Menu,
   X,
   GitMerge,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../hooks/useAuth';
@@ -519,6 +520,15 @@ export function MainLayout() {
           {isCollapsed && !mobileDrawerOpen ? (
             <div className="flex flex-col items-center gap-2">
               <ThemeToggle />
+              <NavLink
+                to="/support"
+                target="_blank"
+                rel="noreferrer"
+                className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                title="Hỗ trợ & Liên hệ"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </NavLink>
               <div
                 className="w-8 h-8 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center text-sm font-medium text-neutral-600 dark:text-neutral-300"
                 title={user?.full_name || 'User'}
@@ -547,6 +557,15 @@ export function MainLayout() {
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                <NavLink
+                  to="/support"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                  title="Hỗ trợ & Liên hệ"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </NavLink>
                 <div className="hidden sm:block">
                   <ThemeToggle />
                 </div>

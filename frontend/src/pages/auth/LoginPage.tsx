@@ -91,12 +91,23 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
-          Chưa có tài khoản?{' '}
-          <Link to="/register" className="text-neutral-900 dark:text-neutral-100 font-medium hover:underline">
-            Đăng ký
-          </Link>
-        </p>
+        <div className="mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex flex-col items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+          <p>
+            Chưa có tài khoản?{' '}
+            <Link to="/register" className="text-neutral-900 dark:text-neutral-100 font-medium hover:underline">
+              Đăng ký
+            </Link>
+          </p>
+          <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+            <Link to="/support" className="text-neutral-700 dark:text-neutral-300 font-medium hover:underline">
+              Trung tâm hỗ trợ
+            </Link>
+            <span>•</span>
+            <Link to="/privacy" className="text-neutral-700 dark:text-neutral-300 font-medium hover:underline">
+              Chính sách bảo mật
+            </Link>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

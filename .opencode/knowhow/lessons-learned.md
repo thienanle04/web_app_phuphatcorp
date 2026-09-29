@@ -5,6 +5,27 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 # Lessons Learned — PhuPhatCorp
 
 ---
+## Bug: `Cannot find module 'exceljs'` khi khởi động backend
+- **Ngày:** 2026-09-20
+- **Severity:** High
+- **Feature liên quan:** Backend server startup / Service `bangKeTho`
+- **Triệu chứng:** Khi chạy `npm run dev` trong `backend`, server bị crash ngay lập tức với lỗi `Error: Cannot find module 'exceljs'`.
+- **Root cause:** Package `exceljs` đã được thêm vào file `package.json` khi phát triển tính năng xử lý Bảng kê thô, nhưng môi trường local chưa chạy `npm install` để kéo thư viện về thư mục `node_modules`.
+- **Fix:** Chạy `npm install` trong thư mục `backend` để cài đặt đầy đủ `exceljs` và các dependencies liên quan.
+- **File sửa:** `backend/package-lock.json`
+- **Cần chú ý:** Khi commit / pull code có bổ sung dependency mới vào `package.json`, luôn cần đảm bảo `npm install` được thực thi trước khi khởi động dev server.
+
+---
+## Lesson / Update: Đồng bộ Ma trận Quản lý quyền theo cấu trúc Menu Sidebar mới
+- **Ngày:** 2026-09-20
+- **Severity:** Low
+- **Feature liên quan:** Quản lý quyền (`PermissionManagementPage.tsx`), i18n
+- **Chi tiết:**
+  - Bổ sung nhóm quyền `workflows.view` & `workflows.manage` (Cấu hình quy trình) vào nhóm **Thiết lập người dùng** trên bảng ma trận phân quyền.
+  - Cập nhật nhãn phụ đề (Submenu descriptions) trong `vi.json` và `en.json` để phản ánh đầy đủ các tính năng mới: Phụ phí khách hàng (trong Quản lý giá cước), Bảng kê thô (trong Quản lý dữ liệu kế toán), Tài xế (trong Quản lý danh mục).
+- **Files liên quan:** `frontend/src/pages/admin/PermissionManagementPage.tsx`, `frontend/src/i18n/vi.json`, `frontend/src/i18n/en.json`.
+
+---
 ## Lesson / Feature: Xử lý Bảng Kê Thô ND-MCC — Chuẩn hóa số liệu, tính toán công thức Excel và Smart Address Matching
 - **Ngày:** 2026-09-20
 - **Severity:** Low / Best Practice

@@ -64,11 +64,21 @@ export function DeliveryDataPage() {
   const customersRef = useRef<Customer[]>([]);
   const innerCityNamesRef = useRef<Set<string>>(new Set());
   const promoItemsRef = useRef<PromoItem[]>([]);
+  const rawSheetDataRef = useRef<RawRow[]>([]);
+  const sourceBufferRef = useRef<ArrayBuffer | undefined>(undefined);
 
   const runProcess = useCallback(async (rows: RawRow[], nums: number[]) => {
     setPageState('processing');
     try {
-      const processResult = await processDeliveryDataFromRows(rows, nums, customersRef.current, innerCityNamesRef.current, promoItemsRef.current);
+      const processResult = await processDeliveryDataFromRows(
+        rows,
+        nums,
+        customersRef.current,
+        innerCityNamesRef.current,
+        promoItemsRef.current,
+        rawSheetDataRef.current,
+        sourceBufferRef.current
+      );
       setResult(processResult);
       setPageState('success');
     } catch (err) {
@@ -84,6 +94,8 @@ export function DeliveryDataPage() {
     setErrorMessage('');
     try {
       const parsed = await parseDeliveryFile(selectedFile);
+      rawSheetDataRef.current = parsed.rawSheetData || [];
+      sourceBufferRef.current = parsed.sourceBuffer;
 
       // BƯỚC 1.5 — Lọc dòng có Diễn giải chứa "thay thế" hoặc "điều chỉnh"
       const { filteredRows, filteredSourceRowNums, excludedCount } = filterExcludedRows(

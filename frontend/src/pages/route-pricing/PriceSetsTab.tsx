@@ -50,7 +50,7 @@ export function PriceSetsTab({ canManage }: { canManage: boolean }) {
           <h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">
             {t('routePricing.priceSet.title')}
           </h2>
-          <p className="text-sm text-neutral-500">{t('routePricing.priceSet.subtitle')}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('routePricing.priceSet.subtitle')}</p>
         </div>
         {canManage && (
           <Button type="button" onClick={() => setModal({ kind: 'create' })}>

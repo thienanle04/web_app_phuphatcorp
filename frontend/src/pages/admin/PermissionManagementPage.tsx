@@ -54,7 +54,7 @@ const SIDEBAR_PERMISSION_STRUCTURE: MenuGroupDefinition[] = [
       {
         id: 'route_pricing_matrix',
         titleKey: 'permissions.subMenus.route_pricing',
-        defaultTitle: 'Kỳ điều chỉnh, Bộ giá, Quản lý tuyến, Bảng giá',
+        defaultTitle: 'Kỳ điều chỉnh, Bộ giá, Quản lý tuyến, Bảng giá, Phụ phí KH',
         permCodes: ['route_pricing.view', 'route_pricing.manage'],
       },
     ],
@@ -122,7 +122,7 @@ const SIDEBAR_PERMISSION_STRUCTURE: MenuGroupDefinition[] = [
       {
         id: 'accounting',
         titleKey: 'permissions.subMenus.accounting',
-        defaultTitle: 'ĐK Trọng lượng, Khách hàng, Import, Đối chiếu',
+        defaultTitle: 'ĐK Trọng lượng, Khách hàng, Import, Bảng kê thô, Đối chiếu',
         permCodes: ['accounting_data.view', 'accounting_data.manage'],
       },
     ],
@@ -158,6 +158,12 @@ const SIDEBAR_PERMISSION_STRUCTURE: MenuGroupDefinition[] = [
         permCodes: ['data_scopes.view', 'data_scopes.manage'],
       },
       {
+        id: 'workflows',
+        titleKey: 'permissions.subMenus.workflows',
+        defaultTitle: 'Cấu hình quy trình',
+        permCodes: ['workflows.view', 'workflows.manage'],
+      },
+      {
         id: 'logs',
         titleKey: 'permissions.subMenus.logs',
         defaultTitle: 'Nhật ký hệ thống',
@@ -174,7 +180,7 @@ const SIDEBAR_PERMISSION_STRUCTURE: MenuGroupDefinition[] = [
       {
         id: 'catalog',
         titleKey: 'permissions.subMenus.catalog',
-        defaultTitle: 'Xe, KH nội thành, Nhà cung cấp, Mặt hàng KM, Điểm giao',
+        defaultTitle: 'Xe, Tài xế, KH nội thành, Nhà cung cấp, Mặt hàng KM, Điểm giao',
         permCodes: ['catalog.view', 'catalog.manage'],
       },
     ],

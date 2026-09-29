@@ -138,6 +138,7 @@ class _DispatchScheduleScreenState extends State<DispatchScheduleScreen> with Si
         ],
         bottom: TabBar(
           controller: _tabController,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 4),
           labelColor: isDark ? AppColors.neutral100 : AppColors.neutral900,
           unselectedLabelColor: isDark ? AppColors.neutral500 : AppColors.neutral400,
           indicatorColor: isDark ? AppColors.neutral100 : AppColors.neutral900,
@@ -147,30 +148,51 @@ class _DispatchScheduleScreenState extends State<DispatchScheduleScreen> with Si
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.directions_car_outlined, size: 16),
+                  const Icon(Icons.directions_car_outlined, size: 15),
                   const SizedBox(width: 4),
-                  Text('Xe nhỏ ($xeNhoCount)'),
+                  Flexible(
+                    child: Text(
+                      'Xe nhỏ ($xeNhoCount)',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
                 ],
               ),
             ),
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.local_shipping_outlined, size: 16),
+                  const Icon(Icons.local_shipping_outlined, size: 15),
                   const SizedBox(width: 4),
-                  Text('Xe lớn ($xeLonCount)'),
+                  Flexible(
+                    child: Text(
+                      'Xe lớn ($xeLonCount)',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
                 ],
               ),
             ),
             Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.navigation_outlined, size: 16),
+                  const Icon(Icons.navigation_outlined, size: 15),
                   const SizedBox(width: 4),
-                  Text('Tuyến ngoài ($tuyenNgoaiCount)'),
+                  Flexible(
+                    child: Text(
+                      'Tuyến ngoài ($tuyenNgoaiCount)',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
                 ],
               ),
             ),

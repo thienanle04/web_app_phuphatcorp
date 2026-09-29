@@ -112,7 +112,7 @@
     },
     "subMenus": {
       "dashboard": "Dashboard",
-      "route_pricing": "Kỳ điều chỉnh, Bộ giá, Quản lý tuyến, Bảng giá",
+      "route_pricing": "Kỳ điều chỉnh, Bộ giá, Quản lý tuyến, Bảng giá, Phụ phí KH",
       "delivery_5_houses": "Xử lý 5 nhà",
       "delivery_rice": "Xử lý gạo",
       "driver_invoices": "Hoá đơn tài xế / Thống kê",
@@ -120,14 +120,14 @@
       "fuel": "Dữ liệu dầu & Thống kê",
       "schedule": "Lịch điều phối xe",
       "invoice_tracking": "Theo dõi hóa đơn",
-      "accounting": "Điều chỉnh trọng lượng, Khách hàng, Import, Đối chiếu",
+      "accounting": "ĐK Trọng lượng, Khách hàng, Import, Bảng kê thô, Đối chiếu",
       "users": "Quản lý người dùng",
       "roles": "Quản lý vai trò",
       "permissions": "Quản lý quyền",
       "data_scopes": "Phạm vi dữ liệu",
       "workflows": "Cấu hình quy trình",
       "logs": "Nhật ký hệ thống",
-      "catalog": "Phương tiện, Khách hàng nội thành, Nhà cung cấp, Mặt hàng KM, Điểm giao",
+      "catalog": "Phương tiện, Tài xế, Khách hàng nội thành, Nhà cung cấp, Mặt hàng KM, Điểm giao",
       "jobs": "Cấu hình Job & Lịch sử"
     },
     "modules": {

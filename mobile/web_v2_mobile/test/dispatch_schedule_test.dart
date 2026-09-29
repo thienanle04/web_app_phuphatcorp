@@ -146,5 +146,38 @@ void main() {
       expect(find.text('2.5 tấn'), findsOneWidget);
       expect(find.text('CAN: MCC'), findsOneWidget);
     });
+
+    testWidgets('Regression: DispatchScheduleScreen does not overflow on small screens (360x640)', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final authProvider = AuthProvider();
+      final dispatchProvider = DispatchScheduleProvider(service: MockDispatchScheduleService());
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+            ChangeNotifierProvider<DispatchScheduleProvider>.value(value: dispatchProvider),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const DispatchScheduleScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Điều hành vận tải'), findsOneWidget);
+      expect(find.text('Xe nhỏ (1)'), findsOneWidget);
+      expect(find.text('Xe lớn (1)'), findsOneWidget);
+      expect(find.text('Tuyến ngoài (1)'), findsOneWidget);
+    });
   });
 }

@@ -232,8 +232,8 @@ export function PeriodPriceAdjustModal({
         })}
         size="lg"
       >
-        <p className="text-sm text-neutral-500 mb-1">{t('routePricing.manage.adjustHint')}</p>
-        <p className="text-sm text-neutral-500 mb-4">{t('routePricing.price.periodNoRemoveTier')}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">{t('routePricing.manage.adjustHint')}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">{t('routePricing.price.periodNoRemoveTier')}</p>
         <div className="space-y-3">
           {showPallet && (
             <Input
@@ -370,7 +370,7 @@ export function PeriodPriceAdjustModal({
               <p className="font-medium text-neutral-800 dark:text-neutral-100 mb-2">
                 {t('routePricing.manage.confirmChanges')}
               </p>
-              <ul className="list-disc pl-5 space-y-1">
+              <ul className="list-disc pl-5 space-y-1 text-neutral-700 dark:text-neutral-300">
                 {changes.map((c) => (
                   <li key={c.key}>
                     {c.added
@@ -385,9 +385,9 @@ export function PeriodPriceAdjustModal({
                 {t('routePricing.manage.confirmLaterPeriods')}
               </p>
               {laterSorted.length === 0 ? (
-                <p className="text-neutral-500">{t('routePricing.manage.confirmNoLater')}</p>
+                <p className="text-neutral-500 dark:text-neutral-400">{t('routePricing.manage.confirmNoLater')}</p>
               ) : (
-                <ul className="list-disc pl-5 space-y-1">
+                <ul className="list-disc pl-5 space-y-1 text-neutral-700 dark:text-neutral-300">
                   {laterSorted.map((v) => (
                     <li key={v.id}>
                       {formatDate(v.effective_from)}

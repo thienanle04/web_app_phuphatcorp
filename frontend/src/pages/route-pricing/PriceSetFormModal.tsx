@@ -252,7 +252,7 @@ export function PriceSetFormModal({
               {t('routePricing.priceSet.tiers')}
             </p>
             {mode === 'addTier' && (
-              <p className="text-xs text-neutral-500">{t('routePricing.priceSet.addTierHint')}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('routePricing.priceSet.addTierHint')}</p>
             )}
             {tiers.map((tier, index) => {
               const chainTrips = activeMode === 'by_trips' && mode !== 'addTier';
@@ -425,7 +425,7 @@ export function PriceSetFormModal({
                   {mode !== 'addTier' && (
                     <button
                       type="button"
-                      className="ml-auto shrink-0 self-end p-2 text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="ml-auto shrink-0 self-end p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
                       title={t('routePricing.priceSet.removeTier')}
                       aria-label={t('routePricing.priceSet.removeTier')}
                       disabled={tiers.length <= 1}
@@ -466,7 +466,7 @@ export function PriceSetFormModal({
               </div>
             )}
             {(mode === 'create' || mode === 'structure') && (
-              <p className="text-xs text-neutral-500">{t('routePricing.priceSet.hint')}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('routePricing.priceSet.hint')}</p>
             )}
           </div>
         )}

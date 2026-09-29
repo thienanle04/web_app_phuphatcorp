@@ -57,11 +57,6 @@ function formatPercentLabel(percent: number): string {
   return `${percent}%`;
 }
 
-function periodLabel(p: AdjustmentPeriod): string {
-  const note = p.note ? ` - ${p.note}` : '';
-  return `${formatDate(p.start_date)} (${formatPercentLabel(p.percent)})${note}`;
-}
-
 /** Bỏ dấu tiếng Việt — "ha tie" khớp "Hà Tiên" */
 function normalizeVn(text: string): string {
   return text
@@ -203,10 +198,10 @@ export function RoutePricingPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2 text-pretty">
-            <MapPinned className="w-6 h-6" aria-hidden="true" />
+            <MapPinned className="w-6 h-6 text-neutral-700 dark:text-neutral-300" aria-hidden="true" />
             {sectionTitle}
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             {t('routePricing.page.subtitle')}
           </p>
         </div>
@@ -288,13 +283,13 @@ export function RoutePricingPage() {
       {section === 'sets' && <PriceSetsTab canManage={canManage} />}
 
       {needsPriceBook && booksLoading ? (
-        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-10 text-center text-neutral-500">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-10 text-center text-neutral-500 dark:text-neutral-400 bg-neutral-50/50 dark:bg-neutral-800/20">
           {t('routePricing.priceBook.loading')}
         </div>
       ) : null}
 
       {needsPriceBook && booksError ? (
-        <div className="rounded-lg border border-dashed border-red-300 p-10 text-center text-red-600 space-y-3">
+        <div className="rounded-lg border border-dashed border-red-300 dark:border-red-800/60 p-10 text-center text-red-600 dark:text-red-400 space-y-3 bg-red-50/50 dark:bg-red-950/20">
           <p>{t('routePricing.priceBook.loadError')}</p>
           <Button type="button" variant="outline" onClick={() => void refetchBooks()}>
             {t('routePricing.priceBook.retry')}
@@ -303,7 +298,7 @@ export function RoutePricingPage() {
       ) : null}
 
       {needsPriceBook && !booksLoading && !booksError && priceBooks.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-10 text-center text-neutral-500 space-y-3">
+        <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-10 text-center text-neutral-500 dark:text-neutral-400 space-y-3 bg-neutral-50/50 dark:bg-neutral-800/20">
           <p>{t('routePricing.priceBook.empty')}</p>
           {canManage && (
             <Button
@@ -333,10 +328,10 @@ export function RoutePricingPage() {
                 key={key}
                 type="button"
                 onClick={() => setRouteView(key)}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   routeView === key
                     ? 'border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
-                    : 'border-transparent text-neutral-500 hover:text-neutral-800'
+                    : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                 }`}
               >
                 {label}
@@ -438,7 +433,7 @@ function GroupsTab({
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
           <Input
             placeholder="Tìm tên nhóm, tỉnh, phường…"
             value={search}
@@ -470,13 +465,13 @@ function GroupsTab({
           )}
         </div>
       </div>
-      <p className="text-xs text-neutral-500">Bấm vào một nhóm để xem bảng giá và lịch sử</p>
-      {isLoading && <p className="text-sm text-neutral-500">Đang tải…</p>}
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">Bấm vào một nhóm để xem bảng giá và lịch sử</p>
+      {isLoading && <p className="text-sm text-neutral-500 dark:text-neutral-400">Đang tải…</p>}
       {!isLoading && groups.length === 0 && (
-        <p className="text-sm text-neutral-500">Chưa có nhóm tuyến</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Chưa có nhóm tuyến</p>
       )}
       {!isLoading && groups.length > 0 && filteredGroups.length === 0 && (
-        <p className="text-sm text-neutral-500">Không tìm thấy nhóm phù hợp</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Không tìm thấy nhóm phù hợp</p>
       )}
       {filteredGroups.length > 0 && (
         <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
@@ -504,8 +499,8 @@ function GroupsTab({
                       {g.is_residual && <Badge variant="warning">Còn lại</Badge>}
                     </span>
                   </TableCell>
-                  <TableCell>{g.tinh}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-neutral-700 dark:text-neutral-300">{g.tinh}</TableCell>
+                  <TableCell className="text-neutral-700 dark:text-neutral-300">
                     {g.is_residual
                       ? 'Phường/địa điểm chưa thuộc nhóm khác'
                       : g.members.map((m) => m.phuong || m.location_text).filter(Boolean).join(' · ') || '—'}
@@ -514,7 +509,7 @@ function GroupsTab({
                     <TableCell className="text-right space-x-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        className="p-1"
+                        className="p-1 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
                         title="Sửa"
                         onClick={() => {
                           setEditing(g);
@@ -525,7 +520,7 @@ function GroupsTab({
                       </button>
                       <button
                         type="button"
-                        className="p-1 text-red-600"
+                        className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                         title="Xóa"
                         onClick={() => {
                           if (!window.confirm('Xóa nhóm này?')) return;
@@ -662,7 +657,7 @@ function GroupFormModal({
               ['location', 'Địa điểm tự do'],
               ['residual', 'Phần còn lại'],
             ] as const).map(([mode, label]) => (
-              <label key={mode} className="flex items-center gap-2">
+              <label key={mode} className="flex items-center gap-2 text-neutral-700 dark:text-neutral-300">
                 <input
                   type="radio"
                   name="destination-mode"
@@ -676,7 +671,7 @@ function GroupFormModal({
           {destinationMode === 'ward' && (
             <>
               <div className="relative mb-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
                 <Input
                   placeholder="Tìm phường/xã…"
                   value={wardSearch}
@@ -686,18 +681,18 @@ function GroupFormModal({
                 />
               </div>
               {wardCodes.length > 0 && (
-                <p className="text-xs text-neutral-500 mb-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
                   Đã chọn {wardCodes.length} phường
                   {wardSearch.trim() ? ` · lọc: ${filteredWards.length}` : ''}
                 </p>
               )}
-              <div className="max-h-48 overflow-y-auto border border-neutral-200 dark:border-neutral-700 rounded-md p-2 space-y-1">
-                {!provinceCode && <p className="text-xs text-neutral-500">Chọn tỉnh trước</p>}
+              <div className="max-h-48 overflow-y-auto border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-md p-2 space-y-1">
+                {!provinceCode && <p className="text-xs text-neutral-500 dark:text-neutral-400">Chọn tỉnh trước</p>}
                 {provinceCode && filteredWards.length === 0 && (
-                  <p className="text-xs text-neutral-500">Không tìm thấy phường phù hợp</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Không tìm thấy phường phù hợp</p>
                 )}
                 {filteredWards.map((ward) => (
-                  <label key={ward.code} className="flex items-center gap-2 text-sm">
+                  <label key={ward.code} className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 px-1 py-0.5 rounded">
                     <input
                       type="checkbox"
                       checked={wardCodes.includes(ward.code)}
@@ -718,21 +713,21 @@ function GroupFormModal({
                 disabled={!provinceCode}
                 onChange={(e) => setLocationText(e.target.value)}
               />
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Mỗi nhóm chỉ có đúng 1 địa điểm text
               </p>
             </div>
           )}
           {destinationMode === 'residual' && (
-            <p className="text-xs text-neutral-500">Áp dụng cho phường/địa điểm chưa thuộc nhóm khác trong tỉnh.</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Áp dụng cho phường/địa điểm chưa thuộc nhóm khác trong tỉnh.</p>
           )}
         </div>
         <div>
-          <p className="text-sm font-medium mb-1">Tên nhóm (chỉ xem)</p>
-          <p className="text-sm px-3 py-2 rounded-md bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Tên nhóm (chỉ xem)</p>
+          <p className="text-sm px-3 py-2 rounded-md bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700">
             {previewName}
           </p>
-          <p className="text-xs text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
             Tự sinh theo tỉnh và đích — không chỉnh sửa
           </p>
         </div>
@@ -741,7 +736,7 @@ function GroupFormModal({
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        <p className="-mt-2 text-xs text-neutral-500">Vd. Đường nhỏ — gắn vào tên nhóm</p>
+        <p className="-mt-2 text-xs text-neutral-500 dark:text-neutral-400">Vd. Đường nhỏ — gắn vào tên nhóm</p>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>
             Hủy
@@ -855,11 +850,11 @@ function PricesTab({
         }))}
       />
       {!groupId && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Chọn nhóm tuyến để xem giá và lịch sử — hoặc bấm một nhóm ở tab Tuyến
         </p>
       )}
-      {groupId && isLoading && <p className="text-sm text-neutral-500">Đang tải…</p>}
+      {groupId && isLoading && <p className="text-sm text-neutral-500 dark:text-neutral-400">Đang tải…</p>}
       {groupId && !isLoading && (
         <div className="space-y-4">
           <div className="flex justify-between items-start gap-3">
@@ -867,7 +862,7 @@ function PricesTab({
               <p className="font-medium text-neutral-900 dark:text-neutral-100">
                 {selected?.group_name || groupMeta?.name || 'Nhóm tuyến'}
               </p>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                 {hasPrices
                   ? `${versions.length || selected?.version_count || 0} phiên bản`
                   : t('routePricing.price.noPrice')}
@@ -904,15 +899,15 @@ function PricesTab({
           </div>
 
           {!hasPrices && !versionsLoading && (
-            <p className="text-sm text-neutral-500">{t('routePricing.price.noPrice')}</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('routePricing.price.noPrice')}</p>
           )}
 
           {configId && versionsLoading && (
-            <p className="text-sm text-neutral-500">Đang tải lịch sử giá…</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Đang tải lịch sử giá…</p>
           )}
 
           {configId && !versionsLoading && versions.length === 0 && (
-            <p className="text-sm text-neutral-500">Chưa có phiên bản giá</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Chưa có phiên bản giá</p>
           )}
 
           {configId && versions.length > 0 && (
@@ -1054,19 +1049,19 @@ function PriceVersionCard({
       )}
 
       {showPallet && (
-        <p className="text-sm flex flex-wrap items-center gap-2">
+        <p className="text-sm flex flex-wrap items-center gap-2 text-neutral-900 dark:text-neutral-100">
           {palletManual && Number(version.pallet_trip_price) === 0 ? (
             <Badge variant="warning">{t('routePricing.manage.palletAdjustedToZero')}</Badge>
           ) : (
             <>
               Giá Pallet (chuyến):{' '}
-              <strong className="tabular-nums">
+              <strong className="tabular-nums text-neutral-900 dark:text-neutral-100">
                 {formatPriceDisplay(Number(version.pallet_trip_price))}
               </strong>
             </>
           )}
           {palletManual && Number(version.pallet_trip_price) === 0 && (
-            <span className="tabular-nums font-medium">-</span>
+            <span className="tabular-nums font-medium text-neutral-500 dark:text-neutral-400">-</span>
           )}
           {palletManual && Number(version.pallet_trip_price) > 0 && (
             <span title={t('routePricing.manage.manualMarkTitle')} aria-label={t('routePricing.manage.manualMarkTitle')}>
@@ -1078,7 +1073,7 @@ function PriceVersionCard({
 
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-neutral-500 border-b border-neutral-200 dark:border-neutral-700">
+          <tr className="text-left text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-700">
             <th className="py-1.5 pr-3 font-medium">{rangeHeader}</th>
             <th className="py-1.5 pr-3 font-medium">Đơn vị</th>
             <th className="py-1.5 font-medium text-right">Đơn giá</th>
@@ -1090,17 +1085,17 @@ function PriceVersionCard({
               key={tier.id ?? i}
               className="border-t border-neutral-100 dark:border-neutral-800 align-top"
             >
-              <td className="py-2 pr-3 whitespace-pre-line break-words">
+              <td className="py-2 pr-3 whitespace-pre-line break-words text-neutral-900 dark:text-neutral-100">
                 {formatTierRangeLabel(mode, tier)}
               </td>
               <td className="py-2 pr-3 text-neutral-700 dark:text-neutral-300">
                 {tier.pricing_unit === 'chuyen' ? 'vnđ/chuyến' : 'vnđ/tấn'}
               </td>
-              <td className="py-2 text-right font-medium tabular-nums">
+              <td className="py-2 text-right font-medium tabular-nums text-neutral-900 dark:text-neutral-100">
                 {formatPriceDisplay(Number(tier.price))}
                 {tier.is_manual_adjusted ? (
                   <span
-                    className="ml-1 text-amber-600"
+                    className="ml-1 text-amber-600 dark:text-amber-400"
                     title={t('routePricing.manage.manualMarkTitle')}
                     aria-label={t('routePricing.manage.manualMarkTitle')}
                   >
@@ -1125,7 +1120,7 @@ function PeriodsTab({ canManage }: { canManage: boolean }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
-        <p className="text-xs text-neutral-500 flex-1 min-w-[200px]">
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 flex-1 min-w-[200px]">
           Kỳ điều chỉnh áp dụng mọi bảng giá — chỉ xóa được kỳ gần nhất (rollback)
         </p>
         <div className="ml-auto">
@@ -1137,17 +1132,17 @@ function PeriodsTab({ canManage }: { canManage: boolean }) {
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-neutral-500">Đang tải…</p>}
+      {isLoading && <p className="text-sm text-neutral-500 dark:text-neutral-400">Đang tải…</p>}
       {isError && (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-red-600 dark:text-red-400">
           Không tải được kỳ điều chỉnh.{' '}
-          <button type="button" className="underline" onClick={() => void refetch()}>
+          <button type="button" className="underline hover:text-red-700 dark:hover:text-red-300" onClick={() => void refetch()}>
             Thử lại
           </button>
         </p>
       )}
       {!isLoading && !isError && periods.length === 0 && (
-        <p className="text-sm text-neutral-500">Chưa có kỳ điều chỉnh</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Chưa có kỳ điều chỉnh</p>
       )}
 
       {periods.length > 0 && (
@@ -1172,14 +1167,14 @@ function PeriodsTab({ canManage }: { canManage: boolean }) {
                       {formatDate(p.start_date)}
                     </span>
                   </TableCell>
-                  <TableCell>{formatPercentLabel(p.percent)}</TableCell>
-                  <TableCell className="max-w-xs truncate">{p.note || '—'}</TableCell>
+                  <TableCell className="text-neutral-700 dark:text-neutral-300">{formatPercentLabel(p.percent)}</TableCell>
+                  <TableCell className="max-w-xs truncate text-neutral-600 dark:text-neutral-400">{p.note || '—'}</TableCell>
                   {canManage && (
                     <TableCell className="text-right space-x-1">
                       {p.id === latestId ? (
                         <button
                           type="button"
-                          className="p-1 text-red-600"
+                          className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                           title="Xóa"
                           onClick={() => {
                             if (
@@ -1198,7 +1193,7 @@ function PeriodsTab({ canManage }: { canManage: boolean }) {
                           <Trash2 className="w-4 h-4 inline" />
                         </button>
                       ) : (
-                        <span className="text-xs text-neutral-400">—</span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500">—</span>
                       )}
                     </TableCell>
                   )}
@@ -1223,7 +1218,7 @@ function PeriodFormModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal isOpen onClose={onClose} title="Thêm kỳ điều chỉnh" size="md">
       <div className="space-y-4">
-        <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md">
+        <p className="text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 p-3 rounded-md">
           Thêm kỳ sẽ áp dụng % cho mọi bảng giá đang có giá hiệu lực.
         </p>
         <div>
@@ -1238,7 +1233,7 @@ function PeriodFormModal({ onClose }: { onClose: () => void }) {
           value={percent}
           onChange={(e) => setPercent(e.target.value)}
         />
-        <p className="-mt-2 text-xs text-neutral-500">VD 8 = tăng 8%; -5 = giảm 5%</p>
+        <p className="-mt-2 text-xs text-neutral-500 dark:text-neutral-400">VD 8 = tăng 8%; -5 = giảm 5%</p>
         <Input
           label="Ghi chú"
           value={note}

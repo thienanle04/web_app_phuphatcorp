@@ -200,7 +200,7 @@ export function PriceFormModal({
             name="price_set_id"
             autoComplete="off"
             disabled={isEdit}
-            className="w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 border rounded-lg text-sm bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600 disabled:cursor-not-allowed"
             value={priceSetId}
             onChange={(e) => changeSet(e.target.value)}
           >
@@ -212,7 +212,7 @@ export function PriceFormModal({
             ))}
           </select>
           {errors.set && <p className="mt-1 text-sm text-red-600">{errors.set}</p>}
-          {isEdit && <p className="mt-1 text-xs text-neutral-500">{t('routePricing.price.setLocked')}</p>}
+          {isEdit && <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t('routePricing.price.setLocked')}</p>}
         </div>
 
         {selectedSet?.has_pallet && (
@@ -281,7 +281,7 @@ export function PriceFormModal({
             </div>
           ))}
 
-        {selectedSet && <p className="text-xs text-neutral-500">{t('routePricing.price.blankHint')}</p>}
+        {selectedSet && <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('routePricing.price.blankHint')}</p>}
         {formError && <p className="text-sm text-red-600">{formError}</p>}
 
         <div className="flex justify-end gap-2">

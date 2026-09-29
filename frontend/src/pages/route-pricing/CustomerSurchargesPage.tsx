@@ -246,7 +246,7 @@ export function CustomerSurchargesPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 text-balance">{t('customerSurcharges.page.title')}</h1>
-          <p className="text-sm text-neutral-500">{t('customerSurcharges.page.subtitle')}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('customerSurcharges.page.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => setModal({ kind: 'lookup' })}>

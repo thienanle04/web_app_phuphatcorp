@@ -19,7 +19,8 @@
  */
 
 import * as XLSX from 'xlsx';
-import { Workbook } from 'exceljs';
+import ExcelJS from 'exceljs';
+const Workbook = ExcelJS.Workbook;
 import type { Customer } from '../api/customersApi';
 import type { WeightAdjustment } from '../api/weightAdjustmentApi';
 import type { PromoItem } from '../api/promoItemApi';
@@ -66,6 +67,43 @@ export const COL = {
   THONG_TIN_BS: 33,
 } as const;
 
+export const RAW_HEADERS = [
+  'Channel',
+  'Sub-channel',
+  'Diễn giải chi tiết (HĐ)',
+  'Diễn giải',
+  'Slot',
+  'Waybill No',
+  'Slot No',
+  'User tạo Hóa đơn',
+  'Usser tạo PXK',
+  'PO Number',
+  'Warehouse No',
+  'Warehouse Name',
+  'Mã PXK',
+  'Số chứng từ ghi sổ',
+  'Số Seri',
+  'Địa chỉ giao hàng (vn)',
+  'Tên hàng hóa',
+  'Mã ĐVT (Bán hàng)',
+  'SP - Trọng lượng Net',
+  'HĐ - Trọng lượng (Net)',
+  'Mã nhà cung cấp',
+  'Mã khách hàng',
+  'Tên khách hàng',
+  'Mã hàng hóa',
+  'Tên hàng hóa (En)',
+  'Loại hàng',
+  'Mã liên hệ giao hàng',
+  'Số lượng (DVT bán hàng)',
+  'Số tàu/ Số xe',
+  'Tài xế',
+  'Số Cont',
+  'Ngày hóa đơn',
+  'Số hóa đơn',
+  'Thông tin bổ sung 08',
+];
+
 // ─── Factory column mapping ────────────────────────────────────────────────────
 const FACTORY_BY_NCC: Record<string, string> = {
   '2000000001': 'CLF',
@@ -78,12 +116,66 @@ function getFactory(maNcc: string): string {
   return FACTORY_BY_NCC[maNcc] ?? 'CLV';
 }
 
-// ─── Helper: Strip " /L2" suffix from vehicle number ──────────────────────────
+// ─── Helper: Strip " /L2" and "/L2" suffix from vehicle number ──────────────────
 function normalizeVehicle(soTauXe: string): string {
-  if (soTauXe.length >= 4 && soTauXe.slice(-4) === ' /L2') {
+  if (soTauXe.length >= 4 && soTauXe.slice(-4).toUpperCase() === ' /L2') {
     return soTauXe.slice(0, -4);
   }
+  if (soTauXe.length >= 3 && soTauXe.slice(-3).toUpperCase() === '/L2') {
+    return soTauXe.slice(0, -3);
+  }
   return soTauXe;
+}
+
+/**
+ * Normalizes string or any cell value to a number.
+ * Handles commas, dots, spaces, etc.
+ * Returns null if the value is empty, null, undefined, or not a valid number.
+ */
+export function parseCellToNumber(val: unknown): number | null {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') {
+    return isNaN(val) ? null : val;
+  }
+  if (typeof val === 'object' && val !== null) {
+    if ('result' in val) {
+      return parseCellToNumber((val as Record<string, unknown>).result);
+    }
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === '') return null;
+
+    // Remove whitespace
+    let cleaned = trimmed.replace(/\s+/g, '');
+
+    // Handle thousand separators & decimal points
+    if (cleaned.includes(',') && cleaned.includes('.')) {
+      if (cleaned.indexOf('.') < cleaned.indexOf(',')) {
+        // e.g. "1.234,56" -> remove dots, replace comma with dot
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      } else {
+        // e.g. "1,234.56" -> remove commas
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    } else if (cleaned.includes(',')) {
+      // Only comma:
+      if (/^\d{1,3}(,\d{3})+$/.test(cleaned)) {
+        // e.g. "1,234" or "1,234,567"
+        cleaned = cleaned.replace(/,/g, '');
+      } else if (/^\d+,\d+$/.test(cleaned)) {
+        // Decimal comma e.g. "12,5"
+        cleaned = cleaned.replace(',', '.');
+      } else {
+        // Standard comma removal
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    }
+
+    const num = Number(cleaned);
+    return isNaN(num) ? null : num;
+  }
+  return null;
 }
 
 // ─── Helper: Compare vehicle numbers with natural sorting ──────────────────────
@@ -360,6 +452,8 @@ interface GroupData {
 export interface ParsedFileData {
   rawRows: RawRow[];
   sourceRowNums: number[];
+  rawSheetData?: RawRow[];
+  sourceBuffer?: ArrayBuffer;
 }
 
 export interface ProcessResult {
@@ -470,6 +564,11 @@ function mapRowToOutput(row: RawRow, factoryVals: Record<string, string | number
   const { tuyenCu, tuyenPhuong } = lookupCustomer(customerLookup, cell(row, COL.TEN_KH), cell(row, COL.DIA_CHI), cell(row, COL.MA_NCC), cell(row, COL.SLOT));
   const tuyenLenHD = tuyenPhuong ? `${tuyenPhuong} ${khungGia} (${soXe})` : '';
   const donViTinh = khungGia === '≤2.5 tấn' ? 'Chuyến' : 'Tấn';
+
+  const numSoLuong = parseCellToNumber(row[COL.SO_LUONG]);
+  const numSpTrongLuong = parseCellToNumber(row[COL.SP_TRONG_LUONG]);
+  const numHdTrongLuong = parseCellToNumber(row[COL.HD_TRONG_LUONG]);
+
   return [
     cell(row, COL.MA_NCC) || 'CLV',
     cell(row, COL.SO_HD),
@@ -485,9 +584,9 @@ function mapRowToOutput(row: RawRow, factoryVals: Record<string, string | number
     cell(row, COL.TEN_HANG_EN),
     cell(row, COL.MA_LH_GIAO),
     cell(row, COL.MA_DVT),
-    cell(row, COL.SO_LUONG),
-    cell(row, COL.SP_TRONG_LUONG),
-    cell(row, COL.HD_TRONG_LUONG),
+    numSoLuong !== null ? numSoLuong : '',
+    numSpTrongLuong !== null ? numSpTrongLuong : '',
+    numHdTrongLuong !== null ? numHdTrongLuong : '',
     roundMT,
     factoryVals['CLF'],
     factoryVals['VFM'],
@@ -636,7 +735,7 @@ export async function parseDeliveryFile(file: File): Promise<ParsedFileData> {
 
   rawData.slice(4).forEach((row, i) => {
     if (row && row.length > 0 && row.some((c) => c !== null && c !== undefined && c !== '')) {
-      rawRows.push(row);
+      rawRows.push([...row]);
       sourceRowNums.push(i + 5);
     }
   });
@@ -645,7 +744,7 @@ export async function parseDeliveryFile(file: File): Promise<ParsedFileData> {
     throw new Error('File không chứa dữ liệu. Vui lòng kiểm tra lại file Excel.');
   }
 
-  return { rawRows, sourceRowNums };
+  return { rawRows, sourceRowNums, rawSheetData: rawData, sourceBuffer: buffer };
 }
 
 // ─── Core processing from raw rows ───────────────────────────────────────────
@@ -660,7 +759,9 @@ export async function processDeliveryDataFromRows(
   sourceRowNums: number[],
   customers?: Customer[],
   innerCityCustomerNames?: Set<string>,
-  promoItems?: PromoItem[]
+  promoItems?: PromoItem[],
+  rawSheetData?: RawRow[],
+  sourceBuffer?: ArrayBuffer
 ): Promise<ProcessResult> {
   const warnings: string[] = [];
   const customerLookup = buildCustomerLookup(customers ?? []);
@@ -1070,6 +1171,78 @@ export async function processDeliveryDataFromRows(
   // ── Step 5: Build output workbook ─────────────────────────────────────────
   const outWb = new Workbook();
 
+  // 1. Thêm sheet "Sheet" vào đầu Workbook chứa toàn bộ dữ liệu gốc nguyên bản 100% không thay đổi
+  const rawSheet = outWb.addWorksheet('Sheet');
+
+  if (sourceBuffer) {
+    try {
+      const inWb = new ExcelJS.Workbook();
+      await inWb.xlsx.load(sourceBuffer);
+      const srcWs = inWb.worksheets[0];
+      if (srcWs) {
+        // Sao chép nguyên vẹn merged cells
+        if ((srcWs as Record<string, unknown>)._merges) {
+          const merges = (srcWs as Record<string, unknown>)._merges as Record<string, { tl: string; br: string }>;
+          for (const key of Object.keys(merges)) {
+            const m = merges[key];
+            if (m && m.tl && m.br) {
+              rawSheet.mergeCells(m.tl, m.br);
+            }
+          }
+        }
+
+        // Sao chép nguyên vẹn từng dòng, cell value, style, numFmt
+        srcWs.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+          const dstRow = rawSheet.getRow(rowNumber);
+          if (row.height) dstRow.height = row.height;
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            const dstCell = dstRow.getCell(colNumber);
+            dstCell.value = cell.value;
+            if (cell.numFmt) dstCell.numFmt = cell.numFmt;
+            if (cell.style) {
+              try {
+                dstCell.style = JSON.parse(JSON.stringify(cell.style));
+              } catch {
+                dstCell.style = { ...cell.style };
+              }
+            }
+          });
+        });
+
+        // Sao chép độ rộng cột (column widths)
+        srcWs.columns.forEach((col, idx) => {
+          if (col && col.width) {
+            rawSheet.getColumn(idx + 1).width = col.width;
+          }
+        });
+
+        // Sao chép views (nếu có freeze panes...)
+        if (srcWs.views) {
+          try {
+            rawSheet.views = JSON.parse(JSON.stringify(srcWs.views));
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } catch {
+      // Fallback nếu không load được qua ExcelJS
+      const sheetDataToCopy = rawSheetData && rawSheetData.length > 0
+        ? rawSheetData
+        : [RAW_HEADERS, ...dataRows];
+      sheetDataToCopy.forEach((row) => {
+        rawSheet.addRow(row);
+      });
+    }
+  } else {
+    const sheetDataToCopy = rawSheetData && rawSheetData.length > 0
+      ? rawSheetData
+      : [RAW_HEADERS, ...dataRows];
+    sheetDataToCopy.forEach((row) => {
+      rawSheet.addRow(row);
+    });
+  }
+
   // Column indices (0-based) for CLF/VFM/MCC/CLV/NDFC headers in each sheet type
   const PROCESSED_GREEN_HEADER_COLS = new Set([18, 19, 20, 21, 22]); // CLF=18, VFM=19, MCC=20, CLV=21, NDFC=22
   const FACTORY_GREEN_HEADER_COLS   = new Set([20, 21, 22, 23, 24]); // CLF=20, VFM=21, MCC=22, CLV=23, NDFC=24
@@ -1112,8 +1285,16 @@ export async function processDeliveryDataFromRows(
       excelRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
         const colIndex = colNumber - 1; // exceljs uses 1-based index
         const numFmt = numberColsMap[colIndex];
-        if (numFmt && typeof cell.value === 'number') {
-          cell.numFmt = numFmt;
+        if (numFmt) {
+          if (typeof cell.value === 'number') {
+            cell.numFmt = numFmt;
+          } else if (typeof cell.value === 'string' && cell.value.trim() !== '') {
+            const parsed = parseCellToNumber(cell.value);
+            if (parsed !== null) {
+              cell.value = parsed;
+              cell.numFmt = numFmt;
+            }
+          }
         }
       });
     });
@@ -1160,6 +1341,6 @@ export async function processDeliveryDataFromRows(
  * For pre-parsed rows (e.g. after weight adjustments), use processDeliveryDataFromRows().
  */
 export async function processDeliveryData(file: File): Promise<ProcessResult> {
-  const { rawRows, sourceRowNums } = await parseDeliveryFile(file);
-  return processDeliveryDataFromRows(rawRows, sourceRowNums);
+  const { rawRows, sourceRowNums, rawSheetData, sourceBuffer } = await parseDeliveryFile(file);
+  return processDeliveryDataFromRows(rawRows, sourceRowNums, undefined, undefined, undefined, rawSheetData, sourceBuffer);
 }
