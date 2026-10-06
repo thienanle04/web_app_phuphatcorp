@@ -128,6 +128,7 @@ export interface SourceColMapping {
   headerRowIdx: number;
   colMaNcc: number;
   colSoHd: number;
+  colNgayHd: number;
   colSoTau: number;
   colKhungGia: number;
   colO: number;
@@ -147,6 +148,7 @@ export function detectAllSourceColumns(sheet: ExcelJS.Worksheet): SourceColMappi
   let headerRowIdx = 1;
   let colMaNcc = 1;
   let colSoHd = 2;
+  let colNgayHd = 3;
   let colSoTau = 4;
   let colKhungGia = 8;
   let colO = 15;
@@ -171,6 +173,8 @@ export function detectAllSourceColumns(sheet: ExcelJS.Worksheet): SourceColMappi
         colMaNcc = colNumber;
       } else if (txt.includes('số hóa đơn') || txt.includes('so hoa don') || txt.includes('số hđ') || txt.includes('so hd')) {
         colSoHd = colNumber;
+      } else if (txt.includes('ngày hóa đơn') || txt.includes('ngay hoa don') || txt.includes('ngày hđ') || txt.includes('ngay hd')) {
+        colNgayHd = colNumber;
       } else if (txt.includes('số tàu') || txt.includes('so tau') || txt.includes('số xe') || txt.includes('so xe')) {
         colSoTau = colNumber;
       } else if (txt.includes('khung giá') || txt.includes('khung gia')) {
@@ -209,6 +213,7 @@ export function detectAllSourceColumns(sheet: ExcelJS.Worksheet): SourceColMappi
     headerRowIdx,
     colMaNcc,
     colSoHd,
+    colNgayHd,
     colSoTau,
     colKhungGia,
     colO,
@@ -229,27 +234,249 @@ export function detectAllSourceColumns(sheet: ExcelJS.Worksheet): SourceColMappi
  * Determines Khung giá based on trip weight (from 5 nhà total) and pallet flag.
  * Brackets:
  * - <= 2.5: '≤2.5 tấn'
- * - 2.5 < weight <= 8: '>2.5-8 tấn'
+ * - 2.5 < weight <= 8: '>2.5-8 tấn' (label only; the sheet keeps the source khung)
  * - 8 < weight <= 16: '>8-16 tấn'
  * - 16 < weight <= 23: '>16-23 tấn'
  * - > 23: '>23 tấn'
- * If isPallet: suffix ' + Pallet'
+ * If isPallet: the word 'Pallet' only.
  */
 export function determineKhungGia(weight: number, isPallet: boolean): string {
-  let baseKhung = '>8-16 tấn';
-  if (weight <= 2.5) {
-    baseKhung = '≤2.5 tấn';
-  } else if (weight <= 8) {
-    baseKhung = '>2.5-8 tấn';
-  } else if (weight <= 16) {
-    baseKhung = '>8-16 tấn';
-  } else if (weight <= 23) {
-    baseKhung = '>16-23 tấn';
-  } else {
-    baseKhung = '>23 tấn';
+  if (isPallet) return 'Pallet';
+
+  if (weight <= 2.5) return '≤2.5 tấn';
+  if (weight <= 8) return '>2.5-8 tấn';
+  if (weight <= 16) return '>8-16 tấn';
+  if (weight <= 23) return '>16-23 tấn';
+  return '>23 tấn';
+}
+
+const KHUNG_CHANGED_FILL = 'FFFFE599';
+const SPLIT_CHECK_FILL = 'FFF8CBAD';
+
+interface TripBlock {
+  rows: number[];
+  weight: number;
+  isPallet: boolean;
+  originalKhung: string;
+  vehicle: string;
+  vehicleKey: string;
+  date: string;
+  invoices: string[];
+}
+
+interface BlockCols {
+  col5Nha: number;
+  colKhungGia: number;
+  colSoTau: number;
+  colSoHd: number;
+  colNgay: number;
+}
+
+function normalizeVehicleKey(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+function formatTripTons(weight: number): string {
+  const rounded = Math.round(weight * 1000) / 1000;
+  const text = rounded.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+  return text.replace('.', ',');
+}
+
+function isLightSplitKhung(khung: string): boolean {
+  const text = khung.trim();
+  return text === '≤2.5 tấn' || text === '<=2.5 tấn';
+}
+
+function sheetCellText(value: unknown): string {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const day = String(value.getDate()).padStart(2, '0');
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}/${value.getFullYear()}`;
+  }
+  return String(value ?? '').trim();
+}
+
+function resolveBlockWeight(
+  sheet: ExcelJS.Worksheet,
+  rows: number[],
+  sepWeight: number | null,
+  col5Nha: number,
+): number {
+  let finalWeight = sepWeight;
+  if (finalWeight === null || finalWeight === 0) {
+    const firstRow5Nha = parseCellToNumber(sheet.getRow(rows[0]).getCell(col5Nha).value);
+    if (firstRow5Nha !== null && firstRow5Nha > 0) {
+      finalWeight = firstRow5Nha;
+    } else {
+      let sumW = 0;
+      for (const rIdx of rows) {
+        const row = sheet.getRow(rIdx);
+        const weight = parseCellToNumber(row.getCell(col5Nha).value) || parseCellToNumber(row.getCell(18).value) || 0;
+        sumW += weight;
+      }
+      finalWeight = Math.round(sumW * 1000) / 1000;
+    }
+  }
+  return finalWeight ?? 0;
+}
+
+function describeTripBlock(
+  sheet: ExcelJS.Worksheet,
+  rows: number[],
+  sepWeight: number | null,
+  cols: BlockCols,
+): TripBlock {
+  let isPallet = false;
+  const invoices: string[] = [];
+  const seenInvoices = new Set<string>();
+  let vehicle = '';
+  let date = '';
+
+  for (const rIdx of rows) {
+    const row = sheet.getRow(rIdx);
+    const soTau = sheetCellText(row.getCell(cols.colSoTau).value);
+    const khung = sheetCellText(row.getCell(cols.colKhungGia).value);
+    if (/pph-p|-p/i.test(soTau) || /pallet/i.test(khung)) {
+      isPallet = true;
+    }
+    if (!vehicle && soTau) vehicle = soTau;
+    if (!date) {
+      const ngay = sheetCellText(row.getCell(cols.colNgay).value);
+      if (ngay) date = ngay;
+    }
+    const invoice = sheetCellText(row.getCell(cols.colSoHd).value);
+    if (invoice && !seenInvoices.has(invoice)) {
+      seenInvoices.add(invoice);
+      invoices.push(invoice);
+    }
   }
 
-  return isPallet ? `${baseKhung} + Pallet` : baseKhung;
+  return {
+    rows,
+    weight: resolveBlockWeight(sheet, rows, sepWeight, cols.col5Nha),
+    isPallet,
+    originalKhung: sheetCellText(sheet.getRow(rows[0]).getCell(cols.colKhungGia).value),
+    vehicle,
+    vehicleKey: normalizeVehicleKey(vehicle),
+    date,
+    invoices,
+  };
+}
+
+function isSameDayHeavyNeighbor(block: TripBlock, neighbor: TripBlock | undefined): boolean {
+  if (!neighbor) return false;
+  if (!block.vehicleKey || !block.date) return false;
+  if (neighbor.vehicleKey !== block.vehicleKey) return false;
+  if (neighbor.date !== block.date) return false;
+  return neighbor.weight > 2.5;
+}
+
+function keepsSourceKhung(block: TripBlock, warned: boolean): boolean {
+  if (warned) return true;
+  return !block.isPallet && block.weight > 2.5 && block.weight <= 8;
+}
+
+function displayedKhung(block: TripBlock, warned: boolean): string {
+  if (keepsSourceKhung(block, warned)) return block.originalKhung;
+  return determineKhungGia(block.weight, block.isPallet);
+}
+
+function splitCheckNote(
+  block: TripBlock,
+  above: TripBlock | undefined,
+  below: TripBlock | undefined,
+  aboveWarned: boolean,
+  belowWarned: boolean,
+): string {
+  const parts: string[] = [];
+  if (above && isSameDayHeavyNeighbor(block, above)) {
+    parts.push(`phía trên ${formatTripTons(above.weight)} tấn, khung ${displayedKhung(above, aboveWarned)}`);
+  }
+  if (below && isSameDayHeavyNeighbor(block, below)) {
+    parts.push(`phía dưới ${formatTripTons(below.weight)} tấn, khung ${displayedKhung(below, belowWarned)}`);
+  }
+  return `Cần kiểm tra tách chuyến. Xe ${block.vehicle} ngày ${block.date}, ${parts.join('; ')}.`;
+}
+
+function applyKhungGia(
+  sheet: ExcelJS.Worksheet,
+  block: TripBlock,
+  colKhungGia: number,
+  notes: { row: number; text: string }[],
+): void {
+  const calculated = determineKhungGia(block.weight, block.isPallet);
+  for (const rIdx of block.rows) {
+    const cell = sheet.getRow(rIdx).getCell(colKhungGia);
+    const originalKg = sheetCellText(cell.value);
+    if (originalKg !== calculated) {
+      cell.value = calculated;
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: KHUNG_CHANGED_FILL },
+      };
+      notes.push({ row: rIdx, text: originalKg });
+    }
+  }
+}
+
+function markSplitCheck(
+  sheet: ExcelJS.Worksheet,
+  block: TripBlock,
+  note: string,
+  colKhungGia: number,
+  notes: { row: number; text: string }[],
+): void {
+  for (const rIdx of block.rows) {
+    const cell = sheet.getRow(rIdx).getCell(colKhungGia);
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: SPLIT_CHECK_FILL },
+    };
+    notes.push({ row: rIdx, text: note });
+  }
+}
+
+function bumpCellRow(ref: string): string {
+  const match = /^([A-Z]+)(\d+)$/i.exec(ref.trim());
+  if (!match) return ref;
+  return `${match[1]}${Number(match[2]) + 1}`;
+}
+
+function followHeaderFreeze(sheet: ExcelJS.Worksheet): void {
+  const views = sheet.views;
+  if (!Array.isArray(views) || views.length === 0) return;
+  sheet.views = views.map((view) => {
+    if (view.state !== 'frozen' && view.state !== 'split') return view;
+    const next = { ...view };
+    if (typeof next.ySplit === 'number' && next.ySplit > 0) {
+      next.ySplit += 1;
+    }
+    if (typeof next.topLeftCell === 'string') {
+      next.topLeftCell = bumpCellRow(next.topLeftCell);
+    }
+    if (typeof next.activeCell === 'string' && next.activeCell) {
+      next.activeCell = bumpCellRow(next.activeCell);
+    }
+    return next;
+  });
+}
+
+function insertSplitCheckBanner(sheet: ExcelJS.Worksheet, invoices: string[]): void {
+  const text = invoices.length > 0
+    ? `Cần kiểm tra tách chuyến: ${invoices.join(', ')}`
+    : 'Cần kiểm tra tách chuyến: không có';
+  sheet.insertRow(1, [text]);
+  const cell = sheet.getRow(1).getCell(1);
+  cell.value = text;
+  cell.font = { bold: true };
+  cell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: SPLIT_CHECK_FILL },
+  };
+  followHeaderFreeze(sheet);
 }
 
 /**
@@ -506,67 +733,29 @@ export function generateProcessedV2Sheet(workbook: ExcelJS.Workbook): ExcelJS.Wo
     }
   }
 
-  // Update Khung giá based on trip subtotal in column '5 nhà' (col 19)
+  // Update Khung giá based on trip subtotal in column '5 nhà' (col 19).
+  // Weight in (2.5, 8] keeps the source khung. A ≤2.5 block beside a heavier
+  // same-day trip of the same truck is flagged for the accountant.
   const col5NhaDst = 19;
   const colKhungGiaDst = srcMapping.colKhungGia;
   const colSoTauDst = srcMapping.colSoTau;
   const colSoHdDst = srcMapping.colSoHd;
   const colMaNccDst = srcMapping.colMaNcc;
+  const colNgayDst = srcMapping.colNgayHd;
+  const blockCols: BlockCols = {
+    col5Nha: col5NhaDst,
+    colKhungGia: colKhungGiaDst,
+    colSoTau: colSoTauDst,
+    colSoHd: colSoHdDst,
+    colNgay: colNgayDst,
+  };
 
+  const blocks: TripBlock[] = [];
   let currentBlockRows: number[] = [];
 
-  const flushBlock = (blockRows: number[], sepWeight5Nha: number | null) => {
+  const pushBlock = (blockRows: number[], sepWeight5Nha: number | null) => {
     if (blockRows.length === 0) return;
-
-    // Check if any row in this block is pallet
-    let isBlockPallet = false;
-    for (const rIdx of blockRows) {
-      const row = v2Ws.getRow(rIdx);
-      const soTauVal = String(row.getCell(colSoTauDst).value || '').trim();
-      const oldKg = String(row.getCell(colKhungGiaDst).value || '').trim();
-      if (/pph-p|-p/i.test(soTauVal) || /pallet/i.test(oldKg)) {
-        isBlockPallet = true;
-        break;
-      }
-    }
-
-    // Determine weight for this block
-    let finalWeight = sepWeight5Nha;
-    if (finalWeight === null || finalWeight === 0) {
-      // Fallback 1: check if first row in block has a 5 nhà total (e.g. from Col1)
-      const firstRow5Nha = parseCellToNumber(v2Ws.getRow(blockRows[0]).getCell(col5NhaDst).value);
-      if (firstRow5Nha !== null && firstRow5Nha > 0) {
-        finalWeight = firstRow5Nha;
-      } else {
-        // Fallback 2: sum weights across all data rows in block
-        let sumW = 0;
-        for (const rIdx of blockRows) {
-          const r = v2Ws.getRow(rIdx);
-          const w = parseCellToNumber(r.getCell(col5NhaDst).value) || parseCellToNumber(r.getCell(18).value) || 0;
-          sumW += w;
-        }
-        finalWeight = Math.round(sumW * 1000) / 1000;
-      }
-    }
-
-    const calculatedKhungGia = determineKhungGia(finalWeight, isBlockPallet);
-
-    // Update Khung giá on each row in the block
-    for (const rIdx of blockRows) {
-      const row = v2Ws.getRow(rIdx);
-      const kgCell = row.getCell(colKhungGiaDst);
-      const originalKg = String(kgCell.value || '').trim();
-
-      if (originalKg !== calculatedKhungGia) {
-        kgCell.value = calculatedKhungGia;
-        kgCell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFFE599' },
-        };
-        kgCell.note = originalKg;
-      }
-    }
+    blocks.push(describeTripBlock(v2Ws, blockRows, sepWeight5Nha, blockCols));
   };
 
   // Check if sheet uses separator rows
@@ -616,7 +805,7 @@ export function generateProcessedV2Sheet(workbook: ExcelJS.Workbook): ExcelJS.Wo
       const sumH = Math.round((cClf + cVfm + cMcc + cClv + cNdfc + cGao) * 1000) / 1000;
 
       const sepWeight = Math.round(Math.max(sumH, cell5NhaNum || 0, roundMtNum || 0) * 1000) / 1000;
-      flushBlock(currentBlockRows, sepWeight);
+      pushBlock(currentBlockRows, sepWeight);
       currentBlockRows = [];
     } else {
       // Only split by truck change if the sheet does NOT use separator rows
@@ -624,7 +813,7 @@ export function generateProcessedV2Sheet(workbook: ExcelJS.Workbook): ExcelJS.Wo
         const prevRow = v2Ws.getRow(currentBlockRows[currentBlockRows.length - 1]);
         const prevSoTau = String(prevRow.getCell(colSoTauDst).value || '').trim();
         if (prevSoTau && soTauVal !== prevSoTau) {
-          flushBlock(currentBlockRows, null);
+          pushBlock(currentBlockRows, null);
           currentBlockRows = [];
         }
       }
@@ -632,9 +821,46 @@ export function generateProcessedV2Sheet(workbook: ExcelJS.Workbook): ExcelJS.Wo
     }
   }
 
-  // Flush remaining block (e.g. last group without separator row)
   if (currentBlockRows.length > 0) {
-    flushBlock(currentBlockRows, null);
+    pushBlock(currentBlockRows, null);
+  }
+
+  const warnedFlags = blocks.map((block, index) => {
+    if (block.isPallet || !isLightSplitKhung(block.originalKhung)) return false;
+    return isSameDayHeavyNeighbor(block, blocks[index - 1]) || isSameDayHeavyNeighbor(block, blocks[index + 1]);
+  });
+
+  const pendingNotes: { row: number; text: string }[] = [];
+
+  blocks.forEach((block, index) => {
+    if (keepsSourceKhung(block, warnedFlags[index])) return;
+    applyKhungGia(v2Ws, block, colKhungGiaDst, pendingNotes);
+  });
+
+  const bannerInvoices: string[] = [];
+  const seenBannerInvoices = new Set<string>();
+  blocks.forEach((block, index) => {
+    if (!warnedFlags[index]) return;
+    const above = blocks[index - 1];
+    const below = blocks[index + 1];
+    const note = splitCheckNote(
+      block,
+      above,
+      below,
+      above ? warnedFlags[index - 1] : false,
+      below ? warnedFlags[index + 1] : false,
+    );
+    markSplitCheck(v2Ws, block, note, colKhungGiaDst, pendingNotes);
+    for (const invoice of block.invoices) {
+      if (seenBannerInvoices.has(invoice)) continue;
+      seenBannerInvoices.add(invoice);
+      bannerInvoices.push(invoice);
+    }
+  });
+
+  insertSplitCheckBanner(v2Ws, bannerInvoices);
+  for (const item of pendingNotes) {
+    v2Ws.getRow(item.row + 1).getCell(colKhungGiaDst).note = item.text;
   }
 
   return v2Ws;

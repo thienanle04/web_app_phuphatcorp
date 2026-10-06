@@ -24,6 +24,7 @@ const Workbook = ExcelJS.Workbook;
 import type { Customer } from '../api/customersApi';
 import type { WeightAdjustment } from '../api/weightAdjustmentApi';
 import type { PromoItem } from '../api/promoItemApi';
+import { generateProcessedV2Sheet } from './processedV2';
 
 // ─── Excel number format patterns ─────────────────────────────────────────────
 const NUM_FMT_THOUSAND = '#,##0';         // Integer với thousand separator
@@ -1303,6 +1304,9 @@ export async function processDeliveryDataFromRows(
   const outWs = outWb.addWorksheet('Processed');
   writeSheetRows(outWs, outputRows, separatorRowIndices, COL_WIDTHS, false);
 
+  // Thêm sheet "Processed v2" ngay sau sheet "Processed"
+  generateProcessedV2Sheet(outWb);
+
   // Add per-factory sheets (CLF, VFM, MCC, CLV, NDFC) with factory-specific col widths
   FACTORY_NAMES.forEach((factory) => {
     const factoryWs = outWb.addWorksheet(factory);
@@ -1344,3 +1348,5 @@ export async function processDeliveryData(file: File): Promise<ProcessResult> {
   const { rawRows, sourceRowNums, rawSheetData, sourceBuffer } = await parseDeliveryFile(file);
   return processDeliveryDataFromRows(rawRows, sourceRowNums, undefined, undefined, undefined, rawSheetData, sourceBuffer);
 }
+
+export { generateProcessedV2Sheet } from './processedV2';
