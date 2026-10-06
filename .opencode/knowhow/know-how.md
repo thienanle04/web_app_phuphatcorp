@@ -423,9 +423,9 @@ Frontend: accordion **Quản lý giá cước vận tải** → `/route-pricing/
 | GET | /bang-ke-tho/batches/:id/files/:houseCode | JWT + accounting_data.view | — | Stream binary file `.xlsx` output của nhà (`nd_mcc`, `clv`, `calofic`) |
 | DELETE | /bang-ke-tho/batches/:id | JWT + accounting_data.manage | — | `{ success, data: { id } }` |
 
-- **ND-MCC Output Workbook (12 sheets):** `NCC`, `Sheet1`, `Processed`, `Processed v2`, `MCC (goc)`, `MCC-clv`, `MCC (uni)`, `MCC (tt)`, `NDFC (goc)`, `NDFC-clv`, `NDFC (uni)`, `NDFC (tt)`.
-- **Processed v2:** Bản sao chuẩn hóa từ `Processed`, ép kiểu số thực cho các cột text số lượng/khối lượng, đảo cột `5 nhà` trước `CLF`, thêm cột `Gạo`, tính lại `Khung giá` theo tải trọng thực của chuyến xe (tô vàng nhạt `#FFE599` + note).
-- **Address Matcher (`addressMatcher.ts`):** Chuẩn hóa khoảng trắng/dấu, lọc "thửa đất số ...", so khớp chuỗi con & token overlap >= 75%. Đánh dấu partial match nền vàng `#FFF2CC` + note địa chỉ DB trên cả `Processed` và `Processed v2`.
+- **ND-MCC nguồn dòng:** Sheet `MCC` và `NDFC`. Xóa `VFM`, `VFM (2)`, `CLV`, `STHI`, `STHI (uni)`, `NPP`, `TINH`. Giữ sheet còn lại, thêm 8 sheet: `MCC (goc)`, `MCC-clv`, `MCC (uni)`, `MCC (tt)`, `NDFC (goc)`, `NDFC-clv`, `NDFC (uni)`, `NDFC (tt)`.
+- **Sổ giá ND-MCC:** MCC-clv và MCC (uni) dùng `MCC GH`. MCC (tt) dùng `MCC (tt)` hoặc `MCC (tt) GHÉP ND`. NDFC-clv và NDFC (uni) dùng `CLF`. NDFC (tt) dùng `NDFC (TT)`. Khung `Pallet` lấy `pallet_trip_price` của sổ đó, không khớp bậc tấn. Thành tiền vẫn nhân tấn/chuyến với đơn giá.
+- **Address Matcher (`addressMatcher.ts`):** Chuẩn hóa khoảng trắng/dấu, lọc "thửa đất số ...", so khớp chuỗi con & token overlap >= 75%. Partial match tô nền vàng trên 8 sheet kết quả ND-MCC.
 - **Bố cục 2 bảng trên sheet:** Bảng A (>2.5 tấn, có dòng tổng xe và TỔNG CỘNG A =SUM/2) và Bảng B (≤2.5 tấn, TỔNG CỘNG B =SUM), phân tách bởi 6 dòng trống.
 
 ### Customers — /customers

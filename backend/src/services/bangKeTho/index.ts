@@ -19,7 +19,6 @@ import { processNdMccWorkbook, type NdMccStats, type ProcessNdMccResult } from '
 
 export * from './ndMccEngine';
 export * from './pricingLookup';
-export * from './processedV2';
 
 async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
   const chunks: Buffer[] = [];
@@ -556,12 +555,13 @@ export const bangKeThoService = {
         [errorMsg, batchId, houseCode],
       );
 
-      if (errorMsg === 'MISSING_PROCESSED_SHEET') {
-        throw new BangKeError(
-          'Không tìm thấy sheet Processed trong file input của đợt',
-          400,
-          'MISSING_PROCESSED_SHEET',
-        );
+      const missingSheetMessage: Record<string, string> = {
+        MISSING_MCC_SHEET: 'File input thiếu sheet MCC',
+        MISSING_NDFC_SHEET: 'File input thiếu sheet NDFC',
+        MISSING_MCC_NDFC_SHEETS: 'File input thiếu sheet MCC và NDFC',
+      };
+      if (missingSheetMessage[errorMsg]) {
+        throw new BangKeError(missingSheetMessage[errorMsg], 400, errorMsg);
       }
       throw new BangKeError(errorMsg, 500, 'PROCESS_ND_MCC_FAILED');
     }

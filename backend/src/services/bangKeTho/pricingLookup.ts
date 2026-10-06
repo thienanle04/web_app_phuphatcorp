@@ -45,7 +45,7 @@ export function resolveTargetBook(params: ResolveTargetBookParams): string | und
 
   if (isMcc) {
     if (slotUpper.includes('CALOFIC HP') || slotUpper === 'CLV') {
-      return 'CLV';
+      return 'MCC GH';
     }
     if (slotUpper.includes('WH UNIDEPOT') || slotUpper === 'UNI') {
       return 'MCC GH';
@@ -60,7 +60,7 @@ export function resolveTargetBook(params: ResolveTargetBookParams): string | und
     if (slotUpper.includes('UNI 1') || slotUpper === 'TT') {
       return 'NDFC (TT)';
     }
-    return 'NDFC-naic';
+    return 'CLF';
   }
 
   return undefined;
@@ -200,6 +200,60 @@ export class BangKeThoPricingLookupService {
     return 'tinh';
   }
 
+  private async lookupPalletTripPrice(params: {
+    diemTinhPhi: string;
+    invoiceDateIso: string;
+    supplierCode?: string;
+    slot?: string;
+    targetBook?: string;
+    hasNdfcInTrip?: boolean;
+  }): Promise<number | null> {
+    const { rows } = await pool.query<{
+      route_name: string;
+      book_name: string;
+      pallet_trip_price: string;
+    }>(
+      `
+      SELECT rg.name AS route_name, pb.name AS book_name, v.pallet_trip_price
+      FROM route_price_versions v
+      JOIN route_price_configs c ON c.id = v.price_config_id
+      JOIN route_groups rg ON rg.id = c.route_group_id
+      JOIN price_books pb ON pb.id = rg.price_book_id
+      JOIN route_pricing_adjustment_periods p ON p.id = v.adjustment_period_id
+      WHERE rg.status = 'active'
+        AND v.pallet_trip_price IS NOT NULL
+        AND p.start_date <= $1::date
+        AND (p.end_date IS NULL OR p.end_date >= $1::date)
+      `,
+      [params.invoiceDateIso]
+    );
+
+    const ranked = rankRouteMatches(params.diemTinhPhi, rows);
+    if (ranked.length === 0) return null;
+
+    const targetBook =
+      params.targetBook ??
+      resolveTargetBook({
+        supplierCode: params.supplierCode,
+        slot: params.slot,
+        hasNdfcInTrip: params.hasNdfcInTrip,
+      });
+    const normTarget = targetBook ? normalizeKey(targetBook) : '';
+    if (!normTarget) return null;
+
+    const matched = ranked.filter((rc) => {
+      const bnNorm = normalizeKey(rc.item.book_name);
+      if (bnNorm === normTarget) return true;
+      if (normTarget.includes('ghep nd') && bnNorm.includes('ghep nd')) return true;
+      if (normTarget === 'mcc (tt)' && bnNorm === 'mcc (tt)') return true;
+      return false;
+    });
+    if (matched.length === 0) return null;
+
+    const price = Math.round(parseFloat(matched[0].item.pallet_trip_price));
+    return Number.isFinite(price) ? price : null;
+  }
+
   async lookupTransportRate(params: {
     diemTinhPhi: string;
     khungGia: string;
@@ -210,6 +264,10 @@ export class BangKeThoPricingLookupService {
     hasNdfcInTrip?: boolean;
   }): Promise<number | null> {
     if (!params.diemTinhPhi || !params.invoiceDateIso) return null;
+
+    if ((params.khungGia || '').trim().toLowerCase() === 'pallet') {
+      return this.lookupPalletTripPrice(params);
+    }
 
     const kGia = (params.khungGia || '').toLowerCase();
 
@@ -302,6 +360,7 @@ export class BangKeThoPricingLookupService {
         if (bnNorm === normTarget) return 1000;
         if (normTarget.includes('ghep nd') && bnNorm.includes('ghep nd')) return 900;
         if (normTarget === 'mcc (tt)' && bnNorm === 'mcc (tt)') return 900;
+        return 0;
       }
 
       if (isMcc) {

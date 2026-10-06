@@ -1,6 +1,5 @@
 import ExcelJS from 'exceljs';
 import { bangKeThoPricingLookup, resolveTargetBook } from './pricingLookup';
-import { generateProcessedV2Sheet } from './processedV2';
 
 export interface NdMccStats {
   mcc_rows: number;
@@ -74,6 +73,8 @@ interface ProcessedRow {
   isPartialMatch?: boolean;
   matchedAddress?: string;
   tripSummary?: TripFiveHousesSummary;
+  showHouseTotals: boolean;
+  hasNdfcInTrip: boolean;
 }
 
 export interface TripFiveHousesSummary {
@@ -150,11 +151,7 @@ function determineSite(supplierCode: string, slot: string): string {
   return '';
 }
 
-export const ORDERED_SHEET_NAMES = [
-  'NCC',
-  'Sheet1',
-  'Processed',
-  'Processed v2',
+export const OUTPUT_SHEET_NAMES = [
   'MCC (goc)',
   'MCC-clv',
   'MCC (uni)',
@@ -165,6 +162,18 @@ export const ORDERED_SHEET_NAMES = [
   'NDFC (tt)',
 ] as const;
 
+export const ORDERED_SHEET_NAMES = OUTPUT_SHEET_NAMES;
+
+const SHEETS_TO_REMOVE = new Set([
+  'VFM',
+  'VFM (2)',
+  'CLV',
+  'STHI',
+  'STHI (uni)',
+  'NPP',
+  'TINH',
+]);
+
 export const PARTIAL_MATCH_FILL: ExcelJS.Fill = {
   type: 'pattern',
   pattern: 'solid',
@@ -173,13 +182,196 @@ export const PARTIAL_MATCH_FILL: ExcelJS.Fill = {
 
 export const PARTIAL_MATCH_NOTE = 'Không khớp hoàn toàn với cơ sở dữ liệu';
 
-function setSheetNameSafely(ws: ExcelJS.Worksheet, targetName: string): void {
-  if (ws.name === targetName) return;
-  if (ws.name.toLowerCase() === targetName.toLowerCase()) {
-    (ws as any)._name = targetName;
-  } else {
-    ws.name = targetName;
+function findSheet(workbook: ExcelJS.Workbook, name: string): ExcelJS.Worksheet | undefined {
+  const target = name.trim().toLowerCase();
+  return workbook.worksheets.find((ws) => ws.name.trim().toLowerCase() === target);
+}
+
+function headerKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+interface FactoryColumns {
+  headerRowIdx: number;
+  cols: Map<string, number>;
+  fiveNhaCol: number;
+}
+
+function detectFactoryColumns(ws: ExcelJS.Worksheet): FactoryColumns {
+  let headerRowIdx = 1;
+  const cols = new Map<string, number>();
+  for (let r = 1; r <= 3; r++) {
+    const row = ws.getRow(r);
+    let found = 0;
+    row.eachCell((cell) => {
+      if (String(cell.value || '').trim()) found++;
+    });
+    if (found > 10) {
+      headerRowIdx = r;
+      row.eachCell((cell, colNumber) => {
+        const txt = String(cell.value || '').trim();
+        if (txt) cols.set(headerKey(txt), colNumber);
+      });
+      break;
+    }
   }
+  const gaoCol = cols.get('gạo') ?? cols.get('gao') ?? 26;
+  return { headerRowIdx, cols, fiveNhaCol: gaoCol + 1 };
+}
+
+function cellRaw(row: ExcelJS.Row, col: number | undefined): unknown {
+  if (!col) return null;
+  const cell = row.getCell(col);
+  if (cell.value && typeof cell.value === 'object' && 'result' in (cell.value as object)) {
+    return (cell.value as { result: unknown }).result;
+  }
+  return cell.value;
+}
+
+function cellStr(row: ExcelJS.Row, cols: Map<string, number>, header: string): string {
+  const val = cellRaw(row, cols.get(headerKey(header)));
+  if (val === null || val === undefined) return '';
+  return String(val).trim();
+}
+
+function cellNum(row: ExcelJS.Row, cols: Map<string, number>, header: string): number {
+  const val = cellRaw(row, cols.get(headerKey(header)));
+  if (val === null || val === undefined || val === '') return 0;
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, ''));
+  return Number.isFinite(num) ? num : 0;
+}
+
+function cellNumOrNull(row: ExcelJS.Row, col: number | undefined): number | null {
+  const val = cellRaw(row, col);
+  if (val === null || val === undefined || val === '') return null;
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, ''));
+  if (!Number.isFinite(num)) return null;
+  return num;
+}
+
+function readHouseSummary(row: ExcelJS.Row, layout: FactoryColumns): TripFiveHousesSummary {
+  const { cols, fiveNhaCol } = layout;
+  const clf = cellNumOrNull(row, cols.get('clf'));
+  const vfm = cellNumOrNull(row, cols.get('vfm'));
+  const mcc = cellNumOrNull(row, cols.get('mcc'));
+  const clv = cellNumOrNull(row, cols.get('clv'));
+  const ndfc = cellNumOrNull(row, cols.get('ndfc'));
+  const gao = cellNumOrNull(row, cols.get('gạo') ?? cols.get('gao'));
+  const stated = cellNumOrNull(row, fiveNhaCol);
+  const summed =
+    (clf || 0) + (vfm || 0) + (mcc || 0) + (clv || 0) + (ndfc || 0) + (gao || 0);
+  const total = stated !== null ? stated : summed;
+  return {
+    clf,
+    vfm,
+    mcc,
+    clv,
+    ndfc,
+    gao,
+    total5Nha: total > 0 ? Math.round(total * 1000) / 1000 : null,
+  };
+}
+
+function readFactorySheet(ws: ExcelJS.Worksheet, supplierCode: string): ProcessedRow[] {
+  const layout = detectFactoryColumns(ws);
+  const { cols } = layout;
+  const out: ProcessedRow[] = [];
+  let block: ExcelJS.Row[] = [];
+  let blockTruck = '';
+
+  const flush = () => {
+    if (block.length === 0) return;
+    const summary = readHouseSummary(block[0], layout);
+    const hasNdfcInTrip = (summary.ndfc ?? 0) > 0;
+    let shown = false;
+    for (const row of block) {
+      const code = cellStr(row, cols, 'Mã nhà cung cấp');
+      if (code !== supplierCode) continue;
+      const invoiceDate = cellRaw(row, cols.get(headerKey('Ngày hóa đơn')));
+      const hdNetWeight = cellNum(row, cols, 'HĐ Trọng lượng (Net)');
+      const slot = cellStr(row, cols, 'Slot');
+      const channel = cellStr(row, cols, 'Channel');
+      const subChannel = cellStr(row, cols, 'SubChannel');
+      const customerName = cellStr(row, cols, 'Tên khách hàng');
+      const parsed: ProcessedRow = {
+        rowIdx: row.number,
+        supplierCode: code,
+        invoiceNo: cellStr(row, cols, 'Số hóa đơn'),
+        invoiceDate,
+        invoiceDateIso: parseDateIso(invoiceDate),
+        truckNo: cellStr(row, cols, 'Số tàu'),
+        customerCode: cellStr(row, cols, 'Mã khách hàng'),
+        customerName,
+        address: cellStr(row, cols, 'Địa chỉ giao hàng'),
+        khungGia: cellStr(row, cols, 'Khung giá'),
+        dvt: cellStr(row, cols, 'Đơn vị tính'),
+        itemCode: cellStr(row, cols, 'Mã hàng hóa'),
+        itemNameVie: cellStr(row, cols, 'Tên hàng hóa (Vie)'),
+        itemNameEn: cellStr(row, cols, 'Tên hàng hóa (En)'),
+        contactCode: cellStr(row, cols, 'Mã liên hệ giao hàng'),
+        dvtCode: cellStr(row, cols, 'Mã DVT'),
+        qty: cellNum(row, cols, 'Số lượng (DVT bán hàng)'),
+        spNetWeight: cellNum(row, cols, 'SP Trọng lượng net'),
+        hdNetWeight,
+        roundMt: hdNetWeight ? Math.round((hdNetWeight / 1000) * 1000) / 1000 : 0,
+        clf: summary.clf,
+        vfm: summary.vfm,
+        mcc: summary.mcc,
+        clv: summary.clv,
+        ndfc: summary.ndfc,
+        gao: summary.gao,
+        driver: cellStr(row, cols, 'Tài xế'),
+        extraInfo: cellStr(row, cols, 'Thông tin bổ sung'),
+        slot,
+        description: cellStr(row, cols, 'Diễn giải'),
+        channel,
+        subChannel,
+        slotNo: cellStr(row, cols, 'SlotNo'),
+        userHd: cellStr(row, cols, 'user tạo HĐ'),
+        userPxk: cellStr(row, cols, 'User tạo PXK'),
+        poNumber: cellStr(row, cols, 'PO number'),
+        whNo: cellStr(row, cols, 'Warehouse No'),
+        whName: cellStr(row, cols, 'Warehouse Name'),
+        pxk: cellStr(row, cols, 'Phiếu XK'),
+        journal: cellStr(row, cols, 'Chứng từ ghi sổ'),
+        serialNo: cellStr(row, cols, 'Số seri'),
+        itemType: cellStr(row, cols, 'Loại hàng'),
+        oldRoute: cellStr(row, cols, 'Tuyến cũ'),
+        newRoute: cellStr(row, cols, 'Tuyến mới'),
+        invoiceRoute: cellStr(row, cols, 'Tuyến lên hóa đơn'),
+        dealer: '',
+        actualDest: '',
+        feeDest: '',
+        customerId: null,
+        transportRate: null,
+        feeBocXep: null,
+        feeChuyenTai: null,
+        feeGhepDiem: null,
+        site: determineSite(code, slot),
+        khuVuc: determineKhuVuc(channel, subChannel, customerName),
+        tripSummary: summary,
+        showHouseTotals: !shown,
+        hasNdfcInTrip,
+      };
+      shown = true;
+      out.push(parsed);
+    }
+    block = [];
+    blockTruck = '';
+  };
+
+  for (let r = layout.headerRowIdx + 1; r <= ws.rowCount; r++) {
+    const row = ws.getRow(r);
+    const supplier = cellStr(row, cols, 'Mã nhà cung cấp');
+    const invoice = cellStr(row, cols, 'Số hóa đơn');
+    const truck = cellStr(row, cols, 'Số tàu');
+    if (!supplier && !invoice && !truck) continue;
+    if (block.length > 0 && truck !== blockTruck) flush();
+    if (block.length === 0) blockTruck = truck;
+    block.push(row);
+  }
+  flush();
+  return out;
 }
 
 export async function processNdMccWorkbook(
@@ -188,362 +380,19 @@ export async function processNdMccWorkbook(
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(inputBuffer as any);
 
-  const processedSheet =
-    workbook.worksheets.find(
-      (ws) => ws.name.trim().toLowerCase() === 'processed'
-    ) || workbook.getWorksheet('Processed');
-  if (!processedSheet) {
-    throw new Error('MISSING_PROCESSED_SHEET');
-  }
-
-  // Generate Processed v2 sheet early so that all data reading uses the clean, standardized sheet
-  const processedV2Sheet = generateProcessedV2Sheet(workbook);
-
-  // Find column mapping from header row (row 1 or 2) in Processed v2
-  let headerRowIdx = 1;
-  const colMap = new Map<string, number>();
-
-  for (let r = 1; r <= 3; r++) {
-    const row = processedV2Sheet.getRow(r);
-    let foundHeaders = 0;
-    row.eachCell((cell, colNumber) => {
-      const txt = String(cell.value || '').trim();
-      if (txt) foundHeaders++;
-    });
-    if (foundHeaders > 10) {
-      headerRowIdx = r;
-      row.eachCell((cell, colNumber) => {
-        const txt = String(cell.value || '').trim();
-        if (txt) colMap.set(txt, colNumber);
-      });
-      break;
-    }
-  }
-
-  const getCellVal = (row: ExcelJS.Row, headerName: string, fallbackIdx?: number): any => {
-    const colIdx = colMap.get(headerName) ?? fallbackIdx;
-    if (!colIdx) return null;
-    const cell = row.getCell(colIdx);
-    if (cell.value && typeof cell.value === 'object' && 'result' in cell.value) {
-      return (cell.value as any).result;
-    }
-    return cell.value;
-  };
-
-  const getCellNum = (row: ExcelJS.Row, headerName: string, fallbackIdx?: number): number => {
-    const val = getCellVal(row, headerName, fallbackIdx);
-    if (val === null || val === undefined || val === '') return 0;
-    const num = parseFloat(val);
-    return isNaN(num) ? 0 : num;
-  };
-
-  const getCellStr = (row: ExcelJS.Row, headerName: string, fallbackIdx?: number): string => {
-    const val = getCellVal(row, headerName, fallbackIdx);
-    if (val === null || val === undefined) return '';
-    return String(val).trim();
-  };
+  const mccSheet = findSheet(workbook, 'MCC');
+  const ndfcSheet = findSheet(workbook, 'NDFC');
+  if (!mccSheet && !ndfcSheet) throw new Error('MISSING_MCC_NDFC_SHEETS');
+  if (!mccSheet) throw new Error('MISSING_MCC_SHEET');
+  if (!ndfcSheet) throw new Error('MISSING_NDFC_SHEET');
 
   await bangKeThoPricingLookup.initCache();
 
-  const allRows: ProcessedRow[] = [];
+  const mccRows = readFactorySheet(mccSheet, '2000000007');
+  const ndfcRows = readFactorySheet(ndfcSheet, '2000000008');
+  const allRows = [...mccRows, ...ndfcRows];
 
-  const parseProcessedRow = (
-    r: number,
-    row: ExcelJS.Row,
-    tripSummary: TripFiveHousesSummary
-  ): ProcessedRow | null => {
-    const supplierCode = getCellStr(row, 'Mã nhà cung cấp', 1);
-    if (!supplierCode || (supplierCode !== '2000000007' && supplierCode !== '2000000008')) {
-      return null;
-    }
-
-    const invoiceNo = getCellStr(row, 'Số hóa đơn', 2);
-    const invoiceDate = getCellVal(row, 'Ngày hóa đơn', 3);
-    const invoiceDateIso = parseDateIso(invoiceDate);
-    const truckNo = getCellStr(row, 'Số tàu', 4);
-    const customerCode = getCellStr(row, 'Mã khách hàng', 5);
-    const customerName = getCellStr(row, 'Tên khách hàng', 6);
-    const address = getCellStr(row, 'Địa chỉ giao hàng', 7);
-    const khungGia = getCellStr(row, 'Khung giá', 8);
-    const dvt = getCellStr(row, 'Đơn vị tính', 9);
-    const itemCode = getCellStr(row, 'Mã hàng hóa', 10);
-    const itemNameVie = getCellStr(row, 'Tên hàng hóa (Vie)', 11);
-    const itemNameEn = getCellStr(row, 'Tên hàng hóa (En)', 12);
-    const contactCode = getCellStr(row, 'Mã liên hệ giao hàng', 13);
-    const dvtCode = getCellStr(row, 'Mã DVT', 14);
-    const qty = getCellNum(row, 'Số lượng (DVT bán hàng)', 15);
-    const spNetWeight = getCellNum(row, 'SP Trọng lượng net', 16);
-    const hdNetWeight = getCellNum(row, 'HĐ Trọng lượng (Net)', 17);
-    const roundMt = hdNetWeight ? Math.round((hdNetWeight / 1000) * 1000) / 1000 : 0;
-
-    const clf = tripSummary.clf;
-    const vfm = tripSummary.vfm;
-    const mcc = tripSummary.mcc;
-    const clv = tripSummary.clv;
-    const ndfc = tripSummary.ndfc;
-    const gao = tripSummary.gao;
-
-    const driver = getCellStr(row, 'Tài xế', 26);
-    const extraInfo = getCellStr(row, 'Thông tin bổ sung', 27);
-    const slot = getCellStr(row, 'Slot', 28);
-    const description = getCellStr(row, 'Diễn giải', 29);
-    const channel = getCellStr(row, 'Channel', 30);
-    const subChannel = getCellStr(row, 'SubChannel', 31);
-    const slotNo = getCellStr(row, 'SlotNo', 32);
-    const userHd = getCellStr(row, 'user tạo HĐ', 33);
-    const userPxk = getCellStr(row, 'User tạo PXK', 34);
-    const poNumber = getCellStr(row, 'PO number', 35);
-    const whNo = getCellStr(row, 'Warehouse No', 36);
-    const whName = getCellStr(row, 'Warehouse Name', 37);
-    const pxk = getCellStr(row, 'Phiếu XK', 38);
-    const journal = getCellStr(row, 'Chứng từ ghi sổ', 39);
-    const serialNo = getCellStr(row, 'Số seri', 40);
-    const itemType = getCellStr(row, 'Loại hàng', 41);
-    const oldRoute = getCellStr(row, 'Tuyến cũ', 42);
-    const newRoute = getCellStr(row, 'Tuyến mới', 43);
-    const invoiceRoute = getCellStr(row, 'Tuyến lên hóa đơn', 44);
-
-    return {
-      rowIdx: r,
-      supplierCode,
-      invoiceNo,
-      invoiceDate,
-      invoiceDateIso,
-      truckNo,
-      customerCode,
-      customerName,
-      address,
-      khungGia,
-      dvt,
-      itemCode,
-      itemNameVie,
-      itemNameEn,
-      contactCode,
-      dvtCode,
-      qty,
-      spNetWeight,
-      hdNetWeight,
-      roundMt,
-      clf,
-      vfm,
-      mcc,
-      clv,
-      ndfc,
-      gao,
-      driver,
-      extraInfo,
-      slot,
-      description,
-      channel,
-      subChannel,
-      slotNo,
-      userHd,
-      userPxk,
-      poNumber,
-      whNo,
-      whName,
-      pxk,
-      journal,
-      serialNo,
-      itemType,
-      oldRoute,
-      newRoute,
-      invoiceRoute,
-      dealer: '',
-      actualDest: '',
-      feeDest: '',
-      customerId: null,
-      transportRate: null,
-      feeBocXep: null,
-      feeChuyenTai: null,
-      feeGhepDiem: null,
-      site: determineSite(supplierCode, slot),
-      khuVuc: determineKhuVuc(channel, subChannel, customerName),
-      tripSummary,
-    };
-  };
-
-  interface BlockItem {
-    r: number;
-    row: ExcelJS.Row;
-  }
-  let currentBlock: BlockItem[] = [];
-
-  const flushBlock = (
-    items: BlockItem[],
-    sepSummary: TripFiveHousesSummary | null
-  ) => {
-    if (items.length === 0) return;
-
-    let finalSummary: TripFiveHousesSummary;
-    if (
-      sepSummary &&
-      (sepSummary.clf !== null ||
-        sepSummary.vfm !== null ||
-        sepSummary.mcc !== null ||
-        sepSummary.clv !== null ||
-        sepSummary.ndfc !== null ||
-        sepSummary.gao !== null ||
-        sepSummary.total5Nha !== null)
-    ) {
-      const computedTotal =
-        sepSummary.total5Nha !== null && sepSummary.total5Nha > 0
-          ? sepSummary.total5Nha
-          : (sepSummary.clf || 0) +
-            (sepSummary.vfm || 0) +
-            (sepSummary.mcc || 0) +
-            (sepSummary.clv || 0) +
-            (sepSummary.ndfc || 0) +
-            (sepSummary.gao || 0);
-
-      finalSummary = {
-        ...sepSummary,
-        total5Nha: computedTotal > 0 ? Math.round(computedTotal * 1000) / 1000 : null,
-      };
-    } else {
-      // Fallback: calculate trip total and houses from data rows in this block
-      let fClf = 0;
-      let fVfm = 0;
-      let fMcc = 0;
-      let fClv = 0;
-      let fNdfc = 0;
-      let fGao = 0;
-
-      for (const item of items) {
-        const sCode = getCellStr(item.row, 'Mã nhà cung cấp', 1);
-        const wVal =
-          (getCellNum(item.row, 'HĐ Trọng lượng (Net)', 17) || 0) / 1000 ||
-          getCellNum(item.row, 'ROUND (MT)', 18) ||
-          getCellNum(item.row, 'Round(MT)', 18) ||
-          0;
-        const w = Math.round(wVal * 1000) / 1000;
-
-        const rowClf = getCellNum(item.row, 'CLF', 20);
-        const rowVfm = getCellNum(item.row, 'VFM', 21);
-        const rowMcc = getCellNum(item.row, 'MCC', 22);
-        const rowClv = getCellNum(item.row, 'CLV', 23);
-        const rowNdfc = getCellNum(item.row, 'NDFC', 24);
-        const rowGao = getCellNum(item.row, 'Gạo', 25) || getCellNum(item.row, 'GẠO', 25);
-
-        if (rowClf) fClf += rowClf;
-        else if (sCode === '2000000001' || sCode.toUpperCase().includes('CLF')) fClf += w;
-
-        if (rowVfm) fVfm += rowVfm;
-        else if (sCode === '2000000002' || sCode.toUpperCase().includes('VFM')) fVfm += w;
-
-        if (rowMcc) fMcc += rowMcc;
-        else if (sCode === '2000000007' || sCode.toUpperCase().includes('MCC')) fMcc += w;
-
-        if (rowClv) fClv += rowClv;
-        else if (sCode === '2000000004' || sCode.toUpperCase().includes('CLV')) fClv += w;
-
-        if (rowNdfc) fNdfc += rowNdfc;
-        else if (sCode === '2000000008' || sCode.toUpperCase().includes('NDFC')) fNdfc += w;
-
-        if (rowGao) fGao += rowGao;
-      }
-
-      const total = fClf + fVfm + fMcc + fClv + fNdfc + fGao;
-      finalSummary = {
-        clf: fClf > 0 ? Math.round(fClf * 1000) / 1000 : null,
-        vfm: fVfm > 0 ? Math.round(fVfm * 1000) / 1000 : null,
-        mcc: fMcc > 0 ? Math.round(fMcc * 1000) / 1000 : null,
-        clv: fClv > 0 ? Math.round(fClv * 1000) / 1000 : null,
-        ndfc: fNdfc > 0 ? Math.round(fNdfc * 1000) / 1000 : null,
-        gao: fGao > 0 ? Math.round(fGao * 1000) / 1000 : null,
-        total5Nha: total > 0 ? Math.round(total * 1000) / 1000 : null,
-      };
-    }
-
-    for (const item of items) {
-      const parsed = parseProcessedRow(item.r, item.row, finalSummary);
-      if (parsed) {
-        allRows.push(parsed);
-      }
-    }
-  };
-
-  // Check if sheet uses separator rows
-  let hasSeparatorRows = false;
-  for (let r = headerRowIdx + 1; r <= processedV2Sheet.rowCount; r++) {
-    const row = processedV2Sheet.getRow(r);
-    const supplierCode = getCellStr(row, 'Mã nhà cung cấp', 1);
-    const invoiceNo = getCellStr(row, 'Số hóa đơn', 2);
-    const truckNo = getCellStr(row, 'Số tàu', 4);
-    const cell5NhaNum = getCellNum(row, '5 nhà', 19);
-    const roundMtNum = getCellNum(row, 'ROUND (MT)', 18) || getCellNum(row, 'Round(MT)', 18);
-    if (!supplierCode && !invoiceNo && !truckNo && ((cell5NhaNum !== null && cell5NhaNum > 0) || (roundMtNum !== null && roundMtNum > 0))) {
-      hasSeparatorRows = true;
-      break;
-    }
-  }
-
-  for (let r = headerRowIdx + 1; r <= processedV2Sheet.rowCount; r++) {
-    const row = processedV2Sheet.getRow(r);
-    const supplierCode = getCellStr(row, 'Mã nhà cung cấp', 1);
-    const invoiceNo = getCellStr(row, 'Số hóa đơn', 2);
-    const truckNo = getCellStr(row, 'Số tàu', 4);
-    const cell5NhaNum = getCellNum(row, '5 nhà', 19);
-    const roundMtNum = getCellNum(row, 'ROUND (MT)', 18) || getCellNum(row, 'Round(MT)', 18);
-
-    let hasAnyCell = false;
-    row.eachCell({ includeEmpty: false }, (cell) => {
-      if (cell.value !== null && cell.value !== undefined && cell.value !== '') {
-        hasAnyCell = true;
-      }
-    });
-    if (!hasAnyCell) {
-      continue;
-    }
-
-    const isSeparatorRow =
-      !supplierCode &&
-      !invoiceNo &&
-      !truckNo &&
-      ((cell5NhaNum !== null && cell5NhaNum > 0) || (roundMtNum !== null && roundMtNum > 0));
-
-    if (isSeparatorRow) {
-      const sepClf = getCellNum(row, 'CLF', 20) || null;
-      const sepVfm = getCellNum(row, 'VFM', 21) || null;
-      const sepMcc = getCellNum(row, 'MCC', 22) || null;
-      const sepClv = getCellNum(row, 'CLV', 23) || null;
-      const sepNdfc = getCellNum(row, 'NDFC', 24) || null;
-      const sepGao = getCellNum(row, 'Gạo', 25) || getCellNum(row, 'GẠO', 25) || null;
-      const sumH = (sepClf || 0) + (sepVfm || 0) + (sepMcc || 0) + (sepClv || 0) + (sepNdfc || 0) + (sepGao || 0);
-
-      const sep5Nha = Math.round(Math.max(sumH, cell5NhaNum || 0, roundMtNum || 0) * 1000) / 1000;
-
-      flushBlock(currentBlock, {
-        clf: sepClf,
-        vfm: sepVfm,
-        mcc: sepMcc,
-        clv: sepClv,
-        ndfc: sepNdfc,
-        gao: sepGao,
-        total5Nha: sep5Nha,
-      });
-      currentBlock = [];
-    } else {
-      // Only split by truck change if the sheet does NOT use separator rows
-      if (!hasSeparatorRows && currentBlock.length > 0 && truckNo) {
-        const prevTruck = getCellStr(currentBlock[currentBlock.length - 1].row, 'Số tàu', 4);
-        if (prevTruck && truckNo !== prevTruck) {
-          flushBlock(currentBlock, null);
-          currentBlock = [];
-        }
-      }
-      currentBlock.push({ r, row });
-    }
-  }
-
-  if (currentBlock.length > 0) {
-    flushBlock(currentBlock, null);
-  }
-
-  // Batch customer lookups & rate lookups
-  // Cache by (tenKhachHang, diaChi, supplierCode)
   const custMap = new Map<string, Awaited<ReturnType<typeof bangKeThoPricingLookup.lookupCustomer>>>();
-
   for (const r of allRows) {
     const key = `${r.customerName}___${r.address}___${r.supplierCode}`;
     if (!custMap.has(key)) {
@@ -566,55 +415,17 @@ export async function processNdMccWorkbook(
     }
   }
 
-  // Detect trips with NDFC weight (by truckNo + invoiceDateIso)
-  const tripsWithNdfc = new Set<string>();
-
-  for (let r = headerRowIdx + 1; r <= processedV2Sheet.rowCount; r++) {
-    const row = processedV2Sheet.getRow(r);
-    const truck = getCellStr(row, 'Số tàu', 4).trim();
-    const invoiceDate = getCellVal(row, 'Ngày hóa đơn', 3);
-    const invoiceDateIso = parseDateIso(invoiceDate);
-    const tKey = `${truck}___${invoiceDateIso}`;
-
-    const suppCode = getCellStr(row, 'Mã nhà cung cấp', 1);
-    const ndfcCol = getCellNum(row, 'NDFC', 24);
-    const hdWeight = getCellNum(row, 'HĐ Trọng lượng (Net)', 17);
-    const spWeight = getCellNum(row, 'SP Trọng lượng net', 16);
-
-    if (truck && invoiceDateIso) {
-      if (suppCode === '2000000008' && (hdWeight > 0 || spWeight > 0 || ndfcCol > 0)) {
-        tripsWithNdfc.add(tKey);
-      } else if (ndfcCol > 0) {
-        tripsWithNdfc.add(tKey);
-      }
-    }
-  }
-
-  for (const r of allRows) {
-    const tKey = `${r.truckNo.trim()}___${r.invoiceDateIso}`;
-    if (r.supplierCode === '2000000008' && (r.roundMt > 0 || (r.ndfc && r.ndfc > 0))) {
-      tripsWithNdfc.add(tKey);
-    } else if (r.ndfc && r.ndfc > 0) {
-      tripsWithNdfc.add(tKey);
-    }
-  }
-
-  // Cache rate lookups by (feeDest, khungGia, invoiceDateIso, targetBook, hasNdfcInTrip)
   const rateMap = new Map<string, number | null>();
   const surchargeMap = new Map<string, Awaited<ReturnType<typeof bangKeThoPricingLookup.lookupSurcharges>>>();
 
   for (const r of allRows) {
-    const tKey = `${r.truckNo.trim()}___${r.invoiceDateIso}`;
-    const hasNdfcInTrip = tripsWithNdfc.has(tKey);
-
-    // Standardized targetBook resolution
     const targetBook = resolveTargetBook({
       supplierCode: r.supplierCode,
       slot: r.slot,
-      hasNdfcInTrip,
+      hasNdfcInTrip: r.hasNdfcInTrip,
     });
 
-    const rateKey = `${r.feeDest}___${r.khungGia}___${r.invoiceDateIso}___${targetBook || r.supplierCode}___${hasNdfcInTrip}`;
+    const rateKey = `${r.feeDest}___${r.khungGia}___${r.invoiceDateIso}___${targetBook || r.supplierCode}___${r.hasNdfcInTrip}`;
     if (!rateMap.has(rateKey)) {
       let rate = await bangKeThoPricingLookup.lookupTransportRate({
         diemTinhPhi: r.feeDest,
@@ -623,7 +434,7 @@ export async function processNdMccWorkbook(
         supplierCode: r.supplierCode,
         slot: r.slot,
         targetBook,
-        hasNdfcInTrip,
+        hasNdfcInTrip: r.hasNdfcInTrip,
       });
 
       if (rate === null && r.actualDest && r.actualDest.trim() !== (r.feeDest || '').trim()) {
@@ -634,10 +445,9 @@ export async function processNdMccWorkbook(
           supplierCode: r.supplierCode,
           slot: r.slot,
           targetBook,
-          hasNdfcInTrip,
+          hasNdfcInTrip: r.hasNdfcInTrip,
         });
       }
-
       rateMap.set(rateKey, rate);
     }
     r.transportRate = rateMap.get(rateKey) ?? null;
@@ -661,75 +471,18 @@ export async function processNdMccWorkbook(
     }
   }
 
-  const mccRows = allRows.filter((r) => r.supplierCode === '2000000007');
-  const ndfcRows = allRows.filter((r) => r.supplierCode === '2000000008');
-
-  // Base sheets: NCC, Sheet1, Processed
-  let nccSheet = workbook.worksheets.find(
-    (ws) => ws.name.trim().toLowerCase() === 'ncc'
-  );
-  if (nccSheet) {
-    setSheetNameSafely(nccSheet, 'NCC');
-  } else {
-    nccSheet = workbook.addWorksheet('NCC');
-  }
-
-  let sheet1 = workbook.worksheets.find((ws) => {
-    const n = ws.name.trim().toLowerCase();
-    return n === 'sheet1' || n === 'sheet 1';
-  });
-  if (sheet1) {
-    setSheetNameSafely(sheet1, 'Sheet1');
-  } else {
-    sheet1 = workbook.addWorksheet('Sheet1');
-  }
-
-  setSheetNameSafely(processedSheet, 'Processed');
-
-  // Highlight partial match cells in processedSheet before generating Processed v2
-  let processedAddrCol = 7;
-  for (let c = 1; c <= 45; c++) {
-    const hVal = String(processedSheet.getRow(headerRowIdx).getCell(c).value || '').trim().toLowerCase();
-    if (hVal.includes('địa chỉ') || hVal.includes('dia chi')) {
-      processedAddrCol = c;
-      break;
-    }
-  }
-
-  for (const r of allRows) {
-    if (r.isPartialMatch && r.rowIdx) {
-      const pCell = processedSheet.getRow(r.rowIdx).getCell(processedAddrCol);
-      pCell.fill = PARTIAL_MATCH_FILL;
-      if (r.matchedAddress) {
-        pCell.note = r.matchedAddress;
-      }
-
-      const p2Cell = processedV2Sheet.getRow(r.rowIdx).getCell(processedAddrCol);
-      p2Cell.fill = PARTIAL_MATCH_FILL;
-      if (r.matchedAddress) {
-        p2Cell.note = r.matchedAddress;
-      }
-    }
-  }
-
-  // Remove other sheets from the input workbook that are not one of the base sheets
-  const baseSheetIds = new Set([nccSheet.id, sheet1.id, processedSheet.id, processedV2Sheet.id]);
   for (const ws of [...workbook.worksheets]) {
-    if (!baseSheetIds.has(ws.id)) {
+    if (SHEETS_TO_REMOVE.has(ws.name.trim())) {
       workbook.removeWorksheet(ws.id);
     }
   }
 
-  // Helper to safely add sheet
   const safeAddSheet = (name: string): ExcelJS.Worksheet => {
     const existing = workbook.getWorksheet(name);
-    if (existing) {
-      workbook.removeWorksheet(existing.id);
-    }
+    if (existing) workbook.removeWorksheet(existing.id);
     return workbook.addWorksheet(name);
   };
 
-  // 1. Build MCC sheets in exact order: MCC (goc), MCC-clv, MCC (uni), MCC (tt)
   const mccClvRows = mccRows.filter((r) => (r.slot || '').toUpperCase().includes('CALOFIC HP') || (r.slot || '').toUpperCase() === 'CLV');
   const mccUniRows = mccRows.filter((r) => (r.slot || '').toUpperCase().includes('WH UNIDEPOT') || (r.slot || '').toUpperCase() === 'UNI');
   const mccTtRows = mccRows.filter((r) => (r.slot || '').toUpperCase().includes('UNI 1') || (r.slot || '').toUpperCase() === 'TT');
@@ -739,7 +492,6 @@ export async function processNdMccWorkbook(
   buildSummarySheet(safeAddSheet('MCC (uni)'), mccUniRows);
   buildSummarySheet(safeAddSheet('MCC (tt)'), mccTtRows);
 
-  // 2. Build NDFC sheets in exact order: NDFC (goc), NDFC-clv, NDFC (uni), NDFC (tt)
   const ndfcClvRows = ndfcRows.filter((r) => (r.slot || '').toUpperCase().includes('CALOFIC HP') || (r.slot || '').toUpperCase() === 'CLV');
   const ndfcUniRows = ndfcRows.filter((r) => (r.slot || '').toUpperCase().includes('UNI 3') || (r.slot || '').toUpperCase() === 'UNI');
   const ndfcTtRows = ndfcRows.filter((r) => (r.slot || '').toUpperCase().includes('UNI 1') || (r.slot || '').toUpperCase() === 'TT');
@@ -749,17 +501,7 @@ export async function processNdMccWorkbook(
   buildSummarySheet(safeAddSheet('NDFC (uni)'), ndfcUniRows);
   buildSummarySheet(safeAddSheet('NDFC (tt)'), ndfcTtRows);
 
-  // Enforce exact sheet order:
-  // NCC, Sheet1, Processed, MCC (goc), MCC-clv, MCC (uni), MCC (tt), NDFC (goc), NDFC-clv, NDFC (uni), NDFC (tt)
-  ORDERED_SHEET_NAMES.forEach((name, idx) => {
-    const ws = workbook.getWorksheet(name);
-    if (ws) {
-      (ws as any).orderNo = idx + 1;
-    }
-  });
-
   const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
-
   const mccInvoices = new Set(mccRows.map((r) => r.invoiceNo)).size;
   const ndfcInvoices = new Set(ndfcRows.map((r) => r.invoiceNo)).size;
 
@@ -773,6 +515,7 @@ export async function processNdMccWorkbook(
     },
   };
 }
+
 
 const GOC_HEADERS = [
   'Mã nhà cung cấp', 'Số hóa đơn', 'Ngày hóa đơn', 'SỐ XE', 'Mã khách hàng',
@@ -836,31 +579,26 @@ function buildGocSheet(ws: ExcelJS.Worksheet, rows: ProcessedRow[]): void {
     return;
   }
 
-  let prevInvoiceNo = '';
-
   const renderGocRow = (r: ProcessedRow) => {
     const rowNum = ws.rowCount + 1;
     const prevRowNum = rowNum - 1;
-
-    const isFirstRowOfInvoice = r.invoiceNo !== prevInvoiceNo;
-    prevInvoiceNo = r.invoiceNo;
 
     const formulaHoaDon = { formula: `G${rowNum}&", ("&L${rowNum}&"), xe "&D${rowNum}` };
     const formulaRoundMt = { formula: `ROUND(U${rowNum}/1000,3)` };
     const formulaTanHd = { formula: `IF($B${rowNum}=$B${prevRowNum},0,SUMIF($B:$B,$B${rowNum},$V:$V))` };
     const formulaTanChuyen = { formula: `IF(AND(D${rowNum}=D${prevRowNum},C${rowNum}=C${prevRowNum}),0,SUMIFS($V:$V,$C:$C,$C${rowNum},$D:$D,$D${rowNum}))` };
-    const formulaTongChuyen = isFirstRowOfInvoice ? { formula: `AL${rowNum}` } : '';
+    const formulaTongChuyen = r.showHouseTotals ? { formula: `AL${rowNum}` } : '';
     const formulaThanhTienCheck = { formula: `ROUND(X${rowNum}*SUM(Z${rowNum}:AB${rowNum}),0)` };
     const formulaThanhTienHd = { formula: `ROUND(X${rowNum}*Z${rowNum},0)` };
-    const formula5Nha = isFirstRowOfInvoice ? { formula: `SUBTOTAL(9,AM${rowNum}:AR${rowNum})` } : '';
+    const formula5Nha = r.showHouseTotals ? { formula: `SUBTOTAL(9,AM${rowNum}:AR${rowNum})` } : '';
 
     const summary = r.tripSummary;
-    const clfVal = isFirstRowOfInvoice ? (summary?.clf ?? '') : '';
-    const vfmVal = isFirstRowOfInvoice ? (summary?.vfm ?? '') : '';
-    const mccVal = isFirstRowOfInvoice ? (summary?.mcc ?? '') : '';
-    const clvVal = isFirstRowOfInvoice ? (summary?.clv ?? '') : '';
-    const ndfcVal = isFirstRowOfInvoice ? (summary?.ndfc ?? '') : '';
-    const gaoVal = isFirstRowOfInvoice ? (summary?.gao ?? '') : '';
+    const clfVal = r.showHouseTotals ? (summary?.clf ?? '') : '';
+    const vfmVal = r.showHouseTotals ? (summary?.vfm ?? '') : '';
+    const mccVal = r.showHouseTotals ? (summary?.mcc ?? '') : '';
+    const clvVal = r.showHouseTotals ? (summary?.clv ?? '') : '';
+    const ndfcVal = r.showHouseTotals ? (summary?.ndfc ?? '') : '';
+    const gaoVal = r.showHouseTotals ? (summary?.gao ?? '') : '';
 
     const data = [
       r.supplierCode,                   // A (1)
@@ -1143,21 +881,21 @@ function buildSummarySheet(ws: ExcelJS.Worksheet, rows: ProcessedRow[]): void {
     const tripWeight = isFirstInTrip ? (tripSumMap.get(tripKey) || totalHdWeight) : 0;
 
     const summary = first.tripSummary;
-    const clfVal = summary?.clf ?? '';
-    const vfmVal = summary?.vfm ?? '';
-    const mccVal = summary?.mcc ?? '';
-    const clvVal = summary?.clv ?? '';
-    const ndfcVal = summary?.ndfc ?? '';
-    const gaoVal = summary?.gao ?? '';
+    const showHouseTotals = invRows.some((item) => item.showHouseTotals);
+    const clfVal = showHouseTotals ? (summary?.clf ?? '') : '';
+    const vfmVal = showHouseTotals ? (summary?.vfm ?? '') : '';
+    const mccVal = showHouseTotals ? (summary?.mcc ?? '') : '';
+    const clvVal = showHouseTotals ? (summary?.clv ?? '') : '';
+    const ndfcVal = showHouseTotals ? (summary?.ndfc ?? '') : '';
+    const gaoVal = showHouseTotals ? (summary?.gao ?? '') : '';
 
     const formulaHoaDon = { formula: `F${rowIdx}&", ("&K${rowIdx}&"), xe "&D${rowIdx}` };
-    const formulaTongChuyen = { formula: `AB${rowIdx}` };
+    const formulaTongChuyen = showHouseTotals ? { formula: `AB${rowIdx}` } : '';
     const formulaThanhTienCheck = { formula: `ROUND(N${rowIdx}*SUM(P${rowIdx}:R${rowIdx}),0)` };
     const formulaThanhTienHd = { formula: `ROUND(N${rowIdx}*P${rowIdx},0)` };
-    const formula5Nha = { formula: `SUBTOTAL(9,AC${rowIdx}:AH${rowIdx})` };
+    const formula5Nha = showHouseTotals ? { formula: `SUBTOTAL(9,AC${rowIdx}:AH${rowIdx})` } : '';
 
-    const isPalletKhungGia = (first.khungGia || '').toLowerCase().includes('pallet');
-    const displayKhungGia = isPalletKhungGia ? 'Pallet' : first.khungGia;
+    const displayKhungGia = first.khungGia;
 
     const data = [
       first.supplierCode,           // A (1)
@@ -1201,10 +939,6 @@ function buildSummarySheet(ws: ExcelJS.Worksheet, rows: ProcessedRow[]): void {
 
     const row = ws.addRow(data);
     row.height = 20;
-
-    if (isPalletKhungGia && first.khungGia) {
-      row.getCell(11).note = first.khungGia;
-    }
 
     row.getCell(13).numFmt = '#,##0.000'; // M
     row.getCell(14).numFmt = '#,##0.000'; // N

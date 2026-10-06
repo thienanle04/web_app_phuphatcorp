@@ -254,8 +254,10 @@ User upload file .xlsx ERP (Delivery Report)
       → Sort mỗi nhóm theo Số HĐ ASC (numeric-aware), rồi Mã NCC ASC
       → Final sort các nhóm theo Số tàu/xe ASC (natural sort: prefix numeric-aware → number numeric)
       → Tính Round(MT) = SUM(HĐ Trọng lượng Net) / 1000 per group
-      → Build output XLSX (6 sheets):
+      → Build output XLSX (8 sheets):
+          Sheet "Sheet": dữ liệu thô gốc 100% nguyên bản từ file ERP
           Sheet "Processed": tất cả dòng (44 cols), header + data + separator xám giữa nhóm
+          Sheet "Processed v2": bản sao chuẩn hóa từ Processed, chuyển 5 nhà lên trước CLF (header #00B050), thêm cột Gạo, ép kiểu số thực (number) cho O, P, Q và các cột tải trọng. Tính lại Khung giá theo tải chuyến từ cột 5 nhà (tô #FFE599 + note nếu đổi), trừ khoảng (2,5–8] không Pallet thì giữ khung gốc. Khối `≤2.5 tấn` liền kề chuyến cùng xe cùng ngày nặng hơn 2,5 tấn được tô #F8CBAD để kế toán kiểm tra, không tự sửa. Dòng 1 luôn liệt kê số hóa đơn cần kiểm tra.
           Sheet "CLF": chỉ dòng factory CLF (46 cols), thêm Tấn/Hóa đơn & Tấn/Chuyến
           Sheet "VFM": chỉ dòng factory VFM (46 cols)
           Sheet "MCC": chỉ dòng factory MCC (46 cols)
@@ -796,26 +798,25 @@ frontend/src/components/accounting-data/InvoiceNumbersPopup.tsx
 
 ### 11.4 Lên bảng kê thô 5 nhà & Xử lý ND-MCC (/accounting-data/bang-ke-tho)
 
-**Mục đích:** Lưu trữ các đợt file Excel sau bước xử lý dữ liệu giao hàng 5 nhà (chứa sheet `Processed`), tự động bóc tách và sinh bảng kê thô 8 sheets cho 2 nhà cung cấp ND-MCC (MCC `2000000007` & NDFC `2000000008`) kèm tra cứu khách hàng, giá cước và biểu phụ phí.
+**Mục đích:** Lưu trữ các đợt file Excel sau bước xử lý dữ liệu giao hàng 5 nhà, tự động bóc tách sheet `MCC` và `NDFC` thành bảng kê thô 8 sheets cho MCC (`2000000007`) và NDFC (`2000000008`) kèm tra cứu khách hàng, giá cước và biểu phụ phí.
 
 **Data model:**
 - `bang_ke_tho_batches`: Quản lý đợt upload (file gốc lưu tại MinIO `batches/{batch_id}/input.xlsx`).
 - `bang_ke_tho_outputs`: Trạng thái bảng kê theo nhà (`nd_mcc`, `clv`, `calofic`). Trạng thái: `pending` | `ready` | `failed`. File output lưu tại `batches/{batch_id}/outputs/{house_code}.xlsx`.
 
 **Quy tắc sinh sheets ND-MCC:**
-- **Toàn vẹn Workbook Output:** File output chỉ giữ lại các sheets cơ sở (`NCC`, `Sheet1`, `Processed`, và sinh `Processed v2`) từ file input (tự động xóa bỏ các sheets không thuộc scope như `VFM`, `CLV`, `STHI`, `Process 1-8`, `Sheet31-8`, v.v.), và sinh thêm 8 sheets bảng kê nghiệp vụ ND-MCC (tổng cộng 12 sheets theo thứ tự chuẩn):
-1. `NCC`
-2. `Sheet1`
-3. `Processed`
-4. `Processed v2`: Nhân bản từ `Processed`, ép kiểu số (`number`) cho các cột text số lượng/trọng lượng (O, P, Q), hoán đổi cột `5 nhà` trước cột `CLF` (header màu xanh lá `#00B050`, chữ trắng in đậm), thêm cột `Gạo` sau `NDFC`, xác định lại `Khung giá` theo tải trọng thực của chuyến xe từ cột `5 nhà` (tô nền vàng `#FFE599` và gắn Cell Note lưu khung giá cũ khi thay đổi).
-5. `MCC (goc)`: Chi tiết từng dòng sản phẩm MCC (68 cột, công thức Excel chuẩn: Hóa đơn, Round MT, Tấn/Hóa đơn, Tấn/Chuyến, Đơn giá vận chuyển, Phụ phí, Thành tiền check, Thành tiền hóa đơn, 5 nhà).
-6. `MCC-clv`: Tổng hợp 1 dòng/hóa đơn nhánh kho Hiệp Phước (Slot `CALOFIC HP`).
-7. `MCC (uni)`: Tổng hợp 1 dòng/hóa đơn nhánh kho Unidepot (Slot `WH Unidepot`, Site `UNI-MCC`).
-8. `MCC (tt)`: Tổng hợp 1 dòng/hóa đơn nhánh tiếp thị / chuyển tải (Slot `UNI 1`).
-9. `NDFC (goc)`: Chi tiết từng dòng sản phẩm NDFC (68 cột).
-10. `NDFC-clv`: Tổng hợp nhánh kho Hiệp Phước (Slot `CALOFIC HP`).
-11. `NDFC (uni)`: Tổng hợp nhánh kho Unidepot (Slot `UNI 3`, Site `UNI-NDFC`).
-12. `NDFC (tt)`: Tổng hợp nhánh tiếp thị / chuyển tải (Slot `UNI 1`).
+- **Nguồn dòng:** Sheet `MCC` (mã `2000000007`) và sheet `NDFC` (mã `2000000008`). Thiếu một trong hai thì xử lý thất bại. Không đọc `Processed` và không sinh `Processed v2`. Khung giá giữ nguyên chữ trên dòng nguồn.
+- **Khối chuyến:** Các dòng liền nhau cùng `Số tàu`. `CLF`…`GẠO` và cột ngay sau `GẠO` (`5 nhà`) lấy từ dòng đầu khối, ghi một lần trên 8 sheet kết quả. Cờ ghép NDFC của `MCC (tt)` lấy từ cột `NDFC` của dòng đầu khối trên sheet `MCC`.
+- **Workbook:** Xóa đúng `VFM`, `VFM (2)`, `CLV`, `STHI`, `STHI (uni)`, `NPP`, `TINH`. Giữ các sheet còn lại đúng thứ tự. Thêm cuối file:
+1. `MCC (goc)`: Chi tiết từng dòng sản phẩm MCC.
+2. `MCC-clv`: Tổng hợp 1 dòng/hóa đơn, slot `CALOFIC HP` / `CLV`, sổ giá `MCC GH`.
+3. `MCC (uni)`: Slot `WH Unidepot` / `UNI`, sổ giá `MCC GH`, site `UNI-MCC`.
+4. `MCC (tt)`: Slot `UNI 1` / `TT`. Sổ `MCC (tt)`, có NDFC trong khối thì `MCC (tt) GHÉP ND`.
+5. `NDFC (goc)`: Chi tiết từng dòng sản phẩm NDFC.
+6. `NDFC-clv`: Slot `CALOFIC HP` / `CLV`, sổ giá `CLF`.
+7. `NDFC (uni)`: Slot `UNI 3` / `UNI`, sổ giá `CLF`, site `UNI-NDFC`.
+8. `NDFC (tt)`: Slot `UNI 1` / `TT`, sổ giá `NDFC (TT)`.
+- **Khung Pallet:** `Processed v2` ghi đúng chữ `Pallet` cho chuyến pallet, không gắn bậc tấn. ND-MCC tra `pallet_trip_price` khi khung là `Pallet`. Thành tiền giữ công thức tấn/chuyến × đơn giá.
 
 - **Bố cục 2 Bảng trên cùng sheet (Table A & Table B):**
   - **Bảng A (> 2.5 tấn):** Nhóm theo chuyến xe (`truckNo` + `invoiceDateIso`). Ngay sau mỗi chuyến xe có dòng `Tổng cộng` từng xe. Cuối Bảng A có dòng `TỔNG CỘNG A` với công thức chia đôi `=SUM(...)/2`.
@@ -827,7 +828,7 @@ frontend/src/components/accounting-data/InvoiceNumbersPopup.tsx
 - Khách hàng: Tra cứu `customers` theo cặp `(ten_khach_hang, dia_chi_giao_hang)` lấy `diem_tra_hang` (Đại lý), `tuyen_phuong` (Điểm giao hàng thực tế), `diem_giao_hang_tinh_phi` (Điểm tính phí). Sử dụng tiện ích `addressMatcher`:
   - Chuẩn hóa khoảng trắng, dấu phân cách, bỏ tiền tố "thửa đất số ...".
   - So khớp chuỗi con (`substring match`) và độ trùng lặp từ khóa (`token overlap >= 75%`).
-  - Đánh dấu Khớp một phần (Partial match): tô nền vàng `#FFF2CC` và gắn Note ghi rõ địa chỉ gốc từ DB trên ô `Địa chỉ giao hàng` của cả `Processed` và `Processed v2`.
+  - Đánh dấu Khớp một phần (Partial match): tô nền vàng `#FFF2CC` và gắn Note ghi rõ địa chỉ gốc từ DB trên 8 sheet kết quả ND-MCC. Không sửa các sheet được giữ lại.
 - Giá cước: Tra cứu `route_pricing` theo Điểm tính phí, Khung giá (`≤2.5 tấn`, `>8-16 tấn`, `>16-23 tấn`, `>23 tấn`), Ngày hóa đơn, ưu tiên Price Book theo nhà và slot. Để trống (`null`) nếu không tìm thấy.
 - Phụ phí: Tra cứu `customer_surcharge_rules` lấy phí bốc xếp, chuyển tải, ghép điểm. Để trống (`null`) nếu không tìm thấy.
 
@@ -847,13 +848,11 @@ backend/src/constants/bangKeTho.ts
 backend/src/services/bangKeTho/index.ts
 backend/src/services/bangKeTho/ndMccEngine.ts
 backend/src/services/bangKeTho/pricingLookup.ts
-backend/src/services/bangKeTho/processedV2.ts
 backend/src/utils/addressMatcher.ts
 backend/src/utils/routeMatcher.ts
 backend/src/controllers/bangKeThoController.ts
 backend/src/routes/bangKeTho.ts
 backend/src/__tests__/bangKeThoNdMccEngine.test.ts
-backend/src/__tests__/bangKeThoProcessedV2.test.ts
 backend/src/__tests__/addressMatcher.test.ts
 backend/src/__tests__/bangKeThoService.test.ts
 frontend/src/api/bangKeThoApi.ts
