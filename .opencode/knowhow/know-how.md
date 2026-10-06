@@ -1,24 +1,26 @@
 ---
-description: File mô tả project structure, database schema, API endpoint của dự án PhuPhatCorp Accounting Web App
+description: Project structure, database schema, and API endpoints for the PhuPhatCorp Accounting Web App
 ---
 
 # PhuPhatCorp — Technical Documentation
 
 ## 1. Project Overview
 
-- **Mục đích:** Hệ thống web hỗ trợ công ty PhuPhatCorp xử lý số liệu kế toán
-- **Cấu trúc:** Monorepo — `backend/` (NodeJS) + `frontend/` (ReactJS)
-- **Database:** PostgreSQL tại `72.61.124.36:5443/test_PhuPhatCorp`
-- **Auth:** JWT (access token 15m + refresh token 7d trong httpOnly cookie)
+- **Mục đích:** Hệ thống web hỗ trợ công ty PhuPhatCorp xử lý số liệu kế toán, vận tải, giao hàng và báo cáo doanh thu
+- **Cấu trúc:** Monorepo — `backend/` (Express + TypeScript), `frontend/` (React + Vite), `mobile/` (Flutter)
+- **Database:** PostgreSQL. Host, port, database name và credential lấy từ biến môi trường, không ghi trong file này
+- **Auth:** JWT. Access token hết hạn theo `JWT_EXPIRES_IN` (mặc định 15 phút). Refresh token theo `JWT_REFRESH_EXPIRES_IN` (mặc định 7 ngày), gửi trong JSON và trong httpOnly cookie `refreshToken`
 
 ## 2. Tech Stack
+
+Phiên bản lấy từ `backend/package.json` và `frontend/package.json`.
 
 ### Backend
 | Package | Version | Mục đích |
 |---------|---------|----------|
 | express | ^4.19.2 | Web framework |
 | typescript | ^5.4.5 | Type safety |
-| jsonwebtoken | ^9.0.2 | JWT generation/verification |
+| jsonwebtoken | ^9.0.2 | JWT |
 | bcryptjs | ^2.4.3 | Password hashing |
 | pg | ^8.12.0 | PostgreSQL driver |
 | express-validator | ^7.1.0 | Input validation |
@@ -26,22 +28,27 @@ description: File mô tả project structure, database schema, API endpoint củ
 | cors | ^2.8.5 | CORS |
 | cookie-parser | ^1.4.6 | Cookie parsing |
 | morgan | ^1.10.0 | HTTP logging |
-| tsx | ^4.15.6 | Dev runner (tsx watch) |
+| exceljs | ^4.4.0 | Workbook có format |
+| minio | ^8.0.0 | Object storage |
+| multer | ^2.1.1 | Upload file |
+| tsx | ^4.15.6 | Dev runner |
 
 ### Frontend
 | Package | Version | Mục đích |
 |---------|---------|----------|
-| react | ^18 | UI library |
-| vite | ^8 | Build tool |
-| typescript | ^5 | Type safety |
-| react-router-dom | ^6 | Routing |
-| axios | — | HTTP client |
-| @tanstack/react-query | — | Server state |
-| zustand | — | Client state (auth store) |
-| react-hook-form + yup | — | Form + validation |
-| tailwindcss | ^3 | Styling |
-| lucide-react | — | Icons |
-| recharts | — | Charts |
+| react | ^19.2.4 | UI library |
+| vite | ^8.0.1 | Build tool |
+| typescript | ~5.9.3 | Type safety |
+| react-router-dom | ^7.13.2 | Routing |
+| axios | ^1.14.0 | HTTP client |
+| @tanstack/react-query | ^5.95.2 | Server state |
+| zustand | ^5.0.12 | Client state |
+| react-hook-form | ^7.72.0 | Form |
+| yup | ^1.7.1 | Form validation |
+| tailwindcss | ^3.4.19 | Styling |
+| lucide-react | ^1.7.0 | Icons |
+| recharts | ^3.8.1 | Charts |
+| exceljs | ^4.4.0 | Ghi Excel có format |
 
 ## 3. Project Structure
 
@@ -129,190 +136,200 @@ frontend/
 ├── tailwind.config.js
 └── tsconfig.app.json
 
-web_v2/
-├── CLAUDE.md                 # Project summary for Claude agents
-├── backend/
-└── frontend/
+mobile/            # Client Flutter
+docs/              # Spec và task
 ```
 
 ## 4. Environment Configuration
 
-### Backend (backend/.env)
-```
-PORT=3021
-DB_HOST=72.61.124.36
-DB_PORT=5443
-DB_NAME=test_PhuPhatCorp
-DB_USER=postgres
-DB_PASSWORD=<secret>
-DB_SSL=false
-JWT_SECRET=<secret>
-JWT_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
-MINIO_ENDPOINT=minio-superadmin.hostarax.com
-MINIO_PORT=443
-MINIO_USE_SSL=true
-MINIO_ACCESS_KEY=<secret>
-MINIO_SECRET_KEY=<secret>
-MINIO_BUCKET=phuphatcorp-inspections
-MINIO_BUCKET_TICKET_ATTACHEMENTS=phuphatcorp-inspections/ticket_attachments
-MINIO_PUBLIC_URL=https://minio-superadmin.hostarax.com
-```
+Giá trị nằm trong `backend/.env` và `frontend/.env`. File knowhow chỉ liệt kê tên biến.
 
-### Frontend (frontend/.env)
-```
-VITE_API_URL=http://localhost:3021/api
-```
+### Backend
+`PORT`, `DATABASE_URL`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_USE_SSL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_BANG_KE_BUCKET`, `MINIO_BUCKET_TICKET_ATTACHEMENTS`, `MINIO_BUCKET_TICKET_ATTACHMENTS`, `MINIO_PUBLIC_URL`
+
+`DATABASE_URL` nếu có thì pool dùng connection string. Không có thì dùng các biến `DB_*`.
+
+### Frontend
+`VITE_API_URL` — base URL của API, gồm hậu tố `/api`.
 
 ## 5. Database Configuration
 
-- **Driver:** `pg` (node-postgres) Pool
-- **Pool config:** max=20 connections, idleTimeout=30s, connectionTimeout=2s
-- **SSL:** disabled (`DB_SSL=false`)
-- **Env mapping:** via `src/config/env.ts` → `src/config/database.ts`
+- **Driver:** `pg` Pool
+- **Pool:** max 20, min 2, idleTimeout 30s, connectionTimeout 10s, keepAlive
+- **Timezone session:** `Asia/Ho_Chi_Minh`
+- **SSL:** bật khi `DB_SSL=true` (`rejectUnauthorized: false`)
+- **Mapping:** `src/config/env.ts` → `src/config/database.ts`
 
 ## 6. Database Schema
 
-### users
+### accountant_invoices
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | SERIAL | PRIMARY KEY |
-| email | VARCHAR(255) | UNIQUE, NOT NULL |
-| username | VARCHAR(100) | UNIQUE, NOT NULL |
-| password_hash | VARCHAR(255) | NOT NULL |
-| full_name | VARCHAR(255) | NOT NULL |
-| role | VARCHAR(50) | NOT NULL, DEFAULT 'VIEWER' |
-| is_active | BOOLEAN | NOT NULL, DEFAULT TRUE |
-| last_login_at | TIMESTAMP | NULL |
-| created_by | INTEGER | FK → users(id), NULL |
-| updated_by | INTEGER | FK → users(id), NULL |
-| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
-| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+| batch_id | VARCHAR(50) | NOT NULL |
+| ngay | DATE | NOT NULL |
+| so_xe | VARCHAR(100) | NOT NULL |
+| so_hoa_don | TEXT | NOT NULL |
+| trang_thai | VARCHAR(20) | NOT NULL DEFAULT 'không có' |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() |
+| ghi_chu | TEXT | — |
 
-**Indexes:** `idx_users_role`, `idx_users_is_active`, `idx_users_username`
-
-### user_activities
-| Column | Type | Constraints |
-|--------|------|-------------|
-| id | SERIAL | PRIMARY KEY |
-| actor_id | INTEGER | NOT NULL, FK → users(id) |
-| target_user_id | INTEGER | FK → users(id), NULL |
-| action | VARCHAR(50) | NOT NULL |
-| details | JSONB | NULL |
-| ip_address | VARCHAR(45) | NULL |
-| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
-
-**Indexes:** `idx_user_activities_actor`, `idx_user_activities_target`
-**Actions:** `CREATE_USER`, `UPDATE_USER`, `DELETE_USER`, `RESET_PASSWORD`, `TOGGLE_STATUS`
+**Indexes:** `idx_accountant_invoices_batch_id` (batch_id); `idx_accountant_invoices_ngay` (ngay); `idx_accountant_invoices_so_hoa_don` (so_hoa_don); `idx_accountant_invoices_trang_thai` (trang_thai); `idx_accountant_invoices_so_xe` (so_xe)
 
 ### customers
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | SERIAL | PRIMARY KEY |
 | diem_tra_hang | VARCHAR(255) | NOT NULL |
-| ten_khach_hang | VARCHAR(255) | NOT NULL |
-| tuyen_phuong | VARCHAR(255) | NULL |
-| tuyen_cu | VARCHAR(255) | NULL |
-| dia_chi_giao_hang | TEXT | NULL |
-| diem_giao_hang_tinh_phi | VARCHAR(255) | NULL |
-| boc_xep | BOOLEAN | NOT NULL, DEFAULT TRUE. UI và import không còn ghi. |
-| status | VARCHAR(20) | NOT NULL, DEFAULT 'active' |
-| created_by | INTEGER | FK → users(id), NULL |
-| updated_by | INTEGER | FK → users(id), NULL |
-| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
-| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+| ten_khach_hang | VARCHAR(500) | NOT NULL |
+| tuyen_phuong | VARCHAR(255) | — |
+| tuyen_cu | VARCHAR(255) | — |
+| dia_chi_giao_hang | TEXT | — |
+| boc_xep | BOOLEAN | NOT NULL DEFAULT TRUE |
+| status | VARCHAR(20) | NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'deactive')) |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| supplier_code | VARCHAR(20) | — |
+| diem_giao_hang_tinh_phi | VARCHAR(255) | — |
 
-**Indexes:** `idx_customers_diem_tra_hang`, `idx_customers_status`
-**Soft delete:** `status = 'deactive'` (không xóa cứng)
-**Migration:** `012_create_customers.sql`, `043_add_diem_giao_hang_tinh_phi_to_customers.sql`
-
-### customer_surcharge_rules
+**Indexes:** `idx_customers_diem_tra_hang` (diem_tra_hang); `idx_customers_status` (status); `idx_customers_tuyen_phuong` (tuyen_phuong); `idx_customers_supplier_code` (supplier_code)
+### driver_invoices
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | SERIAL | PRIMARY KEY |
-| ten_khach_hang | VARCHAR(255) | NOT NULL |
-| customer_id | INTEGER | NULL, FK → customers(id). NULL = mặc định đại lý |
-| fee_type | VARCHAR(30) | boc_xep, phu_phi_giao_hang, chuyen_tai |
-| zone | VARCHAR(20) | NULL, noi_thanh, tinh |
-| vehicle_class | VARCHAR(20) | NULL, le_2_5, gt_8_16, gt_16_23, pallet |
-| amount | INTEGER | NOT NULL, ≥ 0 |
-| pricing_unit | VARCHAR(10) | tan hoặc chuyen, server gán |
-| start_date | DATE | NOT NULL |
-| end_date | DATE | NULL = đang mở |
+| ma | VARCHAR(50) | NOT NULL |
+| ten_tx | VARCHAR(255) | NOT NULL |
+| ngay | DATE | NOT NULL |
+| so_xe | VARCHAR(50) | NOT NULL |
+| noi_giao | VARCHAR(255) | NOT NULL |
+| ghi_chu | TEXT | — |
+| so_hoa_don | JSONB | DEFAULT '[]'::jsonb |
+| original_filename | VARCHAR(255) | — |
+| uploaded_by | INTEGER | REFERENCES users(id) |
+| uploaded_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() |
 
-**Migration:** `056_customer_surcharge_rules.sql`
+**Indexes:** UNIQUE `idx_driver_invoices_unique` (ma, ngay, so_xe, ghi_chu); `idx_driver_invoices_ngay` (ngay); `idx_driver_invoices_so_xe` (so_xe); `idx_driver_invoices_ma` (ma); `idx_driver_invoices_uploaded_by` (uploaded_by); `idx_driver_invoices_ghi_chu` (ghi_chu)
 
-### customer_suppliers (junction N-N: customers ↔ suppliers)
+### drivers
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | SERIAL | PRIMARY KEY |
-| customer_id | INTEGER | NOT NULL, FK → customers(id) ON DELETE CASCADE |
-| supplier_id | INTEGER | NOT NULL, FK → suppliers(id) ON DELETE CASCADE |
-| created_at | TIMESTAMPTZ | DEFAULT CURRENT_TIMESTAMP |
+| user_id | INTEGER | NOT NULL REFERENCES users(id) ON DELETE RESTRICT |
+| status | VARCHAR(20) | NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'deactive')) |
+| notes | TEXT | — |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP |
 
-**Constraints:** UNIQUE(customer_id, supplier_id)
-**Indexes:** `idx_customer_suppliers_customer`, `idx_customer_suppliers_supplier`
-**Populate:** Auto-populated khi import `delivery_data` (match `ten_kh` → `customers.ten_khach_hang`, `ma_ncc` → `suppliers.supplier_code`)
-**Migration:** `019_create_customer_suppliers.sql`
+**Indexes:** UNIQUE `idx_drivers_user_id_active` (user_id); `idx_drivers_status` (status)
 
-### bang_ke_tho_batches
+### feature_scopes
 | Column | Type | Constraints |
 |--------|------|-------------|
-| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| original_filename | VARCHAR(255) | NOT NULL |
-| filename_key | VARCHAR(255) | UNIQUE, NOT NULL |
-| input_object_key | TEXT | NOT NULL |
-| input_size_bytes | INTEGER | NOT NULL |
-| uploaded_by | INTEGER | NOT NULL, FK → users(id) |
-| uploaded_at | TIMESTAMPTZ | DEFAULT NOW() |
+| id | SERIAL | PRIMARY KEY |
+| feature_code | VARCHAR(100) | UNIQUE NOT NULL |
+| feature_name | VARCHAR(200) | NOT NULL |
+| module | VARCHAR(50) | NOT NULL |
+| allowed_scope_types | VARCHAR(50)[] | NOT NULL |
+| entity_types | VARCHAR(50)[] | DEFAULT '{}' |
+| is_active | BOOLEAN | NOT NULL DEFAULT TRUE |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() |
 | updated_at | TIMESTAMPTZ | DEFAULT NOW() |
 
-### bang_ke_tho_outputs
+**Indexes:** `idx_fuel_record_images_record` (fuel_record_id)
+
+### role_permissions
 | Column | Type | Constraints |
 |--------|------|-------------|
-| id | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| batch_id | UUID | NOT NULL, FK → bang_ke_tho_batches(id) ON DELETE CASCADE |
-| house_code | VARCHAR(32) | NOT NULL, CHECK in ('nd_mcc', 'clv', 'calofic') |
-| status | VARCHAR(16) | NOT NULL, CHECK in ('pending', 'ready', 'failed'), DEFAULT 'pending' |
-| download_filename | VARCHAR(255) | NOT NULL |
-| object_key | TEXT | NULL |
-| error_message | TEXT | NULL |
-| generated_at | TIMESTAMPTZ | NULL |
+| role_id | INTEGER | NOT NULL REFERENCES roles(id) ON DELETE CASCADE |
+| permission_id | INTEGER | NOT NULL REFERENCES permissions(id) ON DELETE CASCADE |
+| created_at | TIMESTAMP WITH TIME ZONE | DEFAULT NOW() |
+
+**Table constraints:** PRIMARY KEY (role_id, permission_id)
+
+**Indexes:** `idx_role_permissions_role_id` (role_id); `idx_role_permissions_permission_id` (permission_id)
+
+### role_scope_configs
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | SERIAL | PRIMARY KEY |
+| feature_code | VARCHAR(100) | NOT NULL REFERENCES feature_scopes(feature_code) ON DELETE CASCADE |
+| role_id | INTEGER | NOT NULL REFERENCES roles(id) ON DELETE CASCADE |
+| scope_type | VARCHAR(20) | NOT NULL CHECK (scope_type IN ('all', 'owner', 'entity', 'none')) |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() |
 | updated_at | TIMESTAMPTZ | DEFAULT NOW() |
 
-**Constraints:** UNIQUE(batch_id, house_code)
-**Migration:** `046_create_bang_ke_tho.sql`
+**Table constraints:** CONSTRAINT uq_role_scope_configs UNIQUE(feature_code, role_id)
 
-**Roles:** `ADMIN`, `ACCOUNTANT`, `VIEWER`
+**Indexes:** `idx_role_scope_configs_lookup` (feature_code, role_id)
 
-**Admin account:**
-- Email: `admin@phuphatcorp.com`
-- Password: `Admin@123456`
+### roles
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | SERIAL | PRIMARY KEY |
+| name | VARCHAR(100) | NOT NULL |
+| code | VARCHAR(50) | UNIQUE NOT NULL |
+| description | TEXT | — |
+| is_active | BOOLEAN | NOT NULL DEFAULT TRUE |
+| is_system | BOOLEAN | NOT NULL DEFAULT FALSE |
+| created_at | TIMESTAMP WITH TIME ZONE | DEFAULT NOW() |
+| updated_at | TIMESTAMP WITH TIME ZONE | DEFAULT NOW() |
+
+**Indexes:** `idx_roles_code` (code); `idx_roles_is_active` (is_active)
+
+### users
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | SERIAL | PRIMARY KEY |
+| email | VARCHAR(255) | UNIQUE NOT NULL |
+| password_hash | VARCHAR(255) | NOT NULL |
+| full_name | VARCHAR(255) | NOT NULL |
+| role | VARCHAR(50) | NOT NULL DEFAULT 'VIEWER' |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+| is_active | BOOLEAN | NOT NULL DEFAULT TRUE |
+| last_login_at | TIMESTAMP | — |
+| created_by | INTEGER | REFERENCES users(id) |
+| updated_by | INTEGER | REFERENCES users(id) |
+| role_id | INTEGER | REFERENCES roles(id) |
+| username | VARCHAR(100) | NOT NULL |
+
+**Table constraints:** users_username_unique UNIQUE (username)
+
+**Indexes:** `idx_users_role` (role); `idx_users_is_active` (is_active); `idx_users_role_id` (role_id); `idx_users_username` (username)
+
+### vehicles
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | SERIAL | PRIMARY KEY |
+| plate_number | VARCHAR(20) | NOT NULL |
+| driver_name | VARCHAR(255) | NOT NULL |
+| status | VARCHAR(20) | NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'deactive')) |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| oil_change_interval_km | INTEGER | NOT NULL DEFAULT 5000 |
+| vehicle_type | VARCHAR(10) | NOT NULL DEFAULT 'Xe nhà' CHECK (vehicle_type IN ('Xe nhà', 'Xe ngoài')) |
+
+**Indexes:** UNIQUE `idx_vehicles_plate_number_active` (plate_number); `idx_vehicles_status` (status); `idx_vehicles_driver_name` (driver_name); `idx_vehicles_type` (vehicle_type)
 
 ## 7. API Endpoints
 
-Base URL: `/api`
+Base URL: `/api`. `GET /health` nằm ngoài prefix đó.
+
+### Public Endpoints — /public
+
+| Method | Path | Auth | Body/Query | Response |
+|--------|------|------|------------|----------|
+| GET | /public/invoice-tracking/:token | No (Public) | — | `{ success, data: PublicInvoiceTicket }` — Xem thông tin & chứng từ ticket qua liên kết chia sẻ |
 
 ### Authentication — /auth
 
-| Method | Path | Auth | Body | Response |
-|--------|------|------|------|----------|
-| POST | /auth/register | No | `{ username, email, password, full_name, role? }` | `{ success, message, data: { user, accessToken } }` |
-| POST | /auth/login | No | `{ username, password }` | `{ success, message, data: { user, accessToken } }` + httpOnly cookie `refreshToken` |
-| POST | /auth/refresh | Cookie | — | `{ success, message, data: { accessToken } }` |
-| POST | /auth/logout | No | — | `{ success, message }` + clear cookie |
-| GET | /auth/me | JWT | — | `{ success, message, data: user }` |
-
-### Data Scopes — /data-scopes
-| Method | Path | Auth | Notes |
-|--------|------|------|-------|
-| GET | /data-scopes/me | JWT | Lấy tóm tắt phân quyền dữ liệu của user hiện tại |
-| GET | /data-scopes/features | data_scopes.view | Danh sách tính năng và ma trận scope vai trò |
-| PUT | /data-scopes/features/:code/roles/:roleId | data_scopes.manage | Cập nhật scope_type của vai trò cho tính năng |
-| GET | /data-scopes/user-entities | data_scopes.view | Danh sách gán entity cho user |
-| POST | /data-scopes/user-entities | data_scopes.manage | Gán entity cho user |
-| DELETE | /data-scopes/user-entities/:id | data_scopes.manage | Hủy gán entity cho user |
+| Method | Path | Auth | Body | Query | Params | Response |
+|--------|------|------|------|-------|--------|----------|
+| POST | `/api/auth/register` | No | { username, email, password, full_name, role? } | — | — | { success, message, data: { user, accessToken, refreshToken } } + httpOnly cookie `refreshToken` |
+| POST | `/api/auth/login` | No | { username, password } | — | — | { success, message, data: { user: userPublic, accessToken, refreshToken } } + httpOnly cookie `refreshToken` |
+| POST | `/api/auth/refresh` | No | — | — | — | { success, message, data: { accessToken: newAccessToken, refreshToken: newRefreshToken } } + httpOnly cookie `refreshToken` |
+| POST | `/api/auth/logout` | No | — | — | — | { success, message, data: — } |
+| GET | `/api/auth/me` | JWT | — | — | — | { success, message, data: user } |
 
 ### Users — /users (ADMIN only)
 
@@ -325,34 +342,15 @@ Base URL: `/api`
 | DELETE | /users/:id | JWT + ADMIN | — | `{ success, message }` |
 | PATCH | /users/:id/password | JWT + ADMIN | `{ new_password }` | `{ success, message }` |
 
-### Route Pricing — /route-pricing
+### /customers
 
-| Method | Path | Auth | Notes |
-|--------|------|------|-------|
-| GET/POST/DELETE | /route-pricing/adjustment-periods | view/manage | Kỳ điều chỉnh global; tạo kỳ = apply % mọi version mở; chỉ xóa kỳ gần nhất (= rollback) |
-| GET | /route-pricing/geo/provinces | route_pricing.view | Master tỉnh |
-| GET | /route-pricing/geo/wards | route_pricing.view | `?province_code=` |
-| GET/POST/PUT/DELETE | /route-pricing/price-books | view/manage | Master bảng giá (tên tự do, unique active) |
-| GET/POST/PUT/DELETE | /route-pricing/routes | view/manage | Scoped `price_book_id`; `ward_code` XOR `location_text`; `note` |
-| GET/POST/PUT/DELETE | /route-pricing/groups | view/manage | Scoped `price_book_id`; `ward_codes[]` XOR `location_text` XOR residual |
-| GET/POST | /route-pricing/price-sets | view/manage | Catalog khung global. POST `{ name, pricing_mode, has_pallet, tiers[] }`. Unique tên và fingerprint khi active. |
-| PUT | /route-pricing/price-sets/:id | manage | `{ name }` luôn. `{ tiers, has_pallet }` chỉ khi chưa có nhóm gắn. |
-| POST | /route-pricing/price-sets/:id/tiers | manage | Append một bậc (kể cả bộ đang dùng). Không tự sinh giá. |
-| DELETE | /route-pricing/price-sets/:id | manage | Soft-deactive. 409 `PRICE_SET_IN_USE` nếu còn nhóm gắn. |
-| GET/POST | /route-pricing/prices | view/manage | Absolute: `adjustment_period_id` + `price_set_id` + cascade kỳ sau. Mode lấy từ bộ. Tiers `{ price_set_tier_id, price }` với `price > 0`. Ô không gửi = không insert. |
-| GET | /route-pricing/prices/matrix | view | Theo `price_book_id`. `set_tables[]` (một bảng / bộ). `weight_tables` / `truck_tables` là filter của `set_tables`. `trips.rows` luôn `[]`. Ô thiếu `null`. |
-| PUT | /route-pricing/prices/groups/:routeGroupId/absolute | manage | Sửa giá gốc + recompute cascade. Đổi `price_set_id` khi đã có version → 409 `PRICE_SET_LOCKED`. |
-| DELETE | /route-pricing/prices/groups/:routeGroupId | manage | Xóa mọi version, `price_set_id = NULL`. Không xóa nhóm tuyến. |
-| PUT | /route-pricing/prices/versions/:versionId/manual-adjust | manage | Sửa bậc đã có. `added_tiers` cho bậc bộ chưa có trên kỳ. Không xóa bậc đã có. Giá mới `> 0`. |
-| GET | /route-pricing/lookup | view | **Deferred** (501 LOOKUP_DEFERRED) — CR riêng sau |
-| GET/POST | /route-pricing/surcharges | view/manage | Phụ phí khách. POST tạo một hoặc nhiều bản ghi mở (`ten_khach_hangs` hoặc `ten_khach_hang`). |
-| GET | /route-pricing/surcharges/customer-options | view | Tên đại lý và điểm có địa chỉ, kèm tên và mã nhà cung cấp lúc đọc |
-| POST | /route-pricing/surcharges/lookup | view | Tra cứu, không ghi. `supplier_code` tùy chọn khi trùng địa chỉ. Trả điểm + 3 phí |
-| POST | /route-pricing/surcharges/:id/replace | manage | Đóng dòng cũ, mở dòng mới |
-| POST | /route-pricing/surcharges/:id/stop | manage | Đặt end_date. Không xóa bản ghi. |
-| DELETE | /route-pricing/surcharges/:id | manage | Xóa cứng. Ghi audit khi thành công. Không mở lại bản ghi cũ. |
-
-**FE:** Sidebar accordion **Quản lý giá cước vận tải**: `/route-pricing/periods`, `/sets`, `/routes` (tab Tuyến + Quản lý giá), `/matrix`, `/surcharges`. `/route-pricing` redirect theo `?tab=` cũ. Bộ giá tạo trước; form giá chỉ chọn bộ và nhập số. Bút chì điều chỉnh giá trên card kỳ. Không sửa kỳ — muốn đổi thì xóa rồi tạo lại. Phụ phí giao hàng là trang riêng, không chọn bảng giá.
+| Method | Path | Auth | Body | Query | Params | Response |
+|--------|------|------|------|-------|--------|----------|
+| GET | `/api/customers` | JWT + accounting_data.view | — | — | — | { success, message, data: data } |
+| POST | `/api/customers/upload` | JWT + accounting_data.manage | { rows, rows.*.diem_tra_hang, rows.*.ten_khach_hang, rows.*.boc_xep?, rows.*.supplier_code?, rows.*.diem_giao_hang_tinh_phi? } | — | — | { success, message, data: result } |
+| POST | `/api/customers` | JWT + accounting_data.manage | { diem_tra_hang, ten_khach_hang, tuyen_phuong?, tuyen_cu?, dia_chi_giao_hang?, diem_giao_hang_tinh_phi?, boc_xep?, supplier_code? } | — | — | { success, message, data: row } |
+| PUT | `/api/customers/:id` | JWT + accounting_data.manage | { diem_tra_hang, ten_khach_hang, tuyen_phuong?, tuyen_cu?, dia_chi_giao_hang?, diem_giao_hang_tinh_phi?, boc_xep?, supplier_code? } | — | { id } | { success, message, data: row } |
+| DELETE | `/api/customers/:id` | JWT + accounting_data.manage | — | — | { id } | { success, message, data: — } |
 
 ### Dashboard — /dashboard
 
@@ -365,6 +363,63 @@ Base URL: `/api`
 | GET | /dashboard/fuel | JWT + fuel.view | Chi phí/lít 6 tháng, tiêu thụ theo xe, chênh lệch đồng hồ vs GPS |
 
 **FE:** Trang `/` (DashboardPage) — tabs trong 1 trang, filter theo permission. Files: `frontend/src/pages/dashboard/tabs/*.tsx`, `frontend/src/api/dashboardApi.ts`, `frontend/src/hooks/useDashboard.ts`.
+
+### Data Scopes — /data-scopes
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | /data-scopes/me | JWT | Lấy tóm tắt phân quyền dữ liệu của user hiện tại |
+| GET | /data-scopes/features | data_scopes.view | Danh sách tính năng và ma trận scope vai trò |
+| PUT | /data-scopes/features/:code/roles/:roleId | data_scopes.manage | Cập nhật scope_type của vai trò cho tính năng |
+| GET | /data-scopes/user-entities | data_scopes.view | Danh sách gán entity cho user |
+| POST | /data-scopes/user-entities | data_scopes.manage | Gán entity cho user |
+| DELETE | /data-scopes/user-entities/:id | data_scopes.manage | Hủy gán entity cho user |
+
+### /delivery-data
+
+| Method | Path | Auth | Body | Query | Params | Response |
+|--------|------|------|------|-------|--------|----------|
+| POST | `/api/delivery-data/import` | JWT + delivery_data.manage | multipart `file` | — | — | { success, message, data: result } |
+| GET | `/api/delivery-data/batches` | JWT + delivery_data.view | — | { page?, limit? } | — | { success, message, data: result } |
+| GET | `/api/delivery-data/batches/:batchId` | JWT + delivery_data.view | — | — | { batchId } | { success, message, data: result } |
+| DELETE | `/api/delivery-data/batches/:batchId` | JWT + delivery_data.manage | — | — | { batchId } | { success, message, data: result } |
+| POST | `/api/delivery-data/batches/rows` | JWT + delivery_data.view | { batch_ids, batch_ids.* } | — | — | { success, message, data: result } |
+
+### /accountant-invoices
+
+| Method | Path | Auth | Body | Query | Params | Response |
+|--------|------|------|------|-------|--------|----------|
+| GET | `/api/accountant-invoices` | JWT + accounting_data.view | — | { page?, limit?, batch_id?, ngay_from?, ngay_to?, so_xe?, so_hoa_don?, trang_thai? } | — | { success, message, data: result } |
+| GET | `/api/accountant-invoices/missing-summary` | JWT + accounting_data.view | — | { batch_id?, in_catalog? } | — | { success, message, data: result } |
+| PUT | `/api/accountant-invoices/:id` | JWT + accounting_data.manage | { trang_thai, ghi_chu?, so_xe? } | — | { id } | { success, message, data: row } |
+
+### /drivers
+
+| Method | Path | Auth | Body | Query | Params | Response |
+|--------|------|------|------|-------|--------|----------|
+| GET | `/api/drivers` | JWT + catalog.view | — | — | — | { success, message, data: data } |
+| GET | `/api/drivers/available-users` | JWT + catalog.manage | — | — | — | { success, message, data: users } |
+| GET | `/api/drivers/available-vehicles` | JWT + catalog.manage | — | — | — | { success, message, data: vehicles } |
+| GET | `/api/drivers/by-vehicle/:vehicleId` | JWT | — | — | { vehicleId } | { success, message, data: drivers } |
+| POST | `/api/drivers` | JWT + catalog.manage | { user_id, vehicle_ids, vehicle_ids.*, notes? } | — | — | { success, message, data: driver } |
+| PUT | `/api/drivers/:id` | JWT + catalog.manage | { vehicle_ids, vehicle_ids.*, notes? } | — | { id } | { success, message, data: driver } |
+| PATCH | `/api/drivers/:id/toggle` | JWT + catalog.manage | — | — | { id } | { success, message, data: driver } |
+| DELETE | `/api/drivers/:id` | JWT + catalog.manage | — | — | { id } | { success, message, data: — } |
+
+### Invoice Tracking — /invoice-tracking
+
+| Method | Path | Auth | Body/Query | Response |
+|--------|------|------|------------|----------|
+| GET | /invoice-tracking | JWT + invoice_tracking.view | query: `status`, `date_from`, `date_to`, `search`, `ghi_chu`, `page`, `limit` | `{ success, data: { items: InvoiceTrackingTicket[], pagination } }` |
+| GET | /invoice-tracking/statistics | JWT + invoice_tracking.view | query: `date_from`, `date_to`, `bien_so`, `driver_id`, `tai_xe`, `ghi_chu` | `{ success, data: InvoiceTrackingStatisticsResult }` — Thống kê theo tài xế |
+| GET | /invoice-tracking/:id | JWT + invoice_tracking.view | — | `{ success, data: InvoiceTrackingTicket }` |
+| GET | /invoice-tracking/:id/history | JWT + invoice_tracking.view | — | `{ success, data: InvoiceTrackingHistoryItem[] }` — Lịch sử thao tác |
+| GET | /invoice-tracking/:id/copyable-tickets | JWT + invoice_tracking.view | — | `{ success, data: CopyableTicket[] }` — Danh sách chuyến cùng ngày để sao chép |
+| GET | /invoice-tracking/files/:filename | No (Public) | — | Serve tệp từ MinIO bucket (redirect 302 sang presigned URL 24h) |
+| POST | /invoice-tracking/:id/share | JWT + invoice_tracking.view | — | `{ success, data: { share_token } }` — Tạo / lấy mã chia sẻ công khai |
+| POST | /invoice-tracking/:id/copy-documents | JWT + invoice_tracking.view | `{ source_ticket_id, driver_note? }` | `{ success, data: InvoiceTrackingTicket }` — Sao chép chứng từ không nhân bản tệp |
+| POST | /invoice-tracking/:id/documents | JWT + invoice_tracking.view | `multipart/form-data` (files, driver_note) | `{ success, data: InvoiceTrackingTicket }` — Tải tệp lên MinIO |
+| POST | /invoice-tracking/batch-finish | JWT + invoice_tracking.manage | `{ ticket_ids: number[] }` | `{ success, data: BatchFinishResult }` — Phê duyệt hoàn thành hàng loạt |
+| PUT | /invoice-tracking/:id/review | JWT + invoice_tracking.manage | `{ action: 'finish' \| 'request_supplement', supplement_note? }` | `{ success, data: InvoiceTrackingTicket }` |
 
 ### System
 
@@ -384,65 +439,6 @@ Frontend: accordion **Quản lý giá cước vận tải** → `/route-pricing/
 | PUT | /dispatch-schedules/:id | JWT + dispatch.manage | `{ bien_so, tai_xe?, ma_chuyen?, diem_nhan, diem_tra, gio_nhan, ghi_chu?, vehicle_id?, trip_code_id? }` | `{ success, data: DispatchSchedule }` |
 | DELETE | /dispatch-schedules/:id | JWT + dispatch.manage | — | `{ success, message }` |
 
-### Drivers — /drivers
-
-| Method | Path | Auth | Body/Query | Response |
-|--------|------|------|------------|----------|
-| GET | /drivers/by-vehicle/:vehicleId | JWT | — | `{ success, data: VehicleDriver[] }` — Danh sách tài xế được gán cho xe (qua `driver_vehicles`) |
-
-### Invoice Tracking — /invoice-tracking
-
-| Method | Path | Auth | Body/Query | Response |
-|--------|------|------|------------|----------|
-| GET | /invoice-tracking | JWT + invoice_tracking.view | query: `status`, `date_from`, `date_to`, `search`, `ghi_chu`, `page`, `limit` | `{ success, data: { items: InvoiceTrackingTicket[], pagination } }` |
-| GET | /invoice-tracking/statistics | JWT + invoice_tracking.view | query: `date_from`, `date_to`, `bien_so`, `driver_id`, `tai_xe`, `ghi_chu` | `{ success, data: InvoiceTrackingStatisticsResult }` — Thống kê theo tài xế |
-| GET | /invoice-tracking/:id | JWT + invoice_tracking.view | — | `{ success, data: InvoiceTrackingTicket }` |
-| GET | /invoice-tracking/:id/history | JWT + invoice_tracking.view | — | `{ success, data: InvoiceTrackingHistoryItem[] }` — Lịch sử thao tác |
-| GET | /invoice-tracking/:id/copyable-tickets | JWT + invoice_tracking.view | — | `{ success, data: CopyableTicket[] }` — Danh sách chuyến cùng ngày để sao chép |
-| GET | /invoice-tracking/files/:filename | No (Public) | — | Serve tệp từ MinIO bucket (redirect 302 sang presigned URL 24h) |
-| POST | /invoice-tracking/:id/share | JWT + invoice_tracking.view | — | `{ success, data: { share_token } }` — Tạo / lấy mã chia sẻ công khai |
-| POST | /invoice-tracking/:id/copy-documents | JWT + invoice_tracking.view | `{ source_ticket_id, driver_note? }` | `{ success, data: InvoiceTrackingTicket }` — Sao chép chứng từ không nhân bản tệp |
-| POST | /invoice-tracking/:id/documents | JWT + invoice_tracking.view | `multipart/form-data` (files, driver_note) | `{ success, data: InvoiceTrackingTicket }` — Tải tệp lên MinIO |
-| POST | /invoice-tracking/batch-finish | JWT + invoice_tracking.manage | `{ ticket_ids: number[] }` | `{ success, data: BatchFinishResult }` — Phê duyệt hoàn thành hàng loạt |
-| PUT | /invoice-tracking/:id/review | JWT + invoice_tracking.manage | `{ action: 'finish' \| 'request_supplement', supplement_note? }` | `{ success, data: InvoiceTrackingTicket }` |
-
-### Public Endpoints — /public
-
-| Method | Path | Auth | Body/Query | Response |
-|--------|------|------|------------|----------|
-| GET | /public/invoice-tracking/:token | No (Public) | — | `{ success, data: PublicInvoiceTicket }` — Xem thông tin & chứng từ ticket qua liên kết chia sẻ |
-
-### Bang Kê Thô 5 Nhà — /bang-ke-tho
-
-| Method | Path | Auth | Body/Query | Response |
-|--------|------|------|------------|----------|
-| GET | /bang-ke-tho/batches | JWT + accounting_data.view | query: `page`, `limit`, `q` | `{ success, data: PaginatedBangKe }` |
-| POST | /bang-ke-tho/batches | JWT + accounting_data.manage | `multipart/form-data` (`file`), query: `overwrite` | `{ success, data: BangKeBatch }` |
-| GET | /bang-ke-tho/batches/:id/files/input | JWT + accounting_data.view | — | Stream binary file `.xlsx` gốc |
-| POST | /bang-ke-tho/batches/:id/process-nd-mcc | JWT + accounting_data.manage | — | `{ success, data: { batch_id, house_code, status, download_filename, generated_at, stats } }` |
-| GET | /bang-ke-tho/batches/:id/files/:houseCode | JWT + accounting_data.view | — | Stream binary file `.xlsx` output của nhà (`nd_mcc`, `clv`, `calofic`) |
-| DELETE | /bang-ke-tho/batches/:id | JWT + accounting_data.manage | — | `{ success, data: { id } }` |
-
-- **ND-MCC nguồn dòng:** Sheet `MCC` và `NDFC`. Xóa `VFM`, `VFM (2)`, `CLV`, `STHI`, `STHI (uni)`, `NPP`, `TINH`. Giữ sheet còn lại, thêm 8 sheet: `MCC (goc)`, `MCC-clv`, `MCC (uni)`, `MCC (tt)`, `NDFC (goc)`, `NDFC-clv`, `NDFC (uni)`, `NDFC (tt)`.
-- **Sổ giá ND-MCC:** MCC-clv và MCC (uni) dùng `MCC GH`. MCC (tt) dùng `MCC (tt)` hoặc `MCC (tt) GHÉP ND`. NDFC-clv và NDFC (uni) dùng `CLF`. NDFC (tt) dùng `NDFC (TT)`. Khung `Pallet` lấy `pallet_trip_price` của sổ đó, không khớp bậc tấn. Thành tiền vẫn nhân tấn/chuyến với đơn giá.
-- **Address Matcher (`addressMatcher.ts`):** Chuẩn hóa khoảng trắng/dấu, lọc "thửa đất số ...", so khớp chuỗi con & token overlap >= 75%. Partial match tô nền vàng trên 8 sheet kết quả ND-MCC.
-- **Bố cục 2 bảng trên sheet:** Bảng A (>2.5 tấn, có dòng tổng xe và TỔNG CỘNG A =SUM/2) và Bảng B (≤2.5 tấn, TỔNG CỘNG B =SUM), phân tách bởi 6 dòng trống.
-
-### Customers — /customers
-
-| Method | Path | Auth | Body/Query | Response |
-|--------|------|------|------------|----------|
-| GET | /customers | JWT + accounting_data.view | — | `{ success, data: Customer[] }` (only active records) |
-| POST | /customers | JWT + accounting_data.manage | `{ diem_tra_hang, ten_khach_hang, tuyen_phuong?, tuyen_cu?, dia_chi_giao_hang?, diem_giao_hang_tinh_phi?, boc_xep? }` | `{ success, data: Customer }` |
-| PUT | /customers/:id | JWT + accounting_data.manage | same as POST | `{ success, data: Customer }` |
-| DELETE | /customers/:id | JWT + accounting_data.manage | — | `{ success, message }` (soft delete: status→'deactive') |
-| POST | /customers/upload | JWT + accounting_data.manage | `{ rows: UploadCustomerRow[] }` | `{ success, data: { inserted: number } }` or `{ success: false, errors: [] }` (HTTP 422) |
-
-**Error codes:**
-- 409: `diem_tra_hang` đã tồn tại (duplicate check trên active records)
-- 404: Không tìm thấy customer (hoặc đã bị deactivate)
-- 422: Upload validation errors (all-or-nothing: nếu có lỗi thì không save bất kỳ dòng nào)
-
 ### Response Format Convention
 
 ```typescript
@@ -460,35 +456,68 @@ Frontend: accordion **Quản lý giá cước vận tải** → `/route-pricing/
 
 | Middleware | File | Description |
 |-----------|------|-------------|
-| `authenticateToken` | auth.ts | Verify JWT from `Authorization: Bearer <token>` header. 401 if missing, 403 if invalid/expired. |
+| `authenticateToken` | auth.ts | Verify JWT from `Authorization: Bearer <token>`. 401 if missing or invalid. |
+| `requirePermission(code)` | auth.ts | Check `req.user.permissions` contains `code`. 403 if missing. |
 | `authorizeRoles(...roles)` | auth.ts | Check `req.user.role` against allowed roles. 403 if insufficient. |
 | `validate(validations[])` | validate.ts | Run express-validator chains, return 400 with error list if invalid. |
 | `errorHandler` | errorHandler.ts | Global catch-all, log + return 500. |
 
-**Auth flow:** `authenticateToken` → `authorizeRoles(...roles)` → controller
+**Auth flow trên route:** `authenticateToken` rồi `requirePermission(code)` rồi controller. `authorizeRoles` vẫn có trong middleware cho chỗ gọi trực tiếp.
 
-## 9. Frontend Routes (React Router v6)
+## 9. Frontend Routes
 
-| Path | Layout | Auth | Description |
-|------|--------|------|-------------|
+| Path | Layout | Auth | Màn hình |
+|------|--------|------|----------|
+| /support | — | Public | SupportPage |
+| /privacy | — | Public | PrivacyPolicyPage |
+| /privacy-policy | — | Public | Redirect sang /privacy |
+| /shared/invoice-tracking/:token | — | Public | PublicTicketViewPage |
 | /login | AuthLayout | Public | LoginPage |
 | /register | AuthLayout | Public | RegisterPage |
 | / | MainLayout | Protected | DashboardPage |
-| /accounting | MainLayout | Protected | Placeholder |
-| /reports | MainLayout | Protected | Placeholder |
-| /settings | MainLayout | Protected | Placeholder |
-| /delivery-data | MainLayout | Protected | DeliveryDataPage |
-| /vehicle-data/trip-codes | MainLayout | Protected | TripCodePage |
-| /vehicle-data/vehicles | MainLayout | Protected | VehiclePage |
-| /vehicle-data/drivers | MainLayout | Protected | DriverPage |
-| /dispatch/schedule | MainLayout | Protected | SchedulePage (Bảng điều phối xe) |
-| /accounting-data/weight-adjustments | MainLayout | Protected | WeightAdjustmentPage (Điều chỉnh trọng lượng) |
-| /accounting-data/customers | MainLayout | Protected | CustomersPage (Danh sách khách nhận hàng) |
-| * | — | — | Navigate to / |
+| /accounting | MainLayout | Protected | PlaceholderPage |
+| /reports | MainLayout | Protected | PlaceholderPage |
+| /settings | MainLayout | Protected | PlaceholderPage |
+| /users | MainLayout | Protected | UserManagementPage |
+| /roles | MainLayout | Protected | RoleManagementPage |
+| /permissions | MainLayout | Protected | PermissionManagementPage |
+| /settings/data-scopes | MainLayout | Protected | DataScopeManagementPage |
+| /settings/workflows | MainLayout | Protected | WorkflowManagementPage |
+| /logs | MainLayout | Protected | AuditLogPage |
+| /delivery-data/5-houses | MainLayout | Protected | DeliveryDataPage |
+| /delivery-data/rice | MainLayout | Protected | RiceDeliveryDataPage |
+| /vehicle-data/driver-invoices | MainLayout | Protected | DriverInvoicesPage |
+| /vehicle-data/inspections | MainLayout | Protected | InspectionPage |
+| /vehicle-data/oil-changes | MainLayout | Protected | OilChangePage |
+| /vehicle-data/insurances | MainLayout | Protected | InsurancePage |
+| /vehicle-data/repairs | MainLayout | Protected | RepairPage |
+| /dispatch/schedule | MainLayout | Protected | SchedulePage |
+| /invoice-tracking | MainLayout | Protected | InvoiceTrackingPage |
+| /accounting-data/weight-adjustments | MainLayout | Protected | WeightAdjustmentPage |
+| /accounting-data/customers | MainLayout | Protected | CustomersPage |
+| /accounting-data/delivery-import | MainLayout | Protected | DeliveryImportPage |
+| /accounting-data/invoice-matching | MainLayout | Protected | InvoiceMatchingPage |
+| /accounting-data/bang-ke-tho | MainLayout | Protected | BangKeThoPage |
+| /accounting-data/reconcile-jobs | MainLayout | Protected | Redirect sang /jobs/reconcile |
+| /jobs/reconcile | MainLayout | Protected | ReconcileJobPage |
+| /fuel-data | MainLayout | Protected | FuelDataPage |
+| /fuel-data/statistics | MainLayout | Protected | FuelStatisticsPage |
+| /catalog/vehicles | MainLayout | Protected | VehicleCatalogPage |
+| /catalog/vehicles/:id | MainLayout | Protected | VehicleDetailPage |
+| /catalog/inner-city-customers | MainLayout | Protected | InnerCityCustomerPage |
+| /catalog/suppliers | MainLayout | Protected | SupplierCatalogPage |
+| /catalog/promo-items | MainLayout | Protected | PromoItemCatalogPage |
+| /catalog/delivery-points | MainLayout | Protected | DeliveryPointCatalogPage |
+| /catalog/drivers | MainLayout | Protected | DriverCatalogPage |
+| /route-pricing | MainLayout | Protected | RoutePricingRedirect |
+| /route-pricing/periods | MainLayout | Protected | RoutePricingPage |
+| /route-pricing/sets | MainLayout | Protected | RoutePricingPage |
+| /route-pricing/routes | MainLayout | Protected | RoutePricingPage |
+| /route-pricing/matrix | MainLayout | Protected | RoutePricingPage |
+| /route-pricing/surcharges | MainLayout | Protected | CustomerSurchargesPage |
+| * | — | — | Redirect sang / |
 
-**Router pattern:** Dùng `BrowserRouter` + JSX `<Routes>` (KHÔNG dùng `createBrowserRouter` vì gây lỗi React context với AuthProvider).
-
-**AuthProvider placement:** Phải nằm bên trong `<BrowserRouter>` trong `App.tsx`. Navigation xử lý tại page level thông qua `useNavigate()`, KHÔNG trong AuthProvider.
+**Router:** `BrowserRouter` và JSX `<Routes>`. `AuthProvider` nằm trong `<BrowserRouter>`. Điều hướng nằm ở page, qua `useNavigate()`.
 
 ## 10. Authentication Flow
 
@@ -528,26 +557,19 @@ Tất cả components dùng Tailwind CSS, hỗ trợ `className` prop, forwardRe
 # Backend
 cd backend
 npm install
-npm run dev              # tsx watch src/server.ts → http://localhost:3021
+npm run dev
 
 # Frontend
 cd frontend
 npm install
-npm run dev              # vite → http://localhost:5173
-
-# Tạo admin user
-cd backend && npx tsx src/scripts/create-admin.ts
-
-# Chạy migration
-psql -h 72.61.124.36 -p 5443 -U postgres -d test_PhuPhatCorp -f src/migrations/001_create_users.sql
-psql -h 72.61.124.36 -p 5443 -U postgres -d test_PhuPhatCorp -f src/migrations/012_create_customers.sql
+npm run dev
 ```
 
 ## 13. Key Conventions
 
 - **Files:** camelCase (functions, vars), PascalCase (components, classes), snake_case (DB)
-- **API response:** Luôn wrap trong `{ success, message, data }` — frontend authApi unwrap: `response.data.data`
-- **Password:** bcrypt hashSync (salt rounds = 10), KHÔNG bao giờ trả `password_hash` về client
-- **JWT:** Cùng secret cho cả access + refresh token
-- **CORS:** Whitelist hardcoded trong `app.ts` gồm: `localhost:5173`, `localhost:5174`, `phuphatcorp.scrapetool.cloud`. Dùng function validator `origin: (origin, callback)` để support multiple origins. Requests không có origin header (curl, mobile) được phép. Không dùng `CORS_ORIGIN` env var nữa — whitelist cứng dễ maintain hơn.
-- **.env:** KHÔNG commit git
+- **API response:** Wrap trong `{ success, message, data }`. Frontend unwrap qua `response.data.data`
+- **Password:** bcrypt hashSync (salt rounds = 10). Không trả `password_hash` về client
+- **JWT:** Cùng secret cho access token và refresh token
+- **CORS:** `backend/src/app.ts` dùng hàm `origin`. Origin nằm trong mảng `allowedOrigins` được phép. Mọi `http://localhost` và `http://127.0.0.1` kèm port bất kỳ được phép. Request không có header Origin được phép. Không dùng `CORS_ORIGIN`
+- **.env:** Không commit git

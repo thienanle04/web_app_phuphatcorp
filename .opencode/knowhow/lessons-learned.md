@@ -51,17 +51,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Files:** `backend/src/services/dispatchScheduleService.ts`, `backend/src/__tests__/dispatchScheduleService.test.ts`, `frontend/src/components/dispatch/ImportDispatchExcelModal.tsx`, `frontend/src/pages/dispatch/SchedulePage.tsx`, `frontend/src/i18n/vi.json`, `frontend/src/i18n/en.json`.
 
 ---
-## Bug: `Cannot find module 'exceljs'` khi khởi động backend
-- **Ngày:** 2026-09-20
-- **Severity:** High
-- **Feature liên quan:** Backend server startup / Service `bangKeTho`
-- **Triệu chứng:** Khi chạy `npm run dev` trong `backend`, server bị crash ngay lập tức với lỗi `Error: Cannot find module 'exceljs'`.
-- **Root cause:** Package `exceljs` đã được thêm vào file `package.json` khi phát triển tính năng xử lý Bảng kê thô, nhưng môi trường local chưa chạy `npm install` để kéo thư viện về thư mục `node_modules`.
-- **Fix:** Chạy `npm install` trong thư mục `backend` để cài đặt đầy đủ `exceljs` và các dependencies liên quan.
-- **File sửa:** `backend/package-lock.json`
-- **Cần chú ý:** Khi commit / pull code có bổ sung dependency mới vào `package.json`, luôn cần đảm bảo `npm install` được thực thi trước khi khởi động dev server.
-
----
 ## Lesson / Update: Đồng bộ Ma trận Quản lý quyền theo cấu trúc Menu Sidebar mới
 - **Ngày:** 2026-09-20
 - **Severity:** Low
@@ -87,18 +76,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
      - Địa chỉ khách hàng trong thực tế có rất nhiều biến thể (ví dụ có/không có "thửa đất số ...", dấu cách, dấu gạch nối). Việc chỉ so khớp chính xác (`===`) sẽ bỏ sót nhiều khách hàng đã có trong cơ sở dữ liệu.
      - Kết hợp chuẩn hóa dấu + loại bỏ tiền tố thửa đất + substring containment + token overlap (ngưỡng 75%), đồng thời tô màu cảnh báo `#FFF2CC` kèm Note trên ô địa chỉ khi khớp dạng partial match giúp kế toán kiểm soát 100% độ chính xác mà không tốn công nhập liệu lại.
 - **Files liên quan:** `backend/src/services/bangKeTho/`, `backend/src/utils/addressMatcher.ts`, `backend/src/utils/routeMatcher.ts`.
-
----
-## Bug: Nút xóa phụ phí bị mất do lọt ra ngoài vùng hiển thị trong bảng phụ phí
-- **Ngày:** 2026-09-18
-- **Severity:** Medium
-- **Feature liên quan:** Phụ phí giao hàng (`CustomerSurchargesPage.tsx`)
-- **Triệu chứng:** Người dùng vào trang Phụ phí giao hàng thì không thấy nút Xóa phụ phí trên các dòng đang mở, chỉ thấy nút Đổi giá và Ngừng áp dụng.
-- **Root cause:** Cột `actions` trong `DataGrid` được cấu hình `width: 112`. Các ô dữ liệu `<td>` có padding ngang `px-3` (24px) và `overflow-hidden`. Trong khi đó, dòng phụ phí đang áp dụng chứa 3 nút thao tác (Đổi giá, Ngừng, Xóa) với mỗi nút kích thước `size-8` (32px) và khoảng cách `gap-0.5`, tổng chiều rộng ~100px. Chiều rộng lọt lòng chỉ còn 112 - 24 = 88px (< 100px), khiến nút Xóa nằm ở cuối cùng bị tràn ra ngoài và bị `overflow-hidden` cắt mất.
-- **Fix:** Tăng độ rộng cột `actions` từ 112 lên 140px, bổ sung `shrink-0` cho các wrapper `DataGridTip` và phần tử `button` để chống co giãn flexbox.
-- **File sửa:** `frontend/src/pages/route-pricing/CustomerSurchargesPage.tsx`
-- **Cần chú ý:** Khi định nghĩa cột `actions` có N nút thao tác trong `DataGrid`, cần tính toán: `width >= (N * button_width) + ((N - 1) * gap) + cell_padding (24px) + margin`. Với 3 nút 32px thì tối thiểu cần 128px - 140px.
-
 
 ---
 ## Bug: Phụ phí lệch 1 ngày khi chọn ngày bắt đầu
@@ -215,16 +192,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
   - Nâng cấp `DocumentViewerModal` thành Lightbox Gallery Viewer đầy đủ tính năng: nút điều hướng Back (←) / Next (→), phím tắt bàn phím (`ArrowLeft`, `ArrowRight`, `Escape`), chỉ số ảnh (e.g. `2 / 5`).
   - Xây dựng trang độc lập `PublicTicketViewPage.tsx` (`/shared/invoice-tracking/:token`) hỗ trợ responsive mobile-first, Dark/Light theme toggle, và nút tải tất cả tài liệu.
 - **Files liên quan:** `054_add_share_token_to_dispatch_schedules.sql`, `invoiceTrackingService.ts`, `invoiceTrackingController.ts`, `publicRoutes.ts`, `invoiceTracking.ts`, `routes/index.ts`, `PublicTicketViewPage.tsx`, `DocumentViewerModal.tsx`, `TicketDetailModal.tsx`, `Router.tsx`.
-
----
-## Bug: `FileText is not defined` in InvoiceTrackingPage
-- **Ngày:** 2026-09-12
-- **Severity:** Low
-- **Feature liên quan:** Theo dõi hóa đơn (`InvoiceTrackingPage`)
-- **Triệu chứng:** Khi xem danh sách ticket trên mobile view, ứng dụng gặp lỗi `Uncaught ReferenceError: FileText is not defined`.
-- **Root cause:** Thiếu `FileText` trong danh sách import từ thư viện `lucide-react` tại `InvoiceTrackingPage.tsx`.
-- **Fix:** Bổ sung `FileText` vào import `lucide-react`.
-- **Files sửa:** `frontend/src/pages/invoice-tracking/InvoiceTrackingPage.tsx`.
 
 ---
 ## Change: Dashboard Grid Hub Navigation Architecture for Mobile (`web_v2_mobile`)
@@ -360,17 +327,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Files sửa:** `backend/src/services/invoiceTrackingService.ts`, `backend/src/config/database.ts`, `backend/src/middleware/auth.ts`, `backend/src/migrations/053_perf_invoice_tracking_index.sql`.
 
 ---
-## Bug: Mobile Flutter Dio Timeout & Dynamic Tab Lazy Loading
-- **Ngày:** 2026-09-08
-- **Severity:** High
-- **Feature liên quan:** Mobile Flutter Client (`web_v2_mobile`), Invoice Tracking API
-- **Triệu chứng:** Khi mở màn hình trên điện thoại, danh sách hóa đơn báo "Lỗi kết nối máy chủ khi lấy danh sách hóa đơn", terminal backend ngắt kết nối do client timeout.
-- **Root cause:** Dio timeout mặc định quá ngắn (15s) không đủ cho các tác vụ tổng hợp dữ liệu DB từ xa. `IndexedStack` khởi tạo đồng thời màn hình hóa đơn ngay từ lúc vào app gây nghẽn kết nối.
-- **Fix:** Tăng timeout lên 45s, tối ưu hóa SharedPreferences cho TokenStorage, và chuyển đổi hiển thị tab theo nhu cầu (Lazy render).
-- **Files sửa:** `mobile/web_v2_mobile/lib/core/api/api_client.dart`, `mobile/web_v2_mobile/lib/core/storage/token_storage.dart`, `mobile/web_v2_mobile/lib/data/services/invoice_tracking_service.dart`, `mobile/web_v2_mobile/lib/screens/home/home_screen.dart`.
-- **Verify:** `flutter test` & `flutter analyze` pass 100%.
-
----
 ## Bug: CORS Preflight block Flutter Web / Dynamic Localhost Ports
 - **Ngày:** 2026-09-08
 - **Severity:** High
@@ -423,52 +379,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
   - Tạo migration `050_cleanup_transport_permissions.sql` dọn dẹp `transport.*` và bổ sung đầy đủ i18n `modules` & `permCodes` trong `vi.json` / `en.json`.
 - **Files sửa:** `MainLayout.tsx`, `ReconcileJobPage.tsx`, `DashboardPage.tsx`, `innerCityCustomers.ts`, `promoItems.ts`, `deliveryPoints.ts`, `vi.json`, `en.json`, `050_cleanup_transport_permissions.sql`.
 
----
-## Bug: `AssignEntityModal` error "Vui lòng chọn tính năng" on submit
-- **Ngày:** 2026-08-31
-- **Severity:** High
-- **Feature liên quan:** Data Scope Management — Modal Gán đối tượng
-- **Triệu chứng:** Người dùng thấy ô Tính năng đã hiển thị giá trị nhưng khi bấm Submit form lại báo lỗi "Vui lòng chọn tính năng".
-- **Root cause:** `useState(selectedFeatureCode)` khởi tạo giá trị rỗng khi modal mount lúc `features` là `[]`. Thẻ `<select>` trong DOM hiển thị option đầu tiên nhưng React state không tự động cập nhật nếu không có event `onChange`.
-- **Fix:** Bổ sung `useEffect` đồng bộ `selectedFeatureCode` và `selectedEntityType` tự động mỗi khi `isOpen = true` và `features` nạp xong dữ liệu.
-- **File sửa:** `frontend/src/components/admin/data-scope/AssignEntityModal.tsx`
-- **Cần chú ý:** Trong modal form, nếu khởi tạo state phụ thuộc vào async props (danh sách options), luôn dùng `useEffect` hoặc controlled default value đồng bộ khi modal mở ra để tránh tình trạng lệch state giữa React và DOM.
-
----
-## Bug: `vehicles.map is not a function` in AssignEntityModal
-- **Ngày:** 2026-08-31
-- **Severity:** High
-- **Feature liên quan:** Data Scope Management — Modal Gán đối tượng
-- **Triệu chứng:** Mở modal gán đối tượng bị crash với lỗi `TypeError: vehicles.map is not a function`.
-- **Root cause:** API `/vehicles` trả về object phân trang `{ vehicles: [...], total, page, limit }` trong `res.data.data`. Hook React Query đọc trực tiếp `res.data.data` thay vì trích xuất `res.data.data?.vehicles`, khiến biến `vehicles` nhận giá trị Object thay vì Array.
-- **Fix:** Đọc `res.data.data?.vehicles || []` kèm kiểm tra an toàn `Array.isArray()`.
-- **File sửa:** `frontend/src/components/admin/data-scope/AssignEntityModal.tsx`
-- **Cần chú ý:** Luôn kiểm tra cấu trúc response của các API danh mục (một số trả về array trực tiếp, một số bọc trong object phân trang `{ items: [] }` hoặc `{ vehicles: [] }`).
-
----
-## Bug: User Management hiện `users.roles.IEU_PHOI_XE` thay vì tên vai trò
-- **Ngày:** 2026-08-06
-- **Severity:** Medium
-- **Feature liên quan:** Quản lý người dùng — list + detail badge role
-- **Triệu chứng:** Role tùy chỉnh (Điều phối xe, Kế toán viên, …) hiện raw i18n key `users.roles.<CODE>` trên UI.
-- **Root cause:** FE dùng `t(\`users.roles.${user.role}\`)` trong khi `vi.json`/`en.json` chỉ có ADMIN/ACCOUNTANT/VIEWER. Key thiếu → `t()` trả về chính key. API đã trả `role_name` (`roles.name`) nhưng FE không dùng.
-- **Fix:** Helper `getUserRoleLabel` — ưu tiên `role_name`, fallback i18n nếu có, else `role` code. Dùng ở `UserManagementPage` + `UserDetailModal`.
-- **File sửa:** `frontend/src/utils/userRoleLabel.ts`, `UserManagementPage.tsx`, `UserDetailModal.tsx`
-- **Regression test:** `frontend/src/utils/userRoleLabel.test.ts` (tsx assert)
-- **Cần chú ý:** Không hardcode mọi role code vào i18n — role động lấy từ DB. Mọi chỗ hiển thị role user nên dùng `role_name` / `getUserRoleLabel`, không `t(users.roles.*)`.
-
----
-
-## Bug: Create user luôn nhận role VIEWER dù chọn role khác
-- **Ngày:** 2026-08-06
-- **Severity:** High
-- **Feature liên quan:** User Management — Create User (admin panel)
-- **Triệu chứng:** Tạo user mới chọn bất kỳ role nào → UI luôn hiện VIEWER; phải Edit/Update lại mới đúng.
-- **Root cause:** FE `CreateUserModal` chỉ gửi `role_id`. `userService.createUser` set `users.role = data.role || VIEWER` mà không sync `roles.code` từ `role_id`. Cột legacy `role` (dùng cho badge UI + `authorizeRoles`) luôn VIEWER; `role_id` thì đúng. `updateUser` đã sync `role` từ `roles.code` nên sửa sau khi tạo thì hết lỗi.
-- **Fix:** Khi validate `role_id`, SELECT thêm `code`; gán `role = roleFromId || data.role || VIEWER` trước INSERT — mirror pattern `updateUser`.
-- **File sửa:** `backend/src/services/userService.ts` (createUser)
-- **Regression test:** `backend/src/__tests__/userService.test.ts` — create với chỉ `role_id=ACCOUNTANT` → INSERT `role='ACCOUNTANT'`; không có role_id → VIEWER.
-- **Cần chú ý:** Hệ thống còn dual-write `users.role` (VARCHAR) + `users.role_id` (FK). Mọi path create/update phải sync cả hai; FE hiện tại chỉ gửi `role_id`.
 
 ---
 
@@ -483,18 +393,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Regression test:** Node script verify 210 groups, 0 sort errors (displayed). TypeScript typecheck pass, lint pass.
 - **Cần chú ý:** Khi sort key và display key khác nhau (do truncation/slicing), luôn sort theo display key. Verify sort bằng cách so sánh giá trị **hiển thị** trong output, không phải giá trị source. Verification script trước đó check full vehicle strings nên report 0 errors — sai vì không phản ánh output thực tế.
 
----
-
-## Bug: Delivery Data Processing — Output rows duplicated N×N and vehicle sort broken
-- **Ngày:** 2026-04-26
-- **Severity:** Critical
-- **Feature liên quan:** Xử lý Data Giao Hàng (DeliveryDataPage) — 5 Nhà Processing Flow
-- **Triệu chứng:** File output "Processed" sheet có rows bị duplicate (mỗi group N rows → N² rows trong output), và thứ tự các khối theo biển số xe không tăng dần.
-- **Root cause:** Dòng 715 trong `processDeliveryData.ts` gọi `outputRows.push(...group.rows.sort((a,b) => compareVehicleNumbers(...)).map(row => mapRowToOutput(...)))` BÊN TRONG `group.rows.forEach()`. Hai vấn đề: (1) Push toàn bộ N rows của group trong MỖI iteration → N×N rows; (2) `sort()` in-place thay đổi thứ tự array đang được iterate bởi forEach.
-- **Fix:** Thay dòng 715 bằng `outputRows.push(outputRow)` — push 1 row đã được tạo ở dòng 714, giống cách factory sheets hoạt động (dòng 733).
-- **File sửa:** `frontend/src/utils/processDeliveryData.ts:715`
-- **Regression test:** TypeScript typecheck pass, lint pass.
-- **Cần chú ý:** Không bao giờ gọi `.sort()` trên array đang được iterate bằng `.forEach()` — sort in-place phá thứ tự iteration. Không push nhiều rows bên trong forEach khi logic chỉ cần push 1 row per iteration.
 
 ---
 
@@ -514,54 +412,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 
 ---
 
-## Bug: POST /api/users 500 — username NOT NULL violation khi tạo user từ admin panel
-- **Ngày:** 2026-04-20
-- **Severity:** High
-- **Feature liên quan:** User Management — Create User (admin panel)
-- **Triệu chứng:** `POST /api/users` → 500 Internal Server Error. Không tạo được user mới từ form admin.
-- **Root cause:** Migration `008_add_username_to_users.sql` thêm column `username VARCHAR(100) NOT NULL UNIQUE`, nhưng `userService.createUser()` INSERT query không truyền `username` → PostgreSQL throw NOT NULL violation. `authService.createUser()` (register flow) không bị ảnh hưởng vì đã truyền username.
-- **Fix:** Thêm input `username` vào form Create User (admin nhập thủ công). Backend: `userService.createUser()` nhận `username` từ request body, INSERT trực tiếp. Thêm validation username uniqueness check cả ở create lẫn update. Frontend: thêm field `username` vào CreateUserModal, EditUserModal, và cột `username` vào UserManagementPage table.
-- **Bug kèm theo:** `getUsers()` SELECT query thiếu `u.username` → column hiển thị trống trong UI dù data đã có trong DB. Fix: thêm `u.username` vào SELECT list.
-- **Regression test:** POST /api/users với valid ADMIN token + `{email, password, full_name, username, role_id}` → HTTP 201, user được tạo với đúng username đã nhập.
-- **Cần chú ý:** (1) Bất kỳ khi nào thêm `NOT NULL` column mới vào bảng `users`, phải kiểm tra tất cả service methods (không chỉ authService) đang INSERT vào bảng đó. `userService.createUser` và `authService.createUser` là hai paths tách biệt. (2) Khi thêm column mới vào bảng, phải nhớ thêm column đó vào SELECT list trong tất cả query (`getUsers`, `getUserById`, ...) để data được trả về frontend.
-
----
-
-### 400 Bad Request khi fetch delivery-schedules với limit > 100
-- **Ngày:** 2026-04-19
-- **Severity:** High
-- **Feature liên quan:** Xử lý Data Gạo (RiceDeliveryDataPage)
-- **Triệu chứng:** `GET /api/delivery-schedules?limit=5000` trả về 400 Bad Request
-- **Root cause:** `deliveryScheduleListSchema` (backend) validate `limit` với `max: 100`. Frontend dùng `limit: '5000'` để cố lấy tất cả data 1 lần → vượt giới hạn
-- **Fix:** `riceDeliveryApi.ts` — đổi `limit: '5000'` → `limit: '100'` ở **cả hai chỗ** (request đầu tiên và vòng lặp pagination). Dùng pagination loop fetch nhiều page × 100 records thay vì 1 request lớn
-- **Regression test:** N/A (integration bug)
-- **Cần chú ý:** Khi tái sử dụng API có sẵn, luôn kiểm tra validation schema trên backend (đặc biệt `max` cho `limit`). Không giả định backend chấp nhận limit lớn tùy ý.
-
-### CORS block local dev khi .env config cho prod — Single origin limitation
-- **Ngày:** 2026-04-08
-- **Severity:** Critical
-- **Feature liên quan:** Toàn bộ app — Authentication, mọi API calls
-- **Triệu chứng:** Local frontend (`http://localhost:5173`) bị block CORS với error "Access-Control-Allow-Origin header has a value 'https://phuphatcorp.scrapetool.cloud' that is not equal to the supplied origin". Developer không thể test local khi backend config cho prod.
-- **Root cause:** `app.ts` dùng `process.env.CORS_ORIGIN || 'http://localhost:5173'` (single string). Khi `.env` set `CORS_ORIGIN=https://phuphatcorp.scrapetool.cloud` để serve prod → override default local origin → chỉ prod được phép, local bị reject. CORS middleware của express chỉ accept **1 origin duy nhất** khi config là string, không support multiple origins.
-- **Fix:** Thay `origin: string` bằng `origin: function(origin, callback)` để validate dynamic. Whitelist hardcoded: `['http://localhost:5173', 'http://localhost:5174', 'https://phuphatcorp.scrapetool.cloud']`. Function check `allowedOrigins.includes(origin)` → accept/reject. Requests không có origin header (curl, mobile apps) được phép (no-origin check).
-- **File sửa:** `backend/src/app.ts:11-26` — thay CORS config
-- **Regression test:** curl OPTIONS với 3 origins → localhost:5173 ✅, prod ✅, evil.com ❌
-- **Cần chú ý:** Khi cần support multiple origins, không dùng array trực tiếp (`origin: [...]`) vì không flexible. Dùng function validator để có thể log/debug origin nào bị reject. Whitelist nên include cả backup ports (`localhost:5174`) để tránh conflict khi port 5173 bị chiếm. Không nên dùng `CORS_ORIGIN` env var nữa vì logic đã chuyển sang whitelist cứng — dễ maintain và tránh misconfigure giữa env.
-
----
-
-### CORS block production frontend — NODE_ENV không được đọc đúng
-- **Ngày:** 2026-04-07
-- **Severity:** Critical
-- **Feature liên quan:** Toàn bộ app — Authentication, mọi API calls
-- **Triệu chứng:** `No 'Access-Control-Allow-Origin' header` trên prod — browser block preflight
-- **Root cause:** `app.ts` dùng `NODE_ENV === 'production'` để chọn CORS origin. Trên nhiều platform (Render, Railway, Docker...), biến này không được inject, hoặc `.env` file không được load. Kết quả: `isProd = false` → CORS chỉ cho `localhost:5173` → prod frontend bị block.
-- **Fix:** Xóa `isProd` logic, thay bằng `process.env.CORS_ORIGIN || 'http://localhost:5173'`. Thêm `CORS_ORIGIN=https://phuphatcorp.scrapetool.cloud` vào prod `.env`.
-- **File sửa:** `backend/src/app.ts`
-- **Cần chú ý:** Không dùng `NODE_ENV` để quyết định config runtime như CORS origin, DB URL... Luôn dùng biến env tường minh (`CORS_ORIGIN`, `DATABASE_URL`). NODE_ENV chỉ dùng cho `--NODE_ENV=production` build tools (Webpack, Vite) — không tin vào nó trong runtime Express.
-
-
-
 ### i18n t() — key có dấu chấm bị split nhầm làm path separator
 - **Ngày:** 2026-04-07
 - **Severity:** Medium
@@ -570,6 +420,8 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Root cause:** Hàm `t()` trong `i18n.tsx` split key theo `.` để traverse JSON. Khi perm.code có dấu chấm (`dashboard.view`), key `permissions.permCodes.dashboard.view` bị traverse thành 4 cấp → không tìm thấy → trả về key string (truthy, nên `|| fallback` không kích hoạt).
 - **Fix:** Đổi JSON keys trong `permCodes` từ `"dashboard.view"` → `"dashboard_view"` (dùng `_`). Trong component gọi `perm.code.replace(/\./g, '_')` trước khi dùng làm i18n key.
 - **Cần chú ý:** Không bao giờ đặt i18n key có dấu chấm nằm trong giá trị interpolation (`${variable}`). Nếu giá trị có dấu chấm tự nhiên (code, enum), phải normalize trước khi dùng làm key.
+
+---
 
 ### i18n import type — Vite SyntaxError cho interface export
 - **Ngày:** 2026-04-07
@@ -609,15 +461,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Fix:** Di chuyển tất cả imports lên trên cùng file, dùng `import { useState }` thay vì `React.useState`.
 - **Prevention:** ESLint rule `imports-first` sẽ bắt được lỗi này. Cần setup ESLint cho project.
 
----
-
-### DashboardPage import path sai
-
-- **Ngày:** 2026-03-30
-- **Vấn đề:** DashboardPage nằm trong `pages/dashboard/` nhưng dùng `../hooks/useAuth` thay vì `../../hooks/useAuth`.
-- **Nguyên nhân:** Agent scaffold code không tính đúng nesting level của file.
-- **Fix:** Sửa thành `../../hooks/useAuth` và `../../components/ui/Card`.
-- **Prevention:** Kiểm tra import paths khi tạo nested route components. Hoặc dùng path alias (`@/hooks/useAuth`).
 
 ---
 
@@ -629,38 +472,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Fix:** Correct `AuthResponse` type và unwrap: `response.data.data` để lấy `{ user, accessToken }`.
 - **Prevention:** Backend và frontend nên share common types (ví dụ: qua một shared package hoặc copy-paste types). Khi scaffold nên kiểm tra type consistency giữa hai sides.
 
----
-
----
-
-### POST /api/users 404 — Backend process cũ chưa có route mới
-
-- **Ngày:** 2026-03-31
-- **Severity:** High
-- **Feature liên quan:** User Management — Create User
-- **Triệu chứng:** `POST http://localhost:3021/api/users 404 (Not Found)` — không tạo được user từ frontend. Response HTML `Cannot POST /api/users`.
-- **Root cause:** Backend Node.js process đang chạy là **compiled/cached version cũ** chưa có route `POST /api/users`. Route `GET /api/users` tồn tại (từ version cũ) nên trả 403, nhưng `POST` mới thêm vào nên trả 404. `tsx watch` chưa detect được thay đổi vì process đã bị stale.
-- **Fix:** Kill process cũ (`kill <PID>`) và restart backend (`cd backend && npm run dev`). Sau khi restart, `POST /api/users` trả 201 thành công.
-- **Regression test:** `curl -X POST http://localhost:3021/api/users` với valid ADMIN token → HTTP 201.
-- **Cần chú ý:** Khi thêm route mới vào backend, nếu `tsx watch` không auto-reload, cần restart server thủ công. Dấu hiệu nhận biết: một số routes của cùng resource hoạt động (GET), một số không (POST/PUT/DELETE) → khả năng cao là stale process. Dùng `lsof -i :<port>` để tìm PID và restart.
-
----
-
-### UserRole missing export — CreateUserModal SyntaxError
-
-- **Ngày:** 2026-03-31
-- **Severity:** High
-- **Feature liên quan:** User Management — CreateUserModal, EditUserModal
-- **Triệu chứng:** `Uncaught SyntaxError: The requested module '/src/types/user.ts' does not provide an export named 'UserRole'` — modal tạo/sửa user không load được.
-- **Root cause:** `frontend/src/types/user.ts` không định nghĩa `UserRole` — chỉ có `UserPublic`, `AuthTokens`, etc. Nhưng `CreateUserModal.tsx`, `EditUserModal.tsx`, `UserManagementPage.tsx` đều import và dùng `UserRole.VIEWER`, `UserRole.ADMIN`, `UserRole.ACCOUNTANT`.
-- **Fix:** Thêm `UserRole` const object vào `frontend/src/types/user.ts`:
-  ```ts
-  export const UserRole = { ADMIN: 'ADMIN', ACCOUNTANT: 'ACCOUNTANT', VIEWER: 'VIEWER' } as const;
-  export type UserRole = (typeof UserRole)[keyof typeof UserRole];
-  ```
-  Dùng `const` object thay vì `enum` vì `tsconfig` có `"erasableSyntaxOnly": true` (TS 5.5+) không cho phép `enum`.
-- **Regression test:** `tsc --noEmit` trong `frontend/` — clean, không có lỗi UserRole.
-- **Cần chú ý:** Khi `erasableSyntaxOnly: true` được bật, không dùng `enum` — thay bằng `const` object + type alias. Pattern: `export const X = {...} as const; export type X = (typeof X)[keyof typeof X];`
 
 ---
 
@@ -680,58 +491,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Regression test:** Create user → DELETE user → HTTP 200 ✅
 - **Cần chú ý:** Khi thiết kế schema có FK references đến users, cần cân nhắc `ON DELETE CASCADE` hoặc `ON DELETE SET NULL` ngay từ đầu trong migration. Audit log tables (`user_activities`) nên dùng `ON DELETE SET NULL` để giữ lịch sử nhưng không block delete.
 
----
-
-### GET /src/i18n/i18n.ts 404 — giao diện không load được
-
-- **Ngày:** 2026-03-31
-- **Severity:** High
-- **Feature liên quan:** i18n / app bootstrap
-- **Triệu chứng:** Browser báo `GET http://localhost:5173/src/i18n/i18n.ts?t=... net::ERR_ABORTED 404 (Not Found)`, toàn bộ giao diện không load được.
-- **Root cause:** Hai vấn đề kết hợp: (1) `node_modules` ở root chưa được `npm install` — Vite binary không tồn tại nên dev server không chạy đúng cách; (2) Browser/Vite cache cũ còn giữ reference đến `src/i18n/i18n.ts` — file này không tồn tại trong filesystem (chỉ có `src/i18n/index.ts`).
-- **Fix:** Chạy `npm install` ở root để tạo `node_modules`. Tạo file `src/i18n/i18n.ts` re-export từ `index.ts` để handle browser cache cũ: `export { default } from './index';`
-- **Regression test:** Build production thành công (`npm run build` → `✓ 2224 modules transformed`). TypeScript clean (`tsc --noEmit` không có lỗi).
-- **Cần chú ý:** Sau khi clone repo hoặc pull code mới, phải chạy `npm install` trước khi `npm run dev`. Nếu đổi tên file i18n, cần giữ backward-compatible re-export hoặc clear browser cache (`Ctrl+Shift+R` / DevTools → Application → Clear Storage).
-
----
-
-### DeliveryDataPage missing từ frontend/ — feature chỉ có ở src/ (codebase mới)
-
-- **Ngày:** 2026-03-31
-- **Severity:** High
-- **Feature liên quan:** Delivery Data Processing
-- **Triệu chứng:** Sidebar không có "Xử lý Data Giao Hàng". Các fix ở `src/` không có tác dụng vì user đang chạy `frontend/`.
-- **Root cause:** Project có 2 frontend song song: `frontend/` (codebase cũ đang chạy) và `src/` (codebase mới). `DeliveryDataPage` chỉ được xây dựng ở `src/`, chưa port sang `frontend/`.
-- **Fix:** (1) Install `xlsx` vào `frontend/`; (2) Copy `processDeliveryData.ts` sang `frontend/src/utils/`; (3) Tạo `frontend/src/pages/admin/DeliveryDataPage.tsx` dùng components của frontend cũ; (4) Thêm route `/delivery-data` vào `frontend/src/Router.tsx`; (5) Thêm nav item "Xử lý Data Giao Hàng" vào `frontend/src/layouts/MainLayout.tsx`.
-- **Regression test:** `tsc --noEmit` trong `frontend/` — clean (no errors in new files).
-- **Cần chú ý:** Khi project có 2 codebase, phải xác định user đang chạy cái nào trước khi fix. Dấu hiệu: sidebar items không khớp với code trong `src/`. Luôn hỏi "bạn đang thấy gì trên màn hình" thay vì đoán từ code.
-
----
-
- — user.role cũ (lowercase) block toàn bộ guards
-
-- **Ngày:** 2026-03-31
-- **Severity:** High
-- **Feature liên quan:** AuthContext, AdminGuard, sidebar visibility
-- **Triệu chứng:** Sau khi fix UserRole type sang uppercase, user vẫn không thấy chức năng — AdminGuard vẫn redirect, sidebar không hiện đúng.
-- **Root cause:** `AuthProvider` đọc `user` object từ `localStorage` synchronously khi init. User đã login từ trước khi fix có `role: 'admin'` (lowercase) lưu trong localStorage. Sau khi fix type sang uppercase, so sánh `user.role !== 'ADMIN'` luôn fail vì data cũ.
-- **Fix:** Thay AuthProvider init synchronous từ localStorage bằng async `GET /api/auth/me` khi mount. `isLoading = true` trong khi chờ — guards sẽ hiện loading screen thay vì redirect. Backend trả role uppercase đúng, cập nhật lại localStorage.
-- **File sửa:** `src/contexts/AuthContext.tsx`
-- **Regression test:** Diagnostics clean. Sau khi reload page với token hợp lệ, user object có role uppercase từ backend.
-- **Cần chú ý:** Không tin vào localStorage để lấy user data mà không verify với backend. localStorage chỉ dùng để check "có token không" (để quyết định có gọi `/auth/me` không). User object luôn lấy từ backend.
-
----
-
-
-
-- **Ngày:** 2026-03-31
-- **Severity:** High
-- **Feature liên quan:** AdminGuard, DeliveryDataPage, ExecuteDataPage, SkuFactoryListPage, UserManagement
-- **Triệu chứng:** User ADMIN đăng nhập nhưng không thấy/không vào được các chức năng cần quyền admin — bị redirect về dashboard.
-- **Root cause:** `src/types/common.ts` định nghĩa `UserRole = 'admin' | 'manager' | 'staff' | 'viewer'` (lowercase), nhưng DB và JWT thực tế lưu `'ADMIN' | 'ACCOUNTANT' | 'VIEWER'` (uppercase). Tất cả guard và role check so sánh sai → luôn fail.
-- **Fix:** Sửa `UserRole` type về uppercase: `'ADMIN' | 'ACCOUNTANT' | 'VIEWER'`. Cập nhật tất cả chỗ so sánh role trong `App.tsx`, `DashboardLayout.tsx`, `UserListPage.tsx`, `UserCreatePage.tsx`, `UserEditPage.tsx`, `SkuFactoryListPage.tsx`.
-- **Regression test:** TypeScript clean — `getDiagnostics` không có lỗi type sau khi fix.
-- **Cần chú ý:** `src/types/common.ts` là source of truth cho role values ở frontend. Khi backend thay đổi role values, phải update file này trước. Không để role values hardcode rải rác — luôn dùng type `UserRole` để TypeScript bắt lỗi.
 
 ---
 
@@ -746,69 +505,6 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **File sửa:** `frontend/src/utils/processDeliveryData.ts` — Step 5 dùng `exceljs.Workbook` thay vì `XLSX.utils.book_new()`
 - **Cần chú ý:** `xlsx` community edition chỉ đọc styles từ file có sẵn, không ghi styles mới. Khi cần output Excel có formatting (màu sắc, bold, border...) → luôn dùng `exceljs`. Tên biến `buffer` bị trùng với biến đọc file input — đặt tên là `outBuffer`.
 
----
-
-### Delivery Data processing — Pre-sort dòng trước grouping (điều chỉnh 3-level sort + fix vehicle number sorting + fix BR-003 inconsistency)
-- **Ngày:** 2026-04-25
-- **Severity:** High (was Medium)
-- **Feature liên quan:** Delivery Data Processing — grouping algorithm + group sorting
-- **Thay đổi ban đầu (2026-04-25 sáng):** Thêm bước sort (BR-000) trước bước grouping (BR-001)
-  - Primary: Số tàu/xe ASC (numeric-aware)
-  - Secondary: Ngày hóa đơn ASC
-  - Mục đích: Đảm bảo thứ tự nhất quán của các nhóm
-
-- **Điều chỉnh 1 (2026-04-25 chiều, Part 1):** Mở rộng BR-000 thành 3-level sort
-  - Primary: Số tàu/xe ASC (numeric-aware)
-  - Secondary: Ngày hóa đơn ASC
-  - Tertiary: Số hóa đơn ASC (numeric-aware) — **NEW**
-
-- **Bug discovery & fix (2026-04-25 chiều, Part 2):** Fix vehicle number sorting
-  - Issue: `localeCompare(..., { numeric: true })` không hoạt động đúng cho vehicle numbers
-  - Root cause: So sánh từng segment ký tự độc lập, không nhận biết "[PREFIX][NUMBER]" structure
-  - Fix: Thêm helper function `compareVehicleNumbers()` (lines 78-105)
-
-- **Logic conflict detection (2026-04-25 chiều, Part 3):** Phát hiện Step 1 vs Step 4 xung đột
-  - Issue: Step 1 (BR-000) pre-sort dùng `compareVehicleNumbers()` ✅
-  - Nhưng Step 4 (BR-003) group sort dùng `.localeCompare(b.vehicle)` ❌
-  - Impact: Step 1 pre-sort bị override lại bởi Step 4 sort khác logic
-  - Fix: Step 4 (BR-003) cập nhật dùng `compareVehicleNumbers()` (line 668)
-
-- **File sửa:**
-  - `frontend/src/utils/processDeliveryData.ts`:
-    * Added function `compareVehicleNumbers()` (lines 78-105)
-    * Updated Step 1 sort logic (lines 533-559) — use compareVehicleNumbers
-    * Updated Step 3 (BR-003) sort logic (line 668) — use compareVehicleNumbers
-
-- **Documentation:**
-  - Updated `system-features.md` BR-000: "natural sort: prefix numeric-aware → number numeric"
-  - Updated `system-features.md` BR-003: "dùng hàm compareVehicleNumbers() để maintain consistency với BR-000"
-
-- **Cần chú ý:**
-  - Thay đổi này ĐẢM BẢO:
-    * BR-000 pre-sort result không bị override bởi BR-003 group sort
-    * Output file vehicles được sort correctly (ascending order)
-    * Consistency giữa row-level sort (Step 1) và group-level sort (Step 4)
-  - Backward compatible — không break feature khác
-  - TypeScript typecheck: pass ✅
-
----
-
-### Delivery Data processing — Pre-sort dòng trước grouping (initial 2-level sort)
-
----
-
-### xlsx 0.18.5 community edition không ghi cell styles — dùng exceljs để write
-
-### 403 Forbidden trên GET endpoints — requirePermission vs "Tất cả authenticated users"
-
-- **Ngày:** 2026-04-07
-- **Severity:** High
-- **Feature liên quan:** Bảng điều phối xe — GET /api/vehicles, /api/trip-codes, /api/dispatch-schedules
-- **Triệu chứng:** Vào trang /dispatch/schedule → 3 requests đều trả 403. User đã đăng nhập bình thường.
-- **Root cause:** Route guards dùng `requirePermission('transport.view')` / `requirePermission('dispatch.view')` trên các GET endpoints. Permission codes này không có trong JWT của user (hoặc không được assign cho role). Spec ghi "Access: Tất cả authenticated users" nhưng code lại enforce permission-based access.
-- **Fix:** Xóa `requirePermission(...)` khỏi 3 GET routes (`vehicles.ts:16`, `tripCodes.ts:16`, `dispatchSchedules.ts:15`). Write endpoints (POST/PUT/DELETE) vẫn giữ `requirePermission` vì đó là các action thay đổi data.
-- **Regression test:** Backend build + 33 tests pass sau khi sửa.
-- **Cần chú ý:** Khi tính năng mới spec là "tất cả authenticated users có thể xem", không thêm `requirePermission` vào GET route. Chỉ thêm `requirePermission` vào write endpoints. `authenticateToken` (đã ở `router.use()`) là đủ để bảo vệ read access.
 
 ---
 
@@ -854,6 +550,8 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
   - Backward compatibility: không thay đổi parsing logic (đọc file vẫn dùng xlsx) — chỉ thay đổi output formatting
   - `eachCell({ includeEmpty: false })` để bỏ qua empty cells khi apply format → tránh set format cho cells rỗng
 
+---
+
 ### pg driver serialize DATE column thành ISO UTC timestamp — MasterPlateMap key không match
 - **Ngày:** 2026-04-19
 - **Severity:** High
@@ -897,15 +595,20 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
   - FE: `DriverInvoicesPage` — đổi header cột, thêm filter input, grid 6→7 cols, badge thành button
 - **Cần chú ý:** Khi normalize dữ liệu cũ, phải chạy migration TRƯỚC khi thay đổi parser để đảm bảo duplicate check hoạt động đúng (UNIQUE index dùng `so_xe`). Nếu không, dữ liệu cũ `"50H-55116"` và mới `"50H55116"` sẽ là 2 record khác nhau.
 
-## Bug: Driver Invoice Upload 400 — rows with empty B (Mã) not skipped
-- **Ngày:** 2026-06-15
+---
+
+## Bug: Lịch điều phối xe không hiển thị ticket cho tài xế do thiếu driver_id
+- **Ngày:** 2026-09-11
 - **Severity:** High
-- **Feature liên quan:** Hóa đơn tài xế — Upload Excel
-- **Triệu chứng:** Upload file "Kê Xe Nhỏ 03_2026.xlsx" → `POST /api/driver-invoices/upload 400`. File "Xe Nhỏ 05_2026.xlsx" upload bình thường.
-- **Root cause:** File 03 có 5 dòng với cột B (Mã) rỗng (thường là dòng "thu hồi hàng"). Parser chỉ skip khi TẤT CẢ field (ma, ten_tx, ngay, so_xe, noi_giao) đều rỗng, nhưng các dòng này có ten_tx, ngay, noi_giao, ghi_chu đầy đủ → không bị skip → gửi lên backend với `ma=''` → backend validation `notEmpty()` reject 400.
-- **Fix:** Thêm `if (!ma) continue` trong parser — skip mọi dòng thiếu Mã trước khi xử lý tiếp. File: `frontend/src/utils/parseDriverInvoiceFile.ts`
-- **Bug follow-up:** Sau khi fix 400, xuất hiện 500 do file 03 có 2 dòng trùng lặp nội bộ (cùng key trong chính file Excel). `checkDuplicates()` chỉ check với DB, không dedup internal. Fix: dedup `rowsToInsert` bằng Map trước khi INSERT. File: `backend/src/services/driverInvoiceService.ts`
-- **Cần chú ý:** (1) Khi validate row-level data từ Excel, nên kiểm tra TỪNG field bắt buộc riêng rẽ. (2) Khi bulk insert từ file upload, luôn dedup nội bộ trong payload trước khi INSERT để tránh vi phạm UNIQUE constraint — dữ liệu từ Excel thường có dòng trùng.
+- **Feature liên quan:** Bảng điều phối xe (`dispatchScheduleService`) & Theo dõi hóa đơn (`invoiceTrackingService`)
+- **Triệu chứng:** Người điều phối tạo lịch xe hoặc Import Excel cho xe (e.g. `50E16461`), nhưng khi tài xế (`16461`, role `TAI_XE`) đăng nhập thì danh sách ticket trống.
+- **Root cause:** Khi tạo hoặc import lịch xe vào `dispatch_schedules`, trường `driver_id` bị để trống (`NULL`). Phân quyền dữ liệu (Data scope) của role `TAI_XE` là `owner` (`driver_id = userId OR created_by = userId`), nên tài xế không thấy ticket của xe mình phụ trách.
+- **Fix:**
+  1. `dispatchScheduleService.ts`: Tự động tra cứu `vehicle_id` (từ bảng `vehicles`) và `driver_id` (từ bảng `driver_vehicles` + `drivers`) theo biển số xe nếu chưa được truyền từ frontend.
+  2. Migration `048_backfill_dispatch_schedules_driver_id.sql`: Chạy câu lệnh UPDATE cập nhật `driver_id`, `vehicle_id`, và `tai_xe` cho toàn bộ các bản ghi `dispatch_schedules` lịch sử.
+- **Files:** `backend/src/services/dispatchScheduleService.ts`, `backend/src/migrations/048_backfill_dispatch_schedules_driver_id.sql`, `backend/src/__tests__/dispatchScheduleService.test.ts`.
+
+---
 
 ## Change: Driver Invoices — Chuyển format import sang HCM + Tỉnh sheets
 - **Ngày:** 2026-06-17
@@ -914,6 +617,8 @@ description: Ghi lại các bài học kinh nghiệm, bug đã fix, và pitfalls
 - **Thay đổi:** Chuyển từ format cũ (sheet "XE NHỎ", rows 8+, columns B-G) sang format mới (sheets "HCM" + "Tỉnh", rows 5+(0-indexed), columns A-F). Column ngay có thể là decimal serial (Math.floor trước khi parse).
 - **Files:** `frontend/src/utils/parseDriverInvoiceFile.ts` — extract `parseSheetRows()`, đọc cả 2 sheet.
 - **Cần chú ý:** Format mới có decimal date serial (vd: 46189.62269) — cần `Math.floor(serial)` trước khi parse date code. Skip rows có `ma` rỗng, `ngay` invalid, `so_xe` rỗng, hoặc `ghi_chu` rỗng. Cột B (ten_tx) có thể chứa driver code dạng số ("0", "55129") — giữ nguyên.
+
+---
 
 ## Anti-patterns Tránh Lặp Lại
 
@@ -956,6 +661,19 @@ AuthProvider = state only. Navigation = page level. Validation = form library. K
 - **File sửa:** `backend/src/services/deliveryScheduleService.ts` — dòng 133-160 (upload method, batch insert)
 - **Kết quả:** 53,000ms → ~500ms (-99%)
 - **Cần chú ý:** Khi INSERT hàng loạt, luôn dùng multi-row INSERT hoặc COPY. Không bao giờ INSERT từng dòng trong loop. Batch size 500-1000 an toàn dưới PostgreSQL param limit (65535).
+
+---
+
+## Anti-patterns Tránh Lặp Lại
+
+### 1. Không để import ở dưới cùng file
+Luôn đặt tất cả imports ở trên cùng. Dùng named imports thay vì namespace import (`import React from 'react'` → `import { useState } from 'react'`).
+
+### 2. Không dùng createBrowserRouter khi có React Context
+`createBrowserRouter` không tương thích với `createContext`. Dùng `<BrowserRouter>` JSX.
+
+### 3. Không mix concerns trong một component
+AuthProvider = state only. Navigation = page level. Validation = form library. Không nhét mọi thứ vào một chỗ.
 
 ### 4. Không trust agent-generated imports path
 Luôn verify import paths đúng sau khi scaffold, đặc biệt với nested folder structures.
@@ -1005,17 +723,6 @@ Vite không hot-reload `.env` khi dev server đang chạy. Phải restart `npm r
 - **Pattern:** Paginated list queries nên dùng `COUNT(*) OVER()` để lấy total trong cùng 1 query.
 - **Files:** `backend/src/services/repairService.ts:159-178`
 
-## Bug: Lịch điều phối xe không hiển thị ticket cho tài xế do thiếu driver_id
-- **Ngày:** 2026-09-11
-- **Severity:** High
-- **Feature liên quan:** Bảng điều phối xe (`dispatchScheduleService`) & Theo dõi hóa đơn (`invoiceTrackingService`)
-- **Triệu chứng:** Người điều phối tạo lịch xe hoặc Import Excel cho xe (e.g. `50E16461`), nhưng khi tài xế (`16461`, role `TAI_XE`) đăng nhập thì danh sách ticket trống.
-- **Root cause:** Khi tạo hoặc import lịch xe vào `dispatch_schedules`, trường `driver_id` bị để trống (`NULL`). Phân quyền dữ liệu (Data scope) của role `TAI_XE` là `owner` (`driver_id = userId OR created_by = userId`), nên tài xế không thấy ticket của xe mình phụ trách.
-- **Fix:**
-  1. `dispatchScheduleService.ts`: Tự động tra cứu `vehicle_id` (từ bảng `vehicles`) và `driver_id` (từ bảng `driver_vehicles` + `drivers`) theo biển số xe nếu chưa được truyền từ frontend.
-  2. Migration `048_backfill_dispatch_schedules_driver_id.sql`: Chạy câu lệnh UPDATE cập nhật `driver_id`, `vehicle_id`, và `tai_xe` cho toàn bộ các bản ghi `dispatch_schedules` lịch sử.
-- **Files:** `backend/src/services/dispatchScheduleService.ts`, `backend/src/migrations/048_backfill_dispatch_schedules_driver_id.sql`, `backend/src/__tests__/dispatchScheduleService.test.ts`.
-
 ## Change: Bảng điều phối xe — Chuẩn hóa biển số xe theo định dạng XXYXXXXX trước khi lưu
 - **Ngày:** 2026-09-11
 - **Severity:** Medium
@@ -1025,25 +732,6 @@ Vite không hot-reload `.env` khi dev server đang chạy. Phải restart `npm r
 - **Cần chú ý:** Format chuẩn hóa đồng nhất với bảng `vehicles` và `driver_invoices` (không chứa dấu cách, dấu gạch nối hay ký tự ẩn).
 
 ## Change: Xử lý Data Gạo — Đổi master data từ delivery_schedules sang driver_invoices
-
-## Bug: GET /api/dispatch-schedules 500 — Schema DB thiếu columns bien_so, tai_xe, vehicle_id
-- **Ngày:** 2026-08-30
-- **Severity:** High
-- **Feature liên quan:** Bảng điều phối xe (Dispatch Schedules)
-- **Triệu chứng:** `GET /api/dispatch-schedules?date=2026-08-30` trả về 500 Internal Server Error. Backend log không có stack trace rõ ràng.
-- **Root cause:** Service `dispatchScheduleService.listByDate()` SELECT các columns `bien_so, tai_xe, vehicle_id` nhưng DB thực tế không có các columns này. Migration 006 tạo bảng có các columns này, nhưng migration 044 (xóa diem_tra, thêm tan/can) và 045 (xóa gio_nhan) đã chạy thành công — tuy nhiên các columns bien_so, tai_xe, vehicle_id chưa từng được thêm vào DB staging. Có thể do migration 006 chạy trước khi các columns này được thêm vào file migration, hoặc DB staging được tạo từ snapshot cũ.
-- **Fix:** Tạo migration 047 để thêm các columns bị thiếu:
-  ```sql
-  ALTER TABLE dispatch_schedules ADD COLUMN IF NOT EXISTS bien_so VARCHAR(50);
-  ALTER TABLE dispatch_schedules ADD COLUMN IF NOT EXISTS tai_xe TEXT;
-  ALTER TABLE dispatch_schedules ADD COLUMN IF NOT EXISTS vehicle_id INTEGER;
-  ```
-- **File tạo mới:** `backend/src/migrations/047_add_bien_so_tai_xe_vehicle_id_to_dispatch_schedules.sql`
-- **Cần chú ý:** 
-  - Khi thêm columns mới vào service (SELECT/INSERT), phải đảm bảo migration đã chạy trên target DB.
-  - Dùng `IF NOT EXISTS` trong migration để đảm bảo idempotent.
-  - Sau khi chạy migration, restart backend server để apply schema changes.
-  - Verify bằng cách query `information_schema.columns` để kiểm tra columns tồn tại.
 - **Ngày:** 2026-08-19
 - **Feature:** Xử lý Data Gạo (RiceDeliveryDataPage)
 - **Thay đổi:** Bước 2 fetch master data từ bảng `driver_invoices` (Hóa đơn tài xế) thay vì `delivery_schedules` (Lịch đi hàng)

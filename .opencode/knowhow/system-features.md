@@ -420,48 +420,6 @@ src/api/weightAdjustmentApi.ts     ← fetchAll() dùng để load masterdata
 
 Module "Quản lý dữ liệu xe" có nhiều sub-menu, mỗi sub-menu là một bảng masterdata.
 
-### 7.1 Mã chuyến (/vehicle-data/trip-codes)
-
-**Mục đích:** Quản lý danh sách mã chuyến vận chuyển.
-
-**Data model — bảng `trip_codes`:**
-```sql
-trip_codes (id, ma, tuyen, so_tien, status, start_date, end_date, boc_xep, ghi_chu, created_at, updated_at)
-```
-
-**Business Rules:**
-- Soft update: update → deactivate old row (status=deactive, end_date=now) + insert new row
-- Soft delete: UPDATE SET status=deactive, end_date=now (không xóa vật lý)
-- Mã case-sensitive unique among active rows (enforced at service layer, NOT DB constraint)
-- Upload Excel: parse ở frontend (xlsx lib) → gửi JSON array lên backend → backend check duplicate → bulk insert
-- Upload fail-fast: nếu bất kỳ dòng nào lỗi → không insert gì cả, trả về chi tiết lỗi từng dòng
-
-**API Endpoints:**
-```
-GET    /api/trip-codes          → list active rows
-POST   /api/trip-codes          → create (409 if duplicate ma)
-PUT    /api/trip-codes/:id      → soft-update (transaction: deactivate + insert)
-DELETE /api/trip-codes/:id      → soft-delete
-POST   /api/trip-codes/upload   → bulk insert JSON rows ({ rows: [...] })
-```
-
-**Files:**
-```
-backend/src/migrations/003_create_trip_codes.sql
-backend/src/services/tripCodeService.ts
-backend/src/controllers/tripCodeController.ts
-backend/src/routes/tripCodes.ts
-frontend/src/api/tripCodeApi.ts
-frontend/src/hooks/useTripCodes.ts
-frontend/src/components/vehicle-data/TripCodeFormModal.tsx
-frontend/src/components/vehicle-data/TripCodeUploadModal.tsx
-frontend/src/pages/admin/vehicle-data/TripCodePage.tsx
-```
-
-**Access:** Tất cả authenticated users. Route: `/vehicle-data/trip-codes`
-
----
-
 ### 7.2 Dữ liệu xe (/vehicle-data/vehicles)
 
 **Mục đích:** Quản lý danh sách xe vận chuyển (biển số, loại xe, tài xế).
@@ -637,6 +595,7 @@ customers (
   dia_chi_giao_hang TEXT,                     -- Địa chỉ giao hàng (nullable)
   diem_giao_hang_tinh_phi VARCHAR(255),       -- Điểm giao hàng tính phí (nullable, optional text)
   boc_xep BOOLEAN NOT NULL DEFAULT TRUE,      -- Có bốc xếp không
+  supplier_code VARCHAR(20),                  -- Mã nhà cung cấp, khớp suppliers.supplier_code
   status VARCHAR(20) NOT NULL DEFAULT 'active', -- 'active' | 'deactive'
   created_by INTEGER FK→users.id,
   updated_by INTEGER FK→users.id,
@@ -653,20 +612,9 @@ customers (
 - BR-006: `boc_xep` không còn được form hoặc upload ghi. Cột DB giữ default. Cờ trên UI đã bỏ. Có bốc xếp chỉ biết qua lookup phụ phí.
 - BR-007: Excel column order (positional, col index từ 0): col0=Điểm trả hàng, col1=Tuyến-phường, col2=Tuyến-cũ, col3=bỏ qua, col4=Tên khách hàng, col5=Địa chỉ giao hàng, col6=Bốc xếp
 - BR-008: fetchAll → chỉ trả active records
-- BR-009: Liên kết N-N với `suppliers` qua junction table `customer_suppliers`, tự động populate khi import `delivery_data` (match `ten_kh` → `ten_khach_hang`, `ma_ncc` → `supplier_code`)
+- BR-009: Liên kết nhà cung cấp bằng `customers.supplier_code` = `suppliers.supplier_code`. Bảng junction `customer_suppliers` đã bỏ
 - BR-010: Response `list()` include `suppliers: [{ supplier_code, name }]` dạng JSON array
 - BR-011: `diem_giao_hang_tinh_phi` optional text (VARCHAR 255). Rỗng / whitespace → `null`. Không unique, không FK. Excel: map nếu có header “Điểm giao hàng tính phí” (alias GHTP); thiếu cột → `null`, không fail.
-
-**Junction table — `customer_suppliers`:**
-```sql
-customer_suppliers (
-  id SERIAL PK,
-  customer_id INTEGER FK→customers(id) ON DELETE CASCADE,
-  supplier_id INTEGER FK→suppliers(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(customer_id, supplier_id)
-)
-```
 
 **API Endpoints:**
 ```
